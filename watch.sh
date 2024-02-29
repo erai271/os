@@ -23,7 +23,7 @@ fi
 ) &
 
 # Run build with pager
-time ./build.sh "$@" | less -Rc; rc=$?
+./build.sh "$@" 2>&1 | less -Rc; rc=$?
 stty sane
 
 # Kill event process
