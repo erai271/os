@@ -91,8 +91,11 @@ enum {
 	T_COLON,
 	T_STAR,
 	T_DOT,
+	T_NOT,
 	T_ASSIGN,
 	T_AMP,
+	T_OR,
+	T_XOR,
 	T_LT,
 	T_GT,
 	T_LE,
@@ -108,6 +111,8 @@ enum {
 	T_BAND,
 	T_LSQ,
 	T_RSQ,
+	T_DIV,
+	T_MOD,
 };
 
 // The token from the source
@@ -241,11 +246,11 @@ feed_char(void)
 
 	if (nc == '\\') {
 		feed_escape();
-	} else {
-		token[tlen] = nc;
-		tlen = tlen + 1;
-		nc = getchar();
 	}
+
+	token[tlen] = nc;
+	tlen = tlen + 1;
+	nc = getchar();
 
 	if (nc != '\'') {
 		die("expected '");
@@ -337,17 +342,17 @@ feed(void)
 		} else if (nc == '/') {
 			// Comment
 			nc = getchar();
-			if (nc != '/') {
-				// For now just die if we get a single slash
-				die("invalid token /");
-			}
-
-			// Read until the end of the comment
-			while (1) {
-				if (nc == '\n' || nc == EOF) {
-					break;
+			if (nc == '/') {
+				// Read until the end of the comment
+				while (1) {
+					if (nc == '\n' || nc == EOF) {
+						break;
+					}
+					nc = getchar();
 				}
-				nc = getchar();
+			} else {
+				tt = T_DIV;
+				return;
 			}
 		} else {
 			// Start of a real token
@@ -421,14 +426,19 @@ feed(void)
 			tt = T_BAND;
 			nc = getchar();
 		}
+	} else if (nc == '~') {
+		tt = T_NOT;
+		nc = getchar();
 	} else if (nc == '|') {
+		tt = T_OR;
 		nc = getchar();
 		if (nc == '|') {
 			tt = T_BOR;
 			nc = getchar();
-		} else {
-			die("expected ||");
 		}
+	} else if (nc == '^') {
+		tt = T_XOR;
+		nc = getchar();
 	} else if (nc == '!') {
 		tt = T_BANG;
 		nc = getchar();
@@ -468,6 +478,9 @@ feed(void)
 	} else if (nc == '-') {
 		tt = T_SUB;
 		nc = getchar();
+	} else if (nc == '%') {
+		tt = T_MOD;
+		nc = getchar();
 	} else {
 		die("invalid char");
 	}
@@ -482,7 +495,7 @@ struct node {
 	struct node *a;
 	struct node *b;
 	struct type *t;
-	unsigned int n;
+	int n;
 	unsigned char *s;
 	int offset;
 	int lineno;
@@ -536,8 +549,14 @@ enum {
 	N_BNOT,
 	N_BOR,
 	N_BAND,
+	N_AND,
+	N_OR,
+	N_XOR,
+	N_NOT,
 	N_POS,
 	N_NEG,
+	N_DIV,
+	N_MOD,
 };
 
 // Construct a node
@@ -609,7 +628,7 @@ struct node *
 hex(void)
 {
 	struct node *n;
-	unsigned int x;
+	long x;
 	int i;
 	int d;
 
@@ -630,13 +649,13 @@ hex(void)
 			d = d - 'A' + 10;
 		}
 
-		if (x > 0xfffffff) {
-			die("overflow");
-		}
-
 		x = x * 16;
 		x = x + d;
 		i = i + 1;
+
+		if (x > 0x7fffffff) {
+			die("overflow");
+		}
 	}
 
 	n = mknode(N_NUM, 0, 0);
@@ -651,7 +670,7 @@ struct node *
 num(void)
 {
 	struct node *n;
-	unsigned int x;
+	long x;
 	int d;
 	int i;
 
@@ -672,18 +691,14 @@ num(void)
 
 		d = token[i] - '0';
 
-		if (x > 0x19999999) {
-			die("overflow");
-		}
-
 		x = x * 10;
-
-		if (x > 0xffffffff - d) {
-			die("overflow");
-		}
 
 		x = x + d;
 		i = i + 1;
+
+		if (x > 0x7fffffff) {
+			die("overflow");
+		}
 	}
 
 	n = mknode(N_NUM, 0, 0);
@@ -899,6 +914,7 @@ post_expr(void)
 //             | '*' unary_expr
 //             | '+' unary_expr
 //             | '-' unary_expr
+//             | '~' unary_expr
 //             | '!' unary_expr
 struct node *
 unary_expr(void)
@@ -949,6 +965,17 @@ unary_expr(void)
 		return mknode(N_NEG, n, 0);
 	}
 
+	if (tt == T_NOT) {
+		feed();
+
+		n = unary_expr();
+		if (!n) {
+			die("expected unary_expr");
+		}
+
+		return mknode(N_NOT, n, 0);
+	}
+
 	if (tt == T_BANG) {
 		feed();
 
@@ -963,104 +990,25 @@ unary_expr(void)
 	return post_expr();
 }
 
-// binary_expr := unary_expr
-//              | unary_expr '<' binary_expr
-//              | unary_expr '>' binary_expr
-//              | unary_expr '<=' binary_expr
-//              | unary_expr '>=' binary_expr
-//              | unary_expr '==' binary_expr
-//              | unary_expr '!=' binary_expr
-//              | unary_expr '+' binary_expr
-//              | unary_expr '-' binary_expr
-//              | unary_expr '*' binary_expr
-//              | unary_expr '<<' binary_expr
-//              | unary_expr '>>' binary_expr
-//              | unary_expr '&&' binary_expr
-//              | unary_expr '||' binary_expr
+
+// shift_expr := unary_expr
+//             | unary_expr '<<' shift_expr
+//             | unary_expr '>>' shift_expr
 struct node *
-binary_expr(void)
+shift_expr(void)
 {
 	struct node *a;
 	struct node *b;
 
 	a = unary_expr();
-
-	if (tt == T_LT) {
-		feed();
-
-		b = binary_expr();
-
-		return mknode(N_LT, a, b);
-	}
-
-	if (tt == T_GT) {
-		feed();
-
-		b = binary_expr();
-
-		return mknode(N_GT, a, b);
-	}
-
-	if (tt == T_LE) {
-		feed();
-
-		b = binary_expr();
-
-		return mknode(N_LE, a, b);
-	}
-
-	if (tt == T_GE) {
-		feed();
-
-		b = binary_expr();
-
-		return mknode(N_GE, a, b);
-	}
-
-	if (tt == T_EQ) {
-		feed();
-
-		b = binary_expr();
-
-		return mknode(N_EQ, a, b);
-	}
-
-	if (tt == T_NE) {
-		feed();
-
-		b = binary_expr();
-
-		return mknode(N_NE, a, b);
-	}
-
-	if (tt == T_ADD) {
-		feed();
-
-		b = binary_expr();
-
-		return mknode(N_ADD, a, b);
-	}
-
-	if (tt == T_SUB) {
-		feed();
-
-		b = binary_expr();
-
-		return mknode(N_SUB, a, b);
-	}
-
-	if (tt == T_STAR) {
-		feed();
-
-		b = binary_expr();
-
-		return mknode(N_MUL, a, b);
+	if (!a) {
+		return 0;
 	}
 
 	if (tt == T_LSH) {
 		feed();
 
-		b = binary_expr();
+		b = shift_expr();
 
 		return mknode(N_LSH, a, b);
 	}
@@ -1068,15 +1016,224 @@ binary_expr(void)
 	if (tt == T_RSH) {
 		feed();
 
-		b = binary_expr();
+		b = shift_expr();
 
 		return mknode(N_RSH, a, b);
+	}
+
+	return a;
+}
+
+// mul_expr := shift_expr
+//           | shift_expr '*' mul_expr
+//           | shift_expr '/' mul_expr
+//           | shift_expr '%' mul_expr
+//           | shift_expr '&' mul_expr
+struct node *
+mul_expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = shift_expr();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt == T_STAR) {
+		feed();
+
+		b = mul_expr();
+
+		return mknode(N_MUL, a, b);
+	}
+
+	if (tt == T_DIV) {
+		feed();
+
+		b = mul_expr();
+
+		return mknode(N_DIV, a, b);
+	}
+
+	if (tt == T_MOD) {
+		feed();
+
+		b = mul_expr();
+
+		return mknode(N_MOD, a, b);
+	}
+
+	if (tt == T_AMP) {
+		feed();
+
+		b = mul_expr();
+
+		return mknode(N_AND, a, b);
+	}
+
+	return a;
+}
+
+// add_expr := mul_expr
+//           | mul_expr '+' add_expr
+//           | mul_expr '-' add_expr
+//           | mul_expr '|' add_expr
+//           | mul_expr '^' add_expr
+struct node *
+add_expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = mul_expr();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt == T_ADD) {
+		feed();
+
+		b = add_expr();
+
+		return mknode(N_ADD, a, b);
+	}
+
+	if (tt == T_SUB) {
+		feed();
+
+		b = add_expr();
+
+		return mknode(N_SUB, a, b);
+	}
+
+	if (tt == T_OR) {
+		feed();
+
+		b = add_expr();
+
+		return mknode(N_OR, a, b);
+	}
+
+	if (tt == T_XOR) {
+		feed();
+
+		b = add_expr();
+
+		return mknode(N_XOR, a, b);
+	}
+
+	return a;
+}
+
+// comp_expr := add_expr
+//            | add_expr '<' add_expr
+//            | add_expr '>' add_expr
+//            | add_expr '<=' add_expr
+//            | add_expr '>=' add_expr
+//            | add_expr '==' add_expr
+//            | add_expr '!=' add_expr
+struct node *
+comp_expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = add_expr();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt == T_LT) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_LT, a, b);
+	}
+
+	if (tt == T_GT) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_GT, a, b);
+	}
+
+	if (tt == T_LE) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_LE, a, b);
+	}
+
+	if (tt == T_GE) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_GE, a, b);
+	}
+
+	if (tt == T_EQ) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_EQ, a, b);
+	}
+
+	if (tt == T_NE) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_NE, a, b);
+	}
+
+	return a;
+}
+
+// bool_expr := bool_expr
+//            | add_expr '&&' bool_expr
+//            | add_expr '||' bool_expr
+struct node *
+bool_expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = comp_expr();
+	if (!a) {
+		return 0;
 	}
 
 	if (tt == T_BAND) {
 		feed();
 
-		b = binary_expr();
+		b = bool_expr();
+		if (!b) {
+			die("expected bool_expr");
+		}
 
 		return mknode(N_BAND, a, b);
 	}
@@ -1084,7 +1241,10 @@ binary_expr(void)
 	if (tt == T_BOR) {
 		feed();
 
-		b = binary_expr();
+		b = bool_expr();
+		if (!b) {
+			die("expected bool_expr");
+		}
 
 		return mknode(N_BOR, a, b);
 	}
@@ -1092,15 +1252,15 @@ binary_expr(void)
 	return a;
 }
 
-// expr := binary_expr
-//       | binary_expr '=' expr
+// expr := bool_expr
+//       | bool_expr '=' expr
 struct node *
 expr(void)
 {
 	struct node *a;
 	struct node *b;
 
-	a = binary_expr();
+	a = bool_expr();
 	if (!a) {
 		return 0;
 	}
@@ -1813,38 +1973,6 @@ struct type {
 	struct type *arg;
 };
 
-// Unify two types
-void
-unify(struct type *a, struct type *b)
-{
-	int kind;
-
-	if (!a || !b || a == b) {
-		return;
-	}
-
-	if (a->kind != b->kind) {
-		die("type error");
-	}
-
-	kind = a->kind;
-	if (kind == TY_PTR) {
-		unify(a->val, b->val);
-	} else if (kind == TY_FUNC) {
-		unify(a->val, b->val);
-		if ((!!a->arg) != (!!b->arg)) {
-			die("arg mismatch");
-		}
-		unify(a->arg, b->arg);
-	} else if (kind == TY_STRUCT) {
-		if (a->s != b->s) {
-			die("type error");
-		}
-	} else if (kind != TY_VOID && kind != TY_INT && kind != TY_BYTE) {
-		die("unify: invalid type");
-	}
-}
-
 struct decl {
 	unsigned char *name;
 	struct decl *p;
@@ -1909,6 +2037,38 @@ struct edecl {
 struct decl *decls;
 struct sdecl *structs;
 struct edecl *enums;
+
+// Unify two types
+void
+unify(struct type *a, struct type *b)
+{
+	int kind;
+
+	if (!a || !b || a == b) {
+		return;
+	}
+
+	if (a->kind != b->kind) {
+		die("type error");
+	}
+
+	kind = a->kind;
+	if (kind == TY_PTR) {
+		unify(a->val, b->val);
+	} else if (kind == TY_FUNC) {
+		unify(a->val, b->val);
+		unify(a->arg, b->arg);
+	} else if (kind == TY_ARG) {
+		unify(a->val, b->val);
+		unify(a->arg, b->arg);
+	} else if (kind == TY_STRUCT) {
+		if (a->s != b->s) {
+			die("type error");
+		}
+	} else if (kind != TY_VOID && kind != TY_INT && kind != TY_BYTE) {
+		die("unify: invalid type");
+	}
+}
 
 // Find a function declaration by name
 struct decl *
@@ -2220,9 +2380,6 @@ prototype(struct node *n)
 		}
 
 		s = sfind(n->s);
-		if (!s->defined) {
-			die("unknown struct");
-		}
 
 		return mktype(TY_STRUCT, 0, 0, s);
 	} else if (kind == N_ARGLIST) {
@@ -2263,6 +2420,7 @@ declare(struct node *n)
 	struct type *t;
 	d = find(n->a->s);
 	t = prototype(n->b);
+	lineno = n->lineno;
 	if (d->ftype) {
 		unify(d->ftype, t);
 	} else {
@@ -2380,6 +2538,7 @@ typeexpr(struct node *n)
 		typeexpr(n->b);
 		unify(n->a->t, n->b->t);
 		t = n->a->t;
+		n->t = t;
 		if (t->kind != TY_INT && t->kind != TY_BYTE
 				&& t->kind != TY_PTR && t->kind != TY_FUNC) {
 			die("assignment not primitive");
@@ -2399,10 +2558,6 @@ typeexpr(struct node *n)
 		}
 		t = t->val;
 		n->t = t;
-		if (t->kind != TY_INT && t->kind != TY_BYTE
-				&& t->kind != TY_PTR && t->kind != TY_FUNC) {
-			die("deref not a primitive");
-		}
 	} else if (kind == N_INDEX) {
 		typeexpr(n->a);
 		t = n->a->t;
@@ -2517,6 +2672,28 @@ typeexpr(struct node *n)
 		}
 		unify(n->a->t, n->b->t);
 		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_DIV) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_MOD) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
 	} else if (kind == N_LSH) {
 		typeexpr(n->a);
 		if (!type_isint(n->a->t)) {
@@ -2575,6 +2752,42 @@ typeexpr(struct node *n)
 			die("not an int");
 		}
 		n->t = n->a->t;
+	} else if (kind == N_NOT) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		n->t = n->a->t;
+	} else if (kind == N_AND) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_OR) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_XOR) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
 	} else if (kind == N_CAST) {
 		typeexpr(n->a);
 		if (!type_isprim(n->a->t)) {
@@ -2648,6 +2861,8 @@ typestmt(struct node *n)
 	if (!n) {
 		return;
 	}
+
+	lineno = n->lineno;
 
 	kind = n->kind;
 	if (kind == N_CONDLIST) {
@@ -3175,7 +3390,7 @@ emit_jmp(struct label *l)
 }
 
 void
-emit_num(unsigned int x)
+emit_num(int x)
 {
 	// push x
 	emit(0x68);
@@ -3267,15 +3482,17 @@ emit_store(struct type *t)
 	emit(0x5f);
 	// pop rax
 	emit(0x58);
-	if (0 && t->kind == TY_BYTE) {
+	if (t->kind == TY_BYTE) {
 		// mov [rdi], al
 		emit(0x88);
 		emit(0x07);
-	} else {
+	} else if (type_isprim(t)) {
 		// mov [rdi], rax
 		emit(0x48);
 		emit(0x89);
 		emit(0x07);
+	} else {
+		die("invalid store");
 	}
 	// push rax
 	emit(0x50);
@@ -3286,7 +3503,7 @@ emit_load(struct type *t)
 {
 	// pop rdi
 	emit(0x5f);
-	if (0 && t->kind == TY_BYTE) {
+	if (t->kind == TY_BYTE) {
 		// xor rax, rax
 		emit(0x48);
 		emit(0x31);
@@ -3294,11 +3511,13 @@ emit_load(struct type *t)
 		// mov al, [rdi]
 		emit(0x8a);
 		emit(0x07);
-	} else {
+	} else if (type_isprim(t)) {
 		// mov rax, [rdi]
 		emit(0x48);
 		emit(0x8b);
 		emit(0x07);
+	} else {
+		die("invalid load");
 	}
 	// push rax
 	emit(0x50);
@@ -3332,6 +3551,51 @@ emit_lea(struct vdecl *v)
 	emit(offset >> 8);
 	emit(offset >> 16);
 	emit(offset >> 24);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_and(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rdx
+	emit(0x5a);
+	// and rdx, rax
+	emit(0x48);
+	emit(0x21);
+	emit(0xd0);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_or(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rdx
+	emit(0x5a);
+	// or rdx, rax
+	emit(0x48);
+	emit(0x09);
+	emit(0xd0);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_xor(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rdx
+	emit(0x5a);
+	// xor rdx, rax
+	emit(0x48);
+	emit(0x31);
+	emit(0xd0);
 	// push rax
 	emit(0x50);
 }
@@ -3525,7 +3789,7 @@ emit_sub(void)
 	emit(0x58);
 	// pop rdx
 	emit(0x5a);
-	// add rax, rdx
+	// sub rax, rdx
 	emit(0x48);
 	emit(0x29);
 	emit(0xd0);
@@ -3546,6 +3810,68 @@ emit_mul(void)
 	emit(0xe1);
 	// push rax
 	emit(0x50);
+}
+
+void
+emit_div(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rcx
+	emit(0x59);
+	// xor rdx, rdx
+	emit(0x48);
+	emit(0x31);
+	emit(0xd2);
+	// test rax, rax
+	emit(0x48);
+	emit(0x85);
+	emit(0xc0);
+	// sets dl
+	emit(0x0f);
+	emit(0x98);
+	emit(0xc2);
+	// neg rdx
+	emit(0x48);
+	emit(0xf7);
+	emit(0xda);
+	// idiv rcx
+	emit(0x48);
+	emit(0xf7);
+	emit(0xf9);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_mod(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rcx
+	emit(0x59);
+	// xor rdx, rdx
+	emit(0x48);
+	emit(0x31);
+	emit(0xd2);
+	// test rax, rax
+	emit(0x48);
+	emit(0x85);
+	emit(0xc0);
+	// sets dl
+	emit(0x0f);
+	emit(0x98);
+	emit(0xc2);
+	// neg rdx
+	emit(0x48);
+	emit(0xf7);
+	emit(0xda);
+	// idiv rcx
+	emit(0x48);
+	emit(0xf7);
+	emit(0xf9);
+	// push rdx
+	emit(0x52);
 }
 
 void
@@ -3574,6 +3900,19 @@ emit_rsh(void)
 	emit(0x48);
 	emit(0xd3);
 	emit(0xe8);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_not(void)
+{
+	// pop rax
+	emit(0x58);
+	// neg rax
+	emit(0x48);
+	emit(0xf7);
+	emit(0xd0);
 	// push rax
 	emit(0x50);
 }
@@ -3828,33 +4167,6 @@ add_stdlib(void)
 	struct label *b;
 	struct decl *d;
 
-	d = find((unsigned char *)"_start");
-	if (!d->defined) {
-		d->defined = 1;
-		fixup_label(d->label);
-		d = find((unsigned char *)"main");
-		emit_ptr(d->label);
-		emit_call(0);
-		// mov rax, 60
-		emit(0x48);
-		emit(0xc7);
-		emit(0xc0);
-		emit(0x3c);
-		emit(0x00);
-		emit(0x00);
-		emit(0x00);
-		// xor rdi, rdi
-		emit(0x48);
-		emit(0x31);
-		emit(0xff);
-		// syscall
-		emit(0x0f);
-		emit(0x05);
-		// halt
-		emit(0xeb);
-		emit(0xfe);
-	}
-
 	d = find((unsigned char *)"syscall");
 	if (!d->defined) {
 		d->defined = 1;
@@ -4004,6 +4316,10 @@ texpr(struct node *n, int rhs)
 		if (!rhs) {
 			die("sizeof is not an lexpr");
 		}
+		out = mklabel();
+		emit_jmp(out);
+		texpr(n->a, 0);
+		fixup_label(out);
 		if (n->a->t->kind == TY_BYTE) {
 			emit_num(1);
 		} else {
@@ -4091,6 +4407,20 @@ texpr(struct node *n, int rhs)
 		texpr(n->b, 1);
 		texpr(n->a, 1);
 		emit_mul();
+	} else if (kind == N_DIV) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_div();
+	} else if (kind == N_MOD) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_mod();
 	} else if (kind == N_LSH) {
 		if (!rhs) {
 			die("not lexpr");
@@ -4168,6 +4498,33 @@ texpr(struct node *n, int rhs)
 			die("not lexpr");
 		}
 		texpr(n->a, 1);
+	} else if (kind == N_NOT) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->a, 1);
+		emit_not();
+	} else if (kind == N_AND) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_and();
+	} else if (kind == N_OR) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_or();
+	} else if (kind == N_XOR) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_xor();
 	} else {
 		die("invalid expr");
 	}
@@ -4268,6 +4625,8 @@ tfunc(struct decl *d)
 
 	curfunc = d;
 
+	emit_str(d->name);
+
 	fixup_label(d->label);
 
 	emit_preamble(d->preamble);
@@ -4315,7 +4674,7 @@ main(int argc, char **argv)
 	// Generate code
 	translate(p);
 
-	// Define _start, getchar, putchar, malloc
+	// Define _start, syscall
 	add_stdlib();
 
 	// Write output
