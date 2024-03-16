@@ -214,8 +214,8 @@ exit(n: int): void {
 	syscall(60, n, 0, 0, 0, 0, 0);
 }
 
-_start(): void {
-	main();
+_start(argc: int, argv: **byte, envp: **byte): void {
+	main(argc, argv, envp);
 	exit(0);
 }
 
@@ -2441,7 +2441,7 @@ compile_func(c: *compiler, d: *decl): void {
 	// Compile the function body
 	emit_str(c, d.name);
 	fixup_label(c, d.func_label);
-	emit_preamble(c, offset);
+	emit_preamble(c, offset, !strcmp(d.name, "_start"));
 	compile_stmt(c, d, d.func_def.b, 0:*label, 0:*label);
 	emit_num(c, 0);
 	emit_ret(c);
@@ -3679,8 +3679,39 @@ emit_pop(c: *compiler, n: int): void {
 	emit(c, n >> 24);
 }
 
-emit_preamble(c: *compiler, n: int): void {
+emit_preamble(c: *compiler, n: int, start: int): void {
 	var i: int;
+	if (start) {
+		// xor rbp, rbp
+		emit(c, 0x48);
+		emit(c, 0x31);
+		emit(c, 0xed);
+		// mov rdi, [rsp]
+		emit(c, 0x48);
+		emit(c, 0x8b);
+		emit(c, 0x3c);
+		emit(c, 0x24);
+		// lea rsi, [rsp + 8]
+		emit(c, 0x48);
+		emit(c, 0x8d);
+		emit(c, 0x74);
+		emit(c, 0x24);
+		emit(c, 0x08);
+		// lea rdx, [rsi + rdi * 8 + 8]
+		emit(c, 0x48);
+		emit(c, 0x8d);
+		emit(c, 0x54);
+		emit(c, 0xfe);
+		emit(c, 0x08);
+		// push rdx
+		emit(c, 0x52);
+		// push rsi
+		emit(c, 0x56);
+		// push rdi
+		emit(c, 0x57);
+		// push rbp
+		emit(c, 0x55);
+	}
 	// push rbp
 	emit(c, 0x55);
 	// mov rbp, rsp
@@ -4382,7 +4413,7 @@ writeout(c: *compiler): void {
 	}
 }
 
-main(): void {
+main(argc: int, argv: **byte, envp: **byte): void {
 	var c: compiler;
 	var p: *node;
 	comp_setup(&c);

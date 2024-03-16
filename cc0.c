@@ -3478,9 +3478,40 @@ emit_pop(int n)
 }
 
 void
-emit_preamble(int n)
+emit_preamble(int n, int start)
 {
 	int i;
+	if (start) {
+		// xor rbp, rbp
+		emit(0x48);
+		emit(0x31);
+		emit(0xed);
+		// mov rdi, [rsp]
+		emit(0x48);
+		emit(0x8b);
+		emit(0x3c);
+		emit(0x24);
+		// lea rsi, [rsp + 8]
+		emit(0x48);
+		emit(0x8d);
+		emit(0x74);
+		emit(0x24);
+		emit(0x08);
+		// lea rdx, [rsi + rdi * 8 + 8]
+		emit(0x48);
+		emit(0x8d);
+		emit(0x54);
+		emit(0xfe);
+		emit(0x08);
+		// push rdx
+		emit(0x52);
+		// push rsi
+		emit(0x56);
+		// push rdi
+		emit(0x57);
+		// push rbp
+		emit(0x55);
+	}
 	// push rbp
 	emit(0x55);
 	// mov rbp, rsp
@@ -4651,7 +4682,7 @@ tfunc(struct decl *d)
 
 	fixup_label(d->label);
 
-	emit_preamble(d->preamble);
+	emit_preamble(d->preamble, !cmp(d->name, (unsigned char *)"_start"));
 
 	tstmt(d->body);
 
