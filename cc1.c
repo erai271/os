@@ -38,7 +38,7 @@ struct compiler {
 	a: *alloc;
 
 	// Lexer
-	fdin: int;
+	in: *file;
 	nc: int;
 	filename: *byte;
 	lineno: int;
@@ -82,7 +82,7 @@ comp_setup(a: *alloc): *compiler {
 
 	c.a = a;
 
-	c.fdin = 0;
+	c.in = 0: *file;
 	c.nc = 0;
 	c.filename = 0:*byte;
 	c.lineno = 1;
@@ -1271,6 +1271,16 @@ main(argc: int, argv: **byte, envp: **byte) {
 			continue;
 		}
 
+		if (!strcmp(argv[i], "-C")) {
+			i = i + 1;
+			if (i >= argc) {
+				die("invalid -C at end of argument list");
+			}
+			//open_coutput(c.as, argv[i]);
+			i = i + 1;
+			continue;
+		}
+
 		if (argv[i][0] == '-':byte) {
 			die("invalid argument");
 		}
@@ -1283,10 +1293,6 @@ main(argc: int, argv: **byte, envp: **byte) {
 	}
 
 	compile(c, p);
-
-	if (c.as.fdout == 1) {
-		open_output(c.as, "a.out");
-	}
 
 	d = find(c, "syscall", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {

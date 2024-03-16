@@ -53,34 +53,21 @@ open_source(c: *compiler, filename: *byte) {
 		cdie(c, "failed to open file");
 	}
 
-	c.fdin = fd;
-	c.nc = getchar(c);
+	c.in = fopen(fd, c.a);
+	c.nc = fgetc(c.in);
 
 	feed(c);
 }
 
 close_source(c: *compiler) {
-	if (c.fdin != 0) {
-		close(c.fdin);
+	if (c.in) {
+		fclose(c.in);
 	}
-	c.fdin = 0;
-}
-
-getchar(c: *compiler): int {
-	var b: byte;
-	var ret: int;
-	ret = read(c.fdin, &b, 1);
-	if (ret < 0) {
-		exit(3);
-	}
-	if (ret == 0) {
-		return -1;
-	}
-	return b: int;
+	c.in = 0: *file;
 }
 
 feedc(c: *compiler) {
-	c.nc = getchar(c);
+	c.nc = fgetc(c.in);
 	if (c.nc == '\n') {
 		c.lineno = c.lineno + 1;
 		c.colno = 0;
@@ -304,10 +291,10 @@ feed_escape(c: *compiler) {
 	} else if (c.nc == 'n') {
 		c.nc = '\n';
 	} else if (c.nc == 'x') {
-		c.nc = getchar(c);
+		c.nc = fgetc(c.in);
 		hex = hexdig(c) * 16;
 
-		c.nc = getchar(c);
+		c.nc = fgetc(c.in);
 		hex = hex + hexdig(c);
 
 		c.nc = hex;

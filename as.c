@@ -19,7 +19,7 @@ struct chunk {
 
 struct assembler {
 	a: *alloc;
-	fdout: int;
+	out: *file;
 	at: int;
 	text: *chunk;
 	text_end: *chunk;
@@ -29,7 +29,7 @@ setup_assembler(a: *alloc): *assembler {
 	var c: *assembler;
 	c = alloc(a, sizeof(*c)): *assembler;
 	c.a = a;
-	c.fdout = 1;
+	c.out = 0: *file;
 	c.at = 0;
 	c.text = 0:*chunk;
 	c.text_end = 0:*chunk;
@@ -37,13 +37,13 @@ setup_assembler(a: *alloc): *assembler {
 }
 
 putchar(c: *assembler, ch: int) {
-	fdputc(c.fdout, ch);
+	fputc(c.out, ch);
 }
 
 open_output(c: *assembler, filename: *byte) {
 	var fd: int;
 
-	if (c.fdout != 1) {
+	if (c.out) {
 		die("multiple output files");
 	}
 
@@ -54,7 +54,7 @@ open_output(c: *assembler, filename: *byte) {
 		die("failed to open output");
 	}
 
-	c.fdout = fd;
+	c.out = fopen(fd, c.a);
 }
 
 // Create a new label
@@ -746,6 +746,10 @@ writeout(c: *assembler, start: *label) {
 	var load_addr: int;
 	var entry: int;
 
+	if (!c.out) {
+		open_output(c, "a.out");
+	}
+
 	load_addr = 0x100000;
 	text_size = c.at;
 
@@ -957,4 +961,6 @@ writeout(c: *assembler, start: *label) {
 		}
 		b = b.next;
 	}
+
+	fflush(c.out);
 }

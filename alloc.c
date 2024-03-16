@@ -60,3 +60,6 @@ alloc(c: *alloc, size: int): *byte {
 
 	return ret;
 }
+
+free(a: *alloc, p: *byte): void {
+}
