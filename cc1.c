@@ -210,11 +210,11 @@ enum {
 	TY_STRUCT,
 }
 
-exit(n: int): void {
+exit(n: int) {
 	syscall(60, n, 0, 0, 0, 0, 0);
 }
 
-_start(argc: int, argv: **byte, envp: **byte): void {
+_start(argc: int, argv: **byte, envp: **byte) {
 	main(argc, argv, envp);
 	exit(0);
 }
@@ -293,7 +293,7 @@ getchar(): int {
 	return b: int;
 }
 
-putchar(ch: int): void {
+putchar(ch: int) {
 	var b: byte;
 	var ret: int;
 	b = ch: byte;
@@ -336,7 +336,7 @@ strcmp(a: *byte, b: *byte): int {
 	}
 }
 
-fdputc(fd: int, ch: int): void {
+fdputc(fd: int, ch: int) {
 	var b: byte;
 	var ret: int;
 	b = ch: byte;
@@ -346,7 +346,7 @@ fdputc(fd: int, ch: int): void {
 	}
 }
 
-fdput(fd: int, msg: *byte): void {
+fdput(fd: int, msg: *byte) {
 	var len: int;
 	var ret: int;
 	var off: int;
@@ -364,7 +364,7 @@ fdput(fd: int, msg: *byte): void {
 	}
 }
 
-fdputh(fd: int, n: int): void {
+fdputh(fd: int, n: int) {
 	var c: int;
 	var r: int;
 
@@ -396,7 +396,7 @@ fdputh(fd: int, n: int): void {
 	}
 }
 
-fdputd(fd: int, n: int): void {
+fdputd(fd: int, n: int) {
 	var a: int;
 
 	if (n < 0) {
@@ -415,7 +415,7 @@ fdputd(fd: int, n: int): void {
 	fdputc(fd, '0' + a);
 }
 
-show_context(c: *compiler): void {
+show_context(c: *compiler) {
 	fdput(2, "on -:");
 	fdputd(2, c.lineno);
 	fdput(2, ":");
@@ -423,7 +423,7 @@ show_context(c: *compiler): void {
 	fdput(2, "\n");
 }
 
-die(c: *compiler, msg: *byte): void {
+die(c: *compiler, msg: *byte) {
 	show_context(c);
 	fdput(2, "die: ");
 	fdput(2, msg);
@@ -431,7 +431,7 @@ die(c: *compiler, msg: *byte): void {
 	exit(1);
 }
 
-comp_setup(c: *compiler): void {
+comp_setup(c: *compiler) {
 	c.page = 0:*page;
 
 	c.nc = getchar();
@@ -451,7 +451,7 @@ comp_setup(c: *compiler): void {
 	feed(c);
 }
 
-feedc(c: *compiler): void {
+feedc(c: *compiler) {
 	c.nc = getchar();
 	if (c.nc == '\n') {
 		c.lineno = c.lineno + 1;
@@ -460,7 +460,7 @@ feedc(c: *compiler): void {
 	c.colno = c.colno + 1;
 }
 
-tappend(c: *compiler): void {
+tappend(c: *compiler) {
 	c.token[c.tlen] = c.nc:byte;
 	c.tlen = c.tlen + 1;
 	if (c.tlen == c.tmax) {
@@ -470,7 +470,7 @@ tappend(c: *compiler): void {
 	feedc(c);
 }
 
-feed(c: *compiler): void {
+feed(c: *compiler) {
 	c.tlen = 0;
 	c.token[0] = 0:byte;
 
@@ -633,7 +633,7 @@ feed(c: *compiler): void {
 	}
 }
 
-feed_ident(c: *compiler): void {
+feed_ident(c: *compiler) {
 	c.tt = T_IDENT;
 	loop {
 		if (!((c.nc >= 'a' && c.nc <= 'z') ||
@@ -663,7 +663,7 @@ hexdig(c: *compiler): int {
 	return 0;
 }
 
-feed_escape(c: *compiler): void {
+feed_escape(c: *compiler) {
 	var hex: int;
 
 	// backslash
@@ -688,7 +688,7 @@ feed_escape(c: *compiler): void {
 	}
 }
 
-feed_str(c: *compiler): void {
+feed_str(c: *compiler) {
 	c.tt = T_STR;
 
 	// quote
@@ -716,7 +716,7 @@ feed_str(c: *compiler): void {
 	}
 }
 
-feed_char(c: *compiler): void {
+feed_char(c: *compiler) {
 	c.tt = T_CHAR;
 
 	// quote
@@ -739,7 +739,7 @@ feed_char(c: *compiler): void {
 	feedc(c);
 }
 
-feed_hex(c: *compiler): void {
+feed_hex(c: *compiler) {
 	c.tt = T_HEX;
 
 	loop {
@@ -757,7 +757,7 @@ feed_hex(c: *compiler): void {
 	}
 }
 
-feed_num(c: *compiler): void {
+feed_num(c: *compiler) {
 	c.tt = T_NUM;
 
 	if (c.nc == '0') {
@@ -2055,6 +2055,8 @@ parse_arg_list(c: *compiler): *node {
 
 // func_type := '(' ')' ':' type
 //            | '(' arg_list ')' ':' type
+//            | '(' ')'
+//            | '(' arg_list ')'
 parse_func_type(c: *compiler): *node {
 	var a: *node;
 	var b: *node;
@@ -2072,7 +2074,7 @@ parse_func_type(c: *compiler): *node {
 	feed(c);
 
 	if (c.tt != T_COLON) {
-		die(c, "expected :");
+		return mknode1(c, N_FUNCTYPE, a);
 	}
 	feed(c);
 
@@ -2186,7 +2188,7 @@ parse_program(c: *compiler): *node {
 	}
 }
 
-compile(c: *compiler, p: *node): void {
+compile(c: *compiler, p: *node) {
 	var n: *node;
 	var d: *decl;
 	var kind: int;
@@ -2277,7 +2279,7 @@ defextern(c: *compiler, n: *node): *decl {
 	return d;
 }
 
-defun(c: *compiler, n: *node): void {
+defun(c: *compiler, n: *node) {
 	var d: *decl;
 
 	d = defextern(c, n.a);
@@ -2285,7 +2287,7 @@ defun(c: *compiler, n: *node): void {
 	d.func_def = n;
 }
 
-defstruct(c: *compiler, n: *node): void {
+defstruct(c: *compiler, n: *node) {
 	var name: *byte;
 	var d: *decl;
 
@@ -2305,7 +2307,7 @@ defstruct(c: *compiler, n: *node): void {
 	d.struct_def = n;
 }
 
-defenum(c: *compiler, n: *node): void {
+defenum(c: *compiler, n: *node) {
 	var d: *decl;
 	var i: int;
 	var name: *byte;
@@ -2353,7 +2355,7 @@ type_sizeof(c: *compiler, t: *type): int {
 	}
 }
 
-layout_struct(c: *compiler, d: *decl): void {
+layout_struct(c: *compiler, d: *decl) {
 	var m: *node;
 	var offset: int;
 	var name: *byte;
@@ -2400,7 +2402,7 @@ layout_struct(c: *compiler, d: *decl): void {
 	d.struct_layout_done = 1;
 }
 
-compile_func(c: *compiler, d: *decl): void {
+compile_func(c: *compiler, d: *decl) {
 	var name: *byte;
 	var v: *decl;
 	var t: *type;
@@ -2514,7 +2516,7 @@ hoist_locals(c: *compiler, d: *decl, n: *node, offset: int): int {
 }
 
 // Unify two types
-unify(c: *compiler, a: *type, b: *type): void {
+unify(c: *compiler, a: *type, b: *type) {
 	var kind: int;
 
 	if (a == b) {
@@ -2560,7 +2562,7 @@ count_args(c: *compiler, t: *type): int {
 }
 
 // Translate an expression
-compile_expr(c: *compiler, d: *decl, n: *node, rhs: int): void {
+compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 	var no: *label;
 	var out: *label;
 	var v: *decl;
@@ -3169,7 +3171,7 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int): void {
 }
 
 // Compile a statement
-compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label): void {
+compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 	var no: *label;
 	var ifout: *label;
 	var v: *decl;
@@ -3469,7 +3471,12 @@ prototype(c: *compiler, n: *node): *type {
 
 		return mktype2(c, TY_ARG, a, b);
 	} else if (kind == N_FUNCTYPE) {
-		a = prototype(c, n.b);
+		if (n.b) {
+			a = prototype(c, n.b);
+		} else{
+			a = mktype0(c, TY_VOID);
+		}
+
 		b = prototype(c, n.a);
 
 		kind = a.kind;
@@ -3508,7 +3515,7 @@ mklabel(c: *compiler): *label {
 }
 
 // Reserve size in the output buffer
-reserve(c: *compiler, n: int): void {
+reserve(c: *compiler, n: int) {
 	var m: *byte;
 	var b: *chunk;
 
@@ -3538,7 +3545,7 @@ reserve(c: *compiler, n: int): void {
 }
 
 // Add a single byte to the output
-emit(c: *compiler, x: int): void {
+emit(c: *compiler, x: int) {
 	reserve(c, 1);
 	c.text_end.buf[c.text_end.fill] = x:byte;
 	c.text_end.fill = c.text_end.fill + 1;
@@ -3546,7 +3553,7 @@ emit(c: *compiler, x: int): void {
 }
 
 // Fix a single reference
-fixup(c: *compiler, here: *byte, delta: int): void {
+fixup(c: *compiler, here: *byte, delta: int) {
 	here[0] = delta: byte;
 	here[1] = (delta >> 8): byte;
 	here[2] = (delta >> 16): byte;
@@ -3554,7 +3561,7 @@ fixup(c: *compiler, here: *byte, delta: int): void {
 }
 
 // Add an new fixup for the current position
-addfixup(c: *compiler, l: *label): void {
+addfixup(c: *compiler, l: *label) {
 	var f: *fixup;
 	var here: *byte;
 
@@ -3581,7 +3588,7 @@ addfixup(c: *compiler, l: *label): void {
 }
 
 // Fix references to a label to the current position
-fixup_label(c: *compiler, l: *label): void {
+fixup_label(c: *compiler, l: *label) {
 	var f: *fixup;
 
 	if (l.fixed) {
@@ -3601,7 +3608,7 @@ fixup_label(c: *compiler, l: *label): void {
 	}
 }
 
-emit_ptr(c: *compiler, l: *label): void {
+emit_ptr(c: *compiler, l: *label) {
 	// lea %rax, [l]
 	emit(c, 0x48);
 	emit(c, 0x8d);
@@ -3611,13 +3618,13 @@ emit_ptr(c: *compiler, l: *label): void {
 	emit(c, 0x50);
 }
 
-emit_jmp(c: *compiler, l: *label): void {
+emit_jmp(c: *compiler, l: *label) {
 	// jmp l
 	emit(c, 0xe9);
 	addfixup(c, l);
 }
 
-emit_num(c: *compiler, x: int): void {
+emit_num(c: *compiler, x: int) {
 	// push x
 	emit(c, 0x68);
 	emit(c, x);
@@ -3626,7 +3633,7 @@ emit_num(c: *compiler, x: int): void {
 	emit(c, x >> 24);
 }
 
-emit_str(c: *compiler, s: *byte): void {
+emit_str(c: *compiler, s: *byte) {
 	var a: *label;
 	var b: *label;
 	var i: int;
@@ -3667,7 +3674,7 @@ emit_str(c: *compiler, s: *byte): void {
 	emit_ptr(c, a);
 }
 
-emit_pop(c: *compiler, n: int): void {
+emit_pop(c: *compiler, n: int) {
 	n = n * 8;
 	// add rsp, 8*n
 	emit(c, 0x48);
@@ -3679,7 +3686,7 @@ emit_pop(c: *compiler, n: int): void {
 	emit(c, n >> 24);
 }
 
-emit_preamble(c: *compiler, n: int, start: int): void {
+emit_preamble(c: *compiler, n: int, start: int) {
 	var i: int;
 	if (start) {
 		// xor rbp, rbp
@@ -3728,7 +3735,7 @@ emit_preamble(c: *compiler, n: int, start: int): void {
 	}
 }
 
-emit_store(c: *compiler, t: *type): void {
+emit_store(c: *compiler, t: *type) {
 	// pop rdi
 	emit(c, 0x5f);
 	// pop rax
@@ -3749,7 +3756,7 @@ emit_store(c: *compiler, t: *type): void {
 	emit(c, 0x50);
 }
 
-emit_load(c: *compiler, t: *type): void {
+emit_load(c: *compiler, t: *type) {
 	// pop rdi
 	emit(c, 0x5f);
 	if (t.kind == TY_BYTE) {
@@ -3772,7 +3779,7 @@ emit_load(c: *compiler, t: *type): void {
 	emit(c, 0x50);
 }
 
-emit_jz(c: *compiler, l: *label): void {
+emit_jz(c: *compiler, l: *label) {
 	// pop rax
 	emit(c, 0x58);
 	// test rax, rax
@@ -3785,7 +3792,7 @@ emit_jz(c: *compiler, l: *label): void {
 	addfixup(c, l);
 }
 
-emit_lea(c: *compiler, offset: int): void {
+emit_lea(c: *compiler, offset: int) {
 	// lea rax, [rbp + offset]
 	emit(c, 0x48);
 	emit(c, 0x8d);
@@ -3798,7 +3805,7 @@ emit_lea(c: *compiler, offset: int): void {
 	emit(c, 0x50);
 }
 
-emit_and(c: *compiler): void {
+emit_and(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// pop rdx
@@ -3811,7 +3818,7 @@ emit_and(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_or(c: *compiler): void {
+emit_or(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// pop rdx
@@ -3824,7 +3831,7 @@ emit_or(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_xor(c: *compiler): void {
+emit_xor(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// pop rdx
@@ -3837,7 +3844,7 @@ emit_xor(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_add(c: *compiler): void {
+emit_add(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// pop rdx
@@ -3850,7 +3857,7 @@ emit_add(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_ret(c: *compiler): void {
+emit_ret(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// mov rsp, rbp
@@ -3863,7 +3870,7 @@ emit_ret(c: *compiler): void {
 	emit(c, 0xc3);
 }
 
-emit_call(c: *compiler, n: int): void {
+emit_call(c: *compiler, n: int) {
 	// pop rax
 	emit(c, 0x58);
 	// call rax
@@ -3875,7 +3882,7 @@ emit_call(c: *compiler, n: int): void {
 	emit(c, 0x50);
 }
 
-emit_gt(c: *compiler): void {
+emit_gt(c: *compiler) {
 	// pop rdx
 	emit(c, 0x5a);
 	// pop rcx
@@ -3896,7 +3903,7 @@ emit_gt(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_lt(c: *compiler): void {
+emit_lt(c: *compiler) {
 	// pop rdx
 	emit(c, 0x5a);
 	// pop rcx
@@ -3917,7 +3924,7 @@ emit_lt(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_ge(c: *compiler): void {
+emit_ge(c: *compiler) {
 	// pop rdx
 	emit(c, 0x5a);
 	// pop rcx
@@ -3938,7 +3945,7 @@ emit_ge(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_le(c: *compiler): void {
+emit_le(c: *compiler) {
 	// pop rdx
 	emit(c, 0x5a);
 	// pop rcx
@@ -3959,7 +3966,7 @@ emit_le(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_eq(c: *compiler): void {
+emit_eq(c: *compiler) {
 	// pop rdx
 	emit(c, 0x5a);
 	// pop rcx
@@ -3980,7 +3987,7 @@ emit_eq(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_ne(c: *compiler): void {
+emit_ne(c: *compiler) {
 	// pop rdx
 	emit(c, 0x5a);
 	// pop rcx
@@ -4001,7 +4008,7 @@ emit_ne(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_sub(c: *compiler): void {
+emit_sub(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// pop rdx
@@ -4014,7 +4021,7 @@ emit_sub(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_mul(c: *compiler): void {
+emit_mul(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// pop rcx
@@ -4027,7 +4034,7 @@ emit_mul(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_div(c: *compiler): void {
+emit_div(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// pop rcx
@@ -4056,7 +4063,7 @@ emit_div(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_mod(c: *compiler): void {
+emit_mod(c: *compiler) {
         // pop rax
         emit(c, 0x58);
         // pop rcx
@@ -4085,7 +4092,7 @@ emit_mod(c: *compiler): void {
         emit(c, 0x52);
 }
 
-emit_lsh(c: *compiler): void {
+emit_lsh(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// pop rcx
@@ -4098,7 +4105,7 @@ emit_lsh(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_rsh(c: *compiler): void {
+emit_rsh(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// pop rcx
@@ -4111,7 +4118,7 @@ emit_rsh(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_not(c: *compiler): void {
+emit_not(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// neg rax
@@ -4122,7 +4129,7 @@ emit_not(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-emit_neg(c: *compiler): void {
+emit_neg(c: *compiler) {
 	// pop rax
 	emit(c, 0x58);
 	// neg rax
@@ -4133,7 +4140,7 @@ emit_neg(c: *compiler): void {
 	emit(c, 0x50);
 }
 
-gen_builtins(c: *compiler): void {
+gen_builtins(c: *compiler) {
 	var d: *decl;
 
 	d = find(c, "syscall", 0:*byte, 1);
@@ -4191,7 +4198,7 @@ gen_builtins(c: *compiler): void {
 	}
 }
 
-writeout(c: *compiler): void {
+writeout(c: *compiler) {
 	var b: *chunk;
 	var i: int;
 	var text_size: int;
@@ -4413,7 +4420,7 @@ writeout(c: *compiler): void {
 	}
 }
 
-main(argc: int, argv: **byte, envp: **byte): void {
+main(argc: int, argv: **byte, envp: **byte) {
 	var c: compiler;
 	var p: *node;
 	comp_setup(&c);

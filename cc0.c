@@ -1679,6 +1679,8 @@ arg_list(void)
 
 // func_decl := ident '(' ')' ':' type
 //            | ident '(' arg_list ')' ':' type
+//            | ident '(' ')'
+//            | ident '(' arg_list ')'
 struct node *
 func_decl(void)
 {
@@ -1704,7 +1706,7 @@ func_decl(void)
 	feed();
 
 	if (tt != T_COLON) {
-		die("expected :");
+		return mknode(N_FUNCDECL, a, mknode(N_FUNCTYPE, b, 0));
 	}
 	feed();
 
@@ -2416,7 +2418,12 @@ prototype(struct node *n)
 
 		return mktype(TY_ARG, a, b, 0);
 	} else if (kind == N_FUNCTYPE) {
-		a = prototype(n->b);
+		if (n->b) {
+			a = prototype(n->b);
+		} else {
+			a = mktype(TY_VOID, 0, 0, 0);
+		}
+
 		b = prototype(n->a);
 
 		kind = a->kind;
