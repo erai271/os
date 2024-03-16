@@ -5,11 +5,13 @@ set -ue
 uptodate() {
 	target=$1
 	shift
-	if ! [ -x "${target}" ]; then
+	if ! [ -f "${target}" ]; then
+		echo "${target} does not exist" >&2
 		return 1
 	fi
 	while [ $# -gt 0 ]; do
 		if ! [ -f "$1" ] || [ "$1" -nt "${target}" ]; then
+			echo "${target} stale $1" >&2
 			return 1
 		fi
 		shift
