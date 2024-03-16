@@ -10,6 +10,7 @@ struct node {
 	kind: int;
 	a: *node;
 	b: *node;
+	filename: *byte;
 	lineno: int;
 	colno: int;
 	n: int;
@@ -83,7 +84,9 @@ struct compiler {
 	page: *page;
 
 	// Lexer
+	fdin: int;
 	nc: int;
+	filename: *byte;
 	lineno: int;
 	colno: int;
 	tt: int;
@@ -92,6 +95,7 @@ struct compiler {
 	tmax: int;
 
 	// Assembler
+	fdout: int;
 	at: int;
 	text: *chunk;
 	text_end: *chunk;
@@ -227,6 +231,30 @@ write(fd: int, buf: *byte, n: int): int {
 	return syscall(1, fd, buf: int, n, 0, 0, 0);
 }
 
+open(name: *byte, flags: int, mode: int): int {
+	return syscall(2, name: int, flags, mode, 0, 0, 0);
+}
+
+lseek(fd: int, offset: int, whence: int): int {
+	return syscall(8, fd, offset, whence, 0, 0, 0);
+}
+
+close(fd: int): int {
+	return syscall(3, fd, 0, 0, 0, 0, 0);
+}
+
+fchmod(fd: int, mode: int): int {
+	return syscall(91, fd, mode, 0, 0, 0, 0);
+}
+
+rename(oldname: *byte, newname: *byte): int {
+	return syscall(82, oldname: int, newname: int, 0, 0, 0, 0);
+}
+
+unlink(name: *byte): int {
+	return syscall(87, name: int, 0, 0, 0, 0, 0);
+}
+
 mmap(addr: int, len: int, prot: int, flags: int, fd: int, off: int): int {
 	return syscall(9, addr, len, prot, flags, fd, off);
 }
@@ -280,10 +308,10 @@ alloc(c: *compiler, size: int): *byte {
 	return ret;
 }
 
-getchar(): int {
+getchar(c: *compiler): int {
 	var b: byte;
 	var ret: int;
-	ret = read(0, &b, 1);
+	ret = read(c.fdin, &b, 1);
 	if (ret < 0) {
 		exit(3);
 	}
@@ -293,11 +321,11 @@ getchar(): int {
 	return b: int;
 }
 
-putchar(ch: int) {
+putchar(c: *compiler, ch: int) {
 	var b: byte;
 	var ret: int;
 	b = ch: byte;
-	ret = write(1, &b, 1);
+	ret = write(c.fdout, &b, 1);
 	if (ret != 1) {
 		exit(3);
 	}
@@ -416,7 +444,11 @@ fdputd(fd: int, n: int) {
 }
 
 show_context(c: *compiler) {
-	fdput(2, "on -:");
+	fdput(2, "on ");
+	if (c.filename) {
+		fdput(2, c.filename);
+	}
+	fdput(2, ":");
 	fdputd(2, c.lineno);
 	fdput(2, ":");
 	fdputd(2, c.colno);
@@ -431,10 +463,59 @@ die(c: *compiler, msg: *byte) {
 	exit(1);
 }
 
+open_output(c: *compiler, filename: *byte) {
+	var fd: int;
+
+	c.filename = filename;
+
+	if (c.fdout != 1) {
+		die(c, "multiple output files");
+	}
+
+	unlink(filename);
+
+	fd = open(filename, 64 + 1, (7 << 6) + (7 << 3) + 7);
+	if (fd < 0) {
+		die(c, "failed to open output");
+	}
+
+	c.fdout = fd;
+}
+
+open_source(c: *compiler, filename: *byte) {
+	var fd: int;
+
+	c.filename = filename;
+	c.nc = 0;
+	c.lineno = 1;
+	c.colno = 1;
+	c.tlen = 0;
+	c.tt = 0;
+
+	fd = open(filename, 0, 0);
+	if (fd < 0) {
+		die(c, "failed to open file");
+	}
+
+	c.fdin = fd;
+	c.nc = getchar(c);
+
+	feed(c);
+}
+
+close_source(c: *compiler) {
+	if (c.fdin != 0) {
+		close(c.fdin);
+	}
+	c.fdin = 0;
+}
+
 comp_setup(c: *compiler) {
 	c.page = 0:*page;
 
-	c.nc = getchar();
+	c.fdin = 0;
+	c.nc = 0;
+	c.filename = 0:*byte;
 	c.lineno = 1;
 	c.colno = 1;
 	c.tlen = 0;
@@ -442,17 +523,16 @@ comp_setup(c: *compiler) {
 	c.token = alloc(c, c.tmax);
 	c.tt = 0;
 
+	c.fdout = 1;
 	c.at = 0;
 	c.text = 0:*chunk;
 	c.text_end = 0:*chunk;
 
 	c.decls = 0:*decl;
-
-	feed(c);
 }
 
 feedc(c: *compiler) {
-	c.nc = getchar();
+	c.nc = getchar(c);
 	if (c.nc == '\n') {
 		c.lineno = c.lineno + 1;
 		c.colno = 0;
@@ -676,10 +756,10 @@ feed_escape(c: *compiler) {
 	} else if (c.nc == 'n') {
 		c.nc = '\n';
 	} else if (c.nc == 'x') {
-		c.nc = getchar();
+		c.nc = getchar(c);
 		hex = hexdig(c) * 16;
 
-		c.nc = getchar();
+		c.nc = getchar(c);
 		hex = hex + hexdig(c);
 
 		c.nc = hex;
@@ -785,6 +865,7 @@ mknode(c: *compiler, kind: int, a: *node, b: *node): *node {
 	ret.kind = kind;
 	ret.a = a;
 	ret.b = b;
+	ret.filename = c.filename;
 	ret.lineno = c.lineno;
 	ret.colno = c.colno;
 	ret.n = 0;
@@ -2568,6 +2649,7 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 	var v: *decl;
 	var kind: int;
 
+	c.filename = n.filename;
 	c.lineno = n.lineno;
 	c.colno = 0;
 
@@ -3181,6 +3263,7 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 		return;
 	}
 
+	c.filename = n.filename;
 	c.lineno = n.lineno;
 	c.colno = 0;
 
@@ -4218,190 +4301,190 @@ writeout(c: *compiler) {
 	text_size = text_size + 128;
 
 	// magic
-	putchar(0x7f);
-	putchar('E');
-	putchar('L');
-	putchar('F');
+	putchar(c, 0x7f);
+	putchar(c, 'E');
+	putchar(c, 'L');
+	putchar(c, 'F');
 
 	// class
-	putchar(2);
+	putchar(c, 2);
 
 	// endian
-	putchar(1);
+	putchar(c, 1);
 
 	// version
-	putchar(1);
+	putchar(c, 1);
 
 	// abi
-	putchar(0);
+	putchar(c, 0);
 
 	// abi version
-	putchar(0);
+	putchar(c, 0);
 
 	// padding
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// type
-	putchar(2);
-	putchar(0);
+	putchar(c, 2);
+	putchar(c, 0);
 
 	// machine
-	putchar(62);
-	putchar(0);
+	putchar(c, 62);
+	putchar(c, 0);
 
 	// version
-	putchar(1);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 1);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// entry point
-	putchar(entry);
-	putchar(entry >> 8);
-	putchar(entry >> 16);
-	putchar(entry >> 24);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, entry);
+	putchar(c, entry >> 8);
+	putchar(c, entry >> 16);
+	putchar(c, entry >> 24);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// phoff
-	putchar(64);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 64);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// shoff
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// flags
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// ehsize
-	putchar(64);
-	putchar(0);
+	putchar(c, 64);
+	putchar(c, 0);
 
 	// phentsize
-	putchar(56);
-	putchar(0);
+	putchar(c, 56);
+	putchar(c, 0);
 
 	// phnum
-	putchar(1);
-	putchar(0);
+	putchar(c, 1);
+	putchar(c, 0);
 
 	// shentsize
-	putchar(64);
-	putchar(0);
+	putchar(c, 64);
+	putchar(c, 0);
 
 	// shnum
-	putchar(0);
-	putchar(0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// shstrndx
-	putchar(0);
-	putchar(0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// phdr[0].type
-	putchar(1);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 1);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// phdr[0].flags
-	putchar(5);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 5);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// phdr[0].offset
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// phdr[0].vaddr
-	putchar(0);
-	putchar(0);
-	putchar(0x10);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0x10);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// phdr[0].paddr
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// phdr[0].filesize
-	putchar(text_size);
-	putchar(text_size >> 8);
-	putchar(text_size >> 16);
-	putchar(text_size >> 24);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, text_size);
+	putchar(c, text_size >> 8);
+	putchar(c, text_size >> 16);
+	putchar(c, text_size >> 24);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// phdr[0].memsize
-	putchar(text_size);
-	putchar(text_size >> 8);
-	putchar(text_size >> 16);
-	putchar(text_size >> 24);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, text_size);
+	putchar(c, text_size >> 8);
+	putchar(c, text_size >> 16);
+	putchar(c, text_size >> 24);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// phdr[0].align
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
 
 	// nop sled
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
+	putchar(c, 0x90);
+	putchar(c, 0x90);
+	putchar(c, 0x90);
+	putchar(c, 0x90);
+	putchar(c, 0x90);
+	putchar(c, 0x90);
+	putchar(c, 0x90);
+	putchar(c, 0x90);
 
 	b = c.text;
 	loop {
@@ -4413,7 +4496,7 @@ writeout(c: *compiler) {
 			if (i >= b.fill) {
 				break;
 			}
-			putchar(b.buf[i]: int);
+			putchar(c, b.buf[i]: int);
 			i = i + 1;
 		}
 		b = b.next;
@@ -4423,9 +4506,38 @@ writeout(c: *compiler) {
 main(argc: int, argv: **byte, envp: **byte) {
 	var c: compiler;
 	var p: *node;
+	var i: int;
+
 	comp_setup(&c);
-	p = parse_program(&c);
-	compile(&c, p);
+
+	i = 1;
+	loop {
+		if (i >= argc) {
+			break;
+		}
+
+		if (!strcmp(argv[i], "-o")) {
+			i = i + 1;
+			if (i >= argc) {
+				die(&c, "invalid -o at end of argument list");
+			}
+			open_output(&c, argv[i]);
+			i = i + 1;
+			continue;
+		}
+
+		open_source(&c, argv[i]);
+		p = parse_program(&c);
+		close_source(&c);
+		compile(&c, p);
+
+		i = i + 1;
+	}
+
+	if (c.fdout == 1) {
+		open_output(&c, "a.out");
+	}
+
 	gen_builtins(&c);
 	writeout(&c);
 }

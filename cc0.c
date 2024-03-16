@@ -1,10 +1,18 @@
+#define _POSIX_C_SOURCE 1
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Forward Declarations                                                      //
 ///////////////////////////////////////////////////////////////////////////////
 
+FILE *fin;
+FILE *fout;
+
+int nc;
+unsigned char *filename;
 int lineno;
 struct node;
 struct type;
@@ -12,6 +20,7 @@ struct label;
 struct fix;
 struct sdecl;
 
+void feed(void);
 struct node *type(void);
 struct node *stmt_list(void);
 struct node *expr(void);
@@ -27,8 +36,62 @@ void addfixup(struct label *l);
 void
 die(char *msg)
 {
-	fprintf(stderr, "die(%d): %s\n", lineno, msg);
+	fprintf(stderr, "die(%s:%d): %s\n", filename, lineno, msg);
 	exit(1);
+}
+
+void
+open_output(unsigned char *name)
+{
+	int fd;
+
+	filename = name;
+
+	if (fout != stdout) {
+		die("multiple output files");
+	}
+
+	unlink((char *)name);
+
+	fd = open((char *)name, 64 + 1, (7 << 6) + (7 << 3) + 7);
+	if (fd < 0) {
+		die("failed to open output");
+	}
+
+	fout = fdopen(fd, "wb");
+}
+
+void
+open_source(unsigned char *name)
+{
+	int fd;
+
+	if (fin != stdin) {
+		die("invalid");
+	}
+
+	filename = name;
+
+	fd = open((char *)name, 0, 0);
+	if (fd < 0) {
+		die("failed to open file");
+	}
+
+	fin = fdopen(fd, "rb");
+	lineno = 1;
+
+	nc = fgetc(fin);
+	feed();
+}
+
+void
+close_source(void)
+{
+	if (fin != stdin) {
+		fclose(fin);
+		fin = stdin;
+	}
+	fin = stdin;
 }
 
 // strlen-ish
@@ -147,7 +210,7 @@ feed_ident(void)
 		}
 		token[tlen] = nc;
 		tlen = tlen + 1;
-		nc = getchar();
+		nc = fgetc(fin);
 	}
 	token[tlen] = 0;
 }
@@ -178,7 +241,7 @@ feed_escape(void)
 {
 	int hex;
 
-	nc = getchar();
+	nc = fgetc(fin);
 	if (nc == 't') {
 		nc = '\t';
 	} else if (nc == 'r') {
@@ -186,10 +249,10 @@ feed_escape(void)
 	} else if (nc == 'n') {
 		nc = '\n';
 	} else if (nc == 'x') {
-		nc = getchar();
+		nc = fgetc(fin);
 		hex = hexdig(nc) * 16;
 
-		nc = getchar();
+		nc = fgetc(fin);
 		hex = hex + hexdig(nc);
 
 		nc = hex;
@@ -203,11 +266,11 @@ void
 feed_str(void)
 {
 	tt = T_STR;
-	nc = getchar();
+	nc = fgetc(fin);
 	while (1) {
 		if (nc == '"') {
 			token[tlen] = 0;
-			nc = getchar();
+			nc = fgetc(fin);
 			return;
 		}
 
@@ -229,7 +292,7 @@ feed_str(void)
 
 		token[tlen] = nc;
 		tlen = tlen + 1;
-		nc = getchar();
+		nc = fgetc(fin);
 	}
 }
 
@@ -238,7 +301,7 @@ void
 feed_char(void)
 {
 	tt = T_CHAR;
-	nc = getchar();
+	nc = fgetc(fin);
 
 	if (nc == 0 || nc == EOF || nc == '\'' || nc == '\n') {
 		die("invalid char");
@@ -250,14 +313,14 @@ feed_char(void)
 
 	token[tlen] = nc;
 	tlen = tlen + 1;
-	nc = getchar();
+	nc = fgetc(fin);
 
 	if (nc != '\'') {
 		die("expected '");
 	}
 
 	token[tlen] = 0;
-	nc = getchar();
+	nc = fgetc(fin);
 }
 
 // Read a hex number
@@ -278,7 +341,7 @@ feed_hex(void)
 		}
 		token[tlen] = nc;
 		tlen = tlen + 1;
-		nc = getchar();
+		nc = fgetc(fin);
 	}
 
 	if (!tlen) {
@@ -297,10 +360,10 @@ feed_num(void)
 	if (nc == '0') {
 		token[tlen] = nc;
 		tlen = tlen + 1;
-		nc = getchar();
+		nc = fgetc(fin);
 
 		if (nc == 'x') {
-			nc = getchar();
+			nc = fgetc(fin);
 			feed_hex();
 			return;
 		}
@@ -315,7 +378,7 @@ feed_num(void)
 		}
 		token[tlen] = nc;
 		tlen = tlen + 1;
-		nc = getchar();
+		nc = fgetc(fin);
 	}
 	token[tlen] = 0;
 }
@@ -334,21 +397,21 @@ feed(void)
 			return;
 		} else if (nc == ' ' || nc == '\t' || nc == '\r') {
 			// Whitespace
-			nc = getchar();
+			nc = fgetc(fin);
 		} else if (nc == '\n') {
 			// Line end
-			nc = getchar();
+			nc = fgetc(fin);
 			lineno = lineno + 1;
 		} else if (nc == '/') {
 			// Comment
-			nc = getchar();
+			nc = fgetc(fin);
 			if (nc == '/') {
 				// Read until the end of the comment
 				while (1) {
 					if (nc == '\n' || nc == EOF) {
 						break;
 					}
-					nc = getchar();
+					nc = fgetc(fin);
 				}
 			} else {
 				tt = T_DIV;
@@ -387,100 +450,100 @@ feed(void)
 	// Single character tokens
 	if (nc == '(') {
 		tt = T_LPAR;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == ')') {
 		tt = T_RPAR;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '{') {
 		tt = T_LBRA;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '}') {
 		tt = T_RBRA;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == ',') {
 		tt = T_COMMA;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == ';') {
 		tt = T_SEMI;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == ':') {
 		tt = T_COLON;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '*') {
 		tt = T_STAR;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '.') {
 		tt = T_DOT;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '=') {
 		tt = T_ASSIGN;
-		nc = getchar();
+		nc = fgetc(fin);
 		if (nc == '=') {
 			tt = T_EQ;
-			nc = getchar();
+			nc = fgetc(fin);
 		}
 	} else if (nc == '&') {
 		tt = T_AMP;
-		nc = getchar();
+		nc = fgetc(fin);
 		if (nc == '&') {
 			tt = T_BAND;
-			nc = getchar();
+			nc = fgetc(fin);
 		}
 	} else if (nc == '~') {
 		tt = T_NOT;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '|') {
 		tt = T_OR;
-		nc = getchar();
+		nc = fgetc(fin);
 		if (nc == '|') {
 			tt = T_BOR;
-			nc = getchar();
+			nc = fgetc(fin);
 		}
 	} else if (nc == '^') {
 		tt = T_XOR;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '!') {
 		tt = T_BANG;
-		nc = getchar();
+		nc = fgetc(fin);
 		if (nc == '=') {
 			tt = T_NE;
-			nc = getchar();
+			nc = fgetc(fin);
 		}
 	} else if (nc == '<') {
 		tt = T_LT;
-		nc = getchar();
+		nc = fgetc(fin);
 		if (nc == '<') {
 			tt = T_LSH;
-			nc = getchar();
+			nc = fgetc(fin);
 		} else if (nc == '=') {
 			tt = T_LE;
-			nc = getchar();
+			nc = fgetc(fin);
 		}
 	} else if (nc == '>') {
 		tt = T_GT;
-		nc = getchar();
+		nc = fgetc(fin);
 		if (nc == '>') {
 			tt = T_RSH;
-			nc = getchar();
+			nc = fgetc(fin);
 		} else if (nc == '=') {
 			tt = T_GE;
-			nc = getchar();
+			nc = fgetc(fin);
 		}
 	} else if (nc == '[') {
 		tt = T_LSQ;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == ']') {
 		tt = T_RSQ;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '+') {
 		tt = T_ADD;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '-') {
 		tt = T_SUB;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else if (nc == '%') {
 		tt = T_MOD;
-		nc = getchar();
+		nc = fgetc(fin);
 	} else {
 		die("invalid char");
 	}
@@ -498,6 +561,7 @@ struct node {
 	int n;
 	unsigned char *s;
 	int offset;
+	unsigned char *filename;
 	int lineno;
 };
 
@@ -577,6 +641,7 @@ mknode(int kind, struct node *a, struct node *b)
 	n->n = 0;
 	n->s = 0;
 	n->offset = 0;
+	n->filename = filename;
 	n->lineno = lineno;
 
 	return n;
@@ -1971,9 +2036,11 @@ program(void)
 void
 setup(void)
 {
+	filename = (unsigned char *)"<stdin>";
+	fin = stdin;
+	fout = stdout;
 	lineno = 1;
-	nc = getchar();
-	feed();
+	nc = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2449,6 +2516,7 @@ declare(struct node *n)
 	struct type *t;
 	d = find(n->a->s);
 	t = prototype(n->b);
+	filename = n->filename;
 	lineno = n->lineno;
 	if (d->ftype) {
 		unify(d->ftype, t);
@@ -2891,6 +2959,7 @@ typestmt(struct node *n)
 		return;
 	}
 
+	filename = n->filename;
 	lineno = n->lineno;
 
 	kind = n->kind;
@@ -4008,194 +4077,194 @@ writeout(void)
 	}
 
 	// magic
-	putchar(0x7f);
-	putchar('E');
-	putchar('L');
-	putchar('F');
+	fputc(0x7f, fout);
+	fputc('E', fout);
+	fputc('L', fout);
+	fputc('F', fout);
 
 	// class
-	putchar(2);
+	fputc(2, fout);
 
 	// endian
-	putchar(1);
+	fputc(1, fout);
 
 	// version
-	putchar(1);
+	fputc(1, fout);
 
 	// abi
-	putchar(0);
+	fputc(0, fout);
 
 	// abi version
-	putchar(0);
+	fputc(0, fout);
 
 	// padding
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// type
-	putchar(2);
-	putchar(0);
+	fputc(2, fout);
+	fputc(0, fout);
 
 	// machine
-	putchar(62);
-	putchar(0);
+	fputc(62, fout);
+	fputc(0, fout);
 
 	// version
-	putchar(1);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(1, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	entry = load_addr + d->label->at + 128;
 
 	// entry point
-	putchar(entry);
-	putchar(entry >> 8);
-	putchar(entry >> 16);
-	putchar(entry >> 24);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(entry, fout);
+	fputc(entry >> 8, fout);
+	fputc(entry >> 16, fout);
+	fputc(entry >> 24, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// phoff
-	putchar(64);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(64, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// shoff
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// flags
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// ehsize
-	putchar(64);
-	putchar(0);
+	fputc(64, fout);
+	fputc(0, fout);
 
 	// phentsize
-	putchar(56);
-	putchar(0);
+	fputc(56, fout);
+	fputc(0, fout);
 
 	// phnum
-	putchar(1);
-	putchar(0);
+	fputc(1, fout);
+	fputc(0, fout);
 
 	// shentsize
-	putchar(64);
-	putchar(0);
+	fputc(64, fout);
+	fputc(0, fout);
 
 	// shnum
-	putchar(0);
-	putchar(0);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// shstrndx
-	putchar(0);
-	putchar(0);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// phdr[0].type
-	putchar(1);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(1, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// phdr[0].flags
-	putchar(5);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(5, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// phdr[0].offset
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// phdr[0].vaddr
-	putchar(load_addr);
-	putchar(load_addr >> 8);
-	putchar(load_addr >> 16);
-	putchar(load_addr >> 24);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(load_addr, fout);
+	fputc(load_addr >> 8, fout);
+	fputc(load_addr >> 16, fout);
+	fputc(load_addr >> 24, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// phdr[0].paddr
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	at = at + 128;
 
 	// phdr[0].filesize
-	putchar(at);
-	putchar(at >> 8);
-	putchar(at >> 16);
-	putchar(at >> 24);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(at, fout);
+	fputc(at >> 8, fout);
+	fputc(at >> 16, fout);
+	fputc(at >> 24, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// phdr[0].memsize
-	putchar(at);
-	putchar(at >> 8);
-	putchar(at >> 16);
-	putchar(at >> 24);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(at, fout);
+	fputc(at >> 8, fout);
+	fputc(at >> 16, fout);
+	fputc(at >> 24, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// phdr[0].align
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
-	putchar(0);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
 
 	// nop sled
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
-	putchar(0x90);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
 
 	// text
 	b = text;
@@ -4208,7 +4277,7 @@ writeout(void)
 			if (i >= b->fill) {
 				break;
 			}
-			putchar(b->buf[i]);
+			fputc(b->buf[i], fout);
 			i = i + 1;
 		}
 		b = b->next;
@@ -4721,18 +4790,48 @@ int
 main(int argc, char **argv)
 {
 	struct node *p;
+	int i;
 
 	// Setup the compiler
 	setup();
 
-	// Parse the program
-	p = program();
+	i = 1;
+	while (1) {
+		if (i >= argc) {
+			break;
+		}
 
-	// Verify types
-	typecheck(p);
+		if (!cmp((unsigned char *)argv[i], (unsigned char *)"-o")) {
+			i = i + 1;
+			if (i >= argc) {
+				die("invalid -o at end of argument list");
+			}
 
-	// Generate code
-	translate(p);
+			open_output((unsigned char *)argv[i]);
+
+			i = i + 1;
+			continue;
+		}
+
+		open_source((unsigned char *)argv[i]);
+
+		// Parse the program
+		p = program();
+
+		// Verify types
+		typecheck(p);
+
+		// Generate code
+		translate(p);
+
+		close_source();
+
+		i = i + 1;
+	}
+
+	if (fout == stdout) {
+		open_output((unsigned char *)"a.out");
+	}
 
 	// Define _start, syscall
 	add_stdlib();
