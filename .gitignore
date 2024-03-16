@@ -1,4 +1,5 @@
 cc0
 cc1
 cc2
-lex
+genlex
+gencc

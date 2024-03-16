@@ -1999,7 +1999,7 @@ decl(void)
 // program := func
 //          | func program
 struct node *
-program(void)
+program(struct node *p)
 {
 	struct node *n;
 	struct node *e;
@@ -2007,7 +2007,7 @@ program(void)
 
 	d = decl();
 	if (!d) {
-		return 0;
+		return p;
 	}
 
 	e = mknode(N_PROGRAM, d, 0);
@@ -2020,6 +2020,7 @@ program(void)
 				die("expected eof");
 			}
 
+			e->b = p;
 			return n;
 		}
 
@@ -4344,6 +4345,14 @@ add_stdlib(void)
 		// syscall
 		emit(0x0f);
 		emit(0x05);
+		// push rax
+		emit(0x50);
+		// pop rax
+		emit(0x58);
+		// mov rsp, rbp
+		emit(0x48);
+		emit(0x89);
+		emit(0xec);
 		// pop rbp
 		emit(0x5d);
 		// ret
@@ -4795,6 +4804,7 @@ main(int argc, char **argv)
 	// Setup the compiler
 	setup();
 
+	p = 0;
 	i = 1;
 	while (1) {
 		if (i >= argc) {
@@ -4816,18 +4826,18 @@ main(int argc, char **argv)
 		open_source((unsigned char *)argv[i]);
 
 		// Parse the program
-		p = program();
-
-		// Verify types
-		typecheck(p);
-
-		// Generate code
-		translate(p);
+		p = program(p);
 
 		close_source();
 
 		i = i + 1;
 	}
+
+	// Verify types
+	typecheck(p);
+
+	// Generate code
+	translate(p);
 
 	if (fout == stdout) {
 		open_output((unsigned char *)"a.out");

@@ -1,13 +1,3 @@
-syscall(n: int, a1: int, a2: int, a3: int, a4: int, a5: int, a6: int): int;
-
-read(fd: int, buf: *byte, n: int): int {
-	return syscall(0, fd, buf: int, n, 0, 0, 0);
-}
-
-write(fd: int, buf: *byte, n: int): int {
-	return syscall(1, fd, buf: int, n, 0, 0, 0);
-}
-
 getchar(): int {
 	var b: byte;
 	var ret: int;
@@ -31,172 +21,8 @@ putchar(ch: int): void {
 	}
 }
 
-exit(n: int): void {
-	syscall(60, n, 0, 0, 0, 0, 0);
-}
-
-strcmp(a: *byte, b: *byte): int {
-	var i: int;
-
-	i = 0;
-
-	loop {
-		if (a[i] > b[i]) {
-			return 1;
-		}
-
-		if (a[i] < b[i]) {
-			return -1;
-		}
-
-		if (a[i] == 0:byte) {
-			return 0;
-		}
-
-		i = i + 1;
-	}
-}
-
-fdputc(fd: int, ch: int): void {
-	var b: byte;
-	var ret: int;
-	b = ch: byte;
-	ret = write(fd, &b, 1);
-	if (ret != 1) {
-		exit(3);
-	}
-}
-
-
-fdputd(fd: int, n: int): void {
-	var a: int;
-
-	if (n < 0) {
-		fdputc(fd, '-');
-		a = -(n % 10);
-		n = n / -10;
-	} else {
-		a = n % 10;
-		n = n / 10;
-	}
-
-	if (n != 0) {
-		fdputd(fd, n);
-	}
-
-	fdputc(fd, '0' + a);
-}
-
-fdput(fd: int, msg: *byte): void {
-	var len: int;
-	var ret: int;
-	var off: int;
-	len = strlen(msg);
-	off = 0;
-	loop {
-		if (off == len) {
-			break;
-		}
-		ret = write(fd, msg, len - off);
-		if (ret < 0) {
-			exit(3);
-		}
-		off = off + ret;
-	}
-}
-
-die(msg: *byte): void {
-	fdput(2, "die: ");
-	fdput(2, msg);
-	fdput(2, "\n");
-	exit(1);
-}
-
-strlen(s: *byte): int {
-	var ret: int;
-	ret = 0;
-	loop {
-		if (s[ret] == 0:byte) {
-			return ret;
-		}
-		ret = ret + 1;
-	}
-}
-
-mmap(addr: int, len: int, prot: int, flags: int, fd: int, off: int): int {
-	return syscall(9, addr, len, prot, flags, fd, off);
-}
-
-struct page {
-	ptr: *byte;
-	fill: int;
-	size: int;
-}
-
-struct allocator {
-	page: *page;
-}
-
-setup_alloc(a: *allocator): void {
-	a.page = 0:*page;
-}
-
-alloc(a: *allocator, size: int): *byte {
-	var page: *page;
-	var mret: int;
-	var ret: *byte;
-	var psize: int;
-
-	if (size < 0) {
-		die("invalid alloc");
-	}
-
-	if (size >= 2048) {
-		size = size + 4095;
-		size = size & ~4095;
-		mret = mmap(0, size, 3, 0x22, -1, 0);
-		if (mret == -1) {
-			die("out of memory");
-		}
-		ret = mret: *byte;
-		return ret;
-	}
-
-	page = a.page;
-	if (page) {
-		if (size <= page.size - page.fill) {
-			mret = page.ptr:int + page.fill;
-			page.fill = page.fill + size;
-			ret = mret: *byte;
-			return ret;
-		}
-	}
-
-	psize = 64 * 1024;
-
-	mret = mmap(0, psize, 3, 0x22, -1, 0);
-	if (mret == -1) {
-		die("out of memory");
-	}
-
-	page = mret: *page;
-	page.ptr = (&page[1]): *byte;
-	ret = page.ptr;
-	page.size = psize - sizeof(*page);
-	page.fill = size;
-
-	a.page = page;
-
-	return ret;
-}
-
-_start(): void {
-	main();
-	exit(0);
-}
-
 struct compiler {
-	a: allocator;
+	a: alloc;
 	nc: int;
 	lineno: int;
 	colno: int;
@@ -1186,17 +1012,17 @@ codegen(c: *compiler, a: *dfa): void {
 	}
 	a.seen = 1;
 
-	fdput(1, ":_");
+	fdputs(1, ":_");
 	fdputd(1, a.id);
-	fdput(1, ";\n");
+	fdputs(1, ";\n");
 
 	if (a.key.tag) {
-		fdput(1, "\tlexmark(l, T_");
-		fdput(1, a.key.tag.s);
-		fdput(1, ");\n");
+		fdputs(1, "\tlexmark(l, T_");
+		fdputs(1, a.key.tag.s);
+		fdputs(1, ");\n");
 	}
 
-	fdput(1, "\tch = lexfeedc(l);\n");
+	fdputs(1, "\tch = lexfeedc(l);\n");
 
 	i = 0;
 	loop {
@@ -1223,22 +1049,22 @@ codegen(c: *compiler, a: *dfa): void {
 		}
 
 		if (lo != (hi - 1)) {
-			fdput(1, "\tif (ch >= ");
+			fdputs(1, "\tif (ch >= ");
 			fdputd(1, lo);
-			fdput(1, " && ch <= ");
+			fdputs(1, " && ch <= ");
 			fdputd(1, hi - 1);
 		} else {
-			fdput(1, "\tif (ch == ");
+			fdputs(1, "\tif (ch == ");
 			fdputd(1, lo);
 		}
-		fdput(1, ") { ");
-		fdput(1, "goto _");
+		fdputs(1, ") { ");
+		fdputs(1, "goto _");
 		fdputd(1, b.id);
-		fdput(1, "; }\n");
+		fdputs(1, "; }\n");
 
 	}
 
-	fdput(1, "\treturn;\n");
+	fdputs(1, "\treturn;\n");
 
 	i = 0;
 	loop {
@@ -1257,28 +1083,28 @@ codegen(c: *compiler, a: *dfa): void {
 gen(c: *compiler, a: *dfa): void {
 	var t: *tag;
 	t = c.tags;
-	fdput(1, "enum {\n");
-	fdput(1, "\tT_invalid,\n");
-	fdput(1, "\tT_eof,\n");
+	fdputs(1, "enum {\n");
+	fdputs(1, "\tT_INVALID,\n");
+	fdputs(1, "\tT_EOF,\n");
 	loop {
 		if (!t) {
 			break;
 		}
-		fdput(1, "\tT_");
-		fdput(1, t.s);
-		fdput(1, ",\n");
+		fdputs(1, "\tT_");
+		fdputs(1, t.s);
+		fdputs(1, ",\n");
 		t = t.next;
 	}
-	fdput(1, "}\n");
-	fdput(1, "\n");
-	fdput(1, "lexstep(l: *lex_state): void {\n");
-	fdput(1, "\tvar ch: int;\n");
-	fdput(1, "\tlexmark(l, T_invalid);\n");
+	fdputs(1, "}\n");
+	fdputs(1, "\n");
+	fdputs(1, "lexstep(l: *lex_state): void {\n");
+	fdputs(1, "\tvar ch: int;\n");
+	fdputs(1, "\tlexmark(l, T_INVALID);\n");
 	codegen(c, a);
-	fdput(1, "}\n");
+	fdputs(1, "}\n");
 }
 
-main(): void {
+main(argc: int, argv: **byte, envp: **byte): void {
 	var c: compiler;
 	var n: *nfa;
 	var a: *dfa;

@@ -1,0 +1,62 @@
+struct page {
+	ptr: *byte;
+	fill: int;
+	size: int;
+}
+
+struct alloc {
+	page: *page;
+}
+
+setup_alloc(c: *alloc) {
+	c.page = 0: *page;
+}
+
+alloc(c: *alloc, size: int): *byte {
+	var page: *page;
+	var mret: int;
+	var ret: *byte;
+	var psize: int;
+
+	if (size < 0) {
+		die("invalid alloc");
+	}
+
+	if (size >= 2048) {
+		size = size + 4095;
+		size = size & ~4095;
+		mret = mmap(0, size, 3, 0x22, -1, 0);
+		if (mret == -1) {
+			die("out of memory");
+		}
+		ret = mret: *byte;
+		return ret;
+	}
+
+	page = c.page;
+	if (page) {
+		if (size <= page.size - page.fill) {
+			mret = page.ptr:int + page.fill;
+			page.fill = page.fill + size;
+			ret = mret: *byte;
+			return ret;
+		}
+	}
+
+	psize = 64 * 1024;
+
+	mret = mmap(0, psize, 3, 0x22, -1, 0);
+	if (mret == -1) {
+		die("out of memory");
+	}
+
+	page = mret: *page;
+	page.ptr = (&page[1]): *byte;
+	ret = page.ptr;
+	page.size = psize - sizeof(*page);
+	page.fill = size;
+
+	c.page = page;
+
+	return ret;
+}
