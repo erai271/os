@@ -230,11 +230,15 @@ defenum(c: *compiler, n: *node) {
 			break;
 		}
 
-		name = n.a.s;
+		name = n.a.a.s;
 		d = find(c, name, 0:*byte, 1);
 
 		if (d.enum_defined) {
 			cdie(c, "duplicate enum");
+		}
+
+		if (n.a.b) {
+			i = n.a.b.n;
 		}
 
 		d.enum_defined = 1;

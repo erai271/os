@@ -587,6 +587,7 @@ enum {
 	N_CONDLIST,
 	N_COND,
 	N_ENUM,
+	N_ENUMITEM,
 	N_ENUMLIST,
 	N_LOOP,
 	N_BREAK,
@@ -1844,7 +1845,33 @@ member_decl(void)
 	return mknode(N_MEMBERDECL, a, b);
 }
 
-// enum_list := ident
+// enum_item := ident
+//            | ident '=' num
+struct node *
+enum_item(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = ident();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt != T_ASSIGN) {
+		return mknode(N_ENUMITEM, a, 0);
+	}
+	feed();
+
+	b = num();
+	if (!b) {
+		die("expected num");
+	}
+
+	return mknode(N_ENUMITEM, a, b);
+}
+
+// enum_list := enum_item
 //            | enum_list ',' enum_list
 struct node *
 enum_list(void)
@@ -1853,7 +1880,7 @@ enum_list(void)
 	struct node *e;
 	struct node *a;
 
-	a = ident();
+	a = enum_item();
 	if (!a) {
 		return 0;
 	}
@@ -1867,7 +1894,7 @@ enum_list(void)
 		}
 		feed();
 
-		a = ident();
+		a = enum_item();
 		if (!a) {
 			return n;
 		}
@@ -3158,10 +3185,14 @@ defenum(struct node *n)
 			break;
 		}
 
-		d = efind(n->a->s, 1);
+		d = efind(n->a->a->s, 1);
 
 		if (d->defined) {
 			die("duplicate enum");
+		}
+
+		if (n->a->b) {
+			i = n->a->b->n;
 		}
 
 		d->defined = 1;

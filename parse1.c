@@ -32,6 +32,7 @@ enum {
 	N_CONDLIST,
 	N_COND,
 	N_ENUM,
+	N_ENUMITEM,
 	N_ENUMLIST,
 	N_LOOP,
 	N_BREAK,
@@ -1099,14 +1100,38 @@ parse_stmt_list(c: *compiler): *node {
 	}
 }
 
-// enum_list := ident
+// enum_item := ident
+//            | ident '=' num
+parse_enum_item(c: *compiler): *node {
+	var a: *node;
+	var b: *node;
+
+	a = parse_ident(c);
+	if (!a) {
+		return 0:*node;
+	}
+
+	if (c.tt != T_ASSIGN) {
+		return mknode1(c, N_ENUMITEM, a);
+	}
+	feed(c);
+
+	b = parse_num(c);
+	if (!b) {
+		cdie(c, "expected num");
+	}
+
+	return mknode(c, N_ENUMITEM, a, b);
+}
+
+// enum_list := enum_item
 //            | enum_list ',' enum_list
 parse_enum_list(c: *compiler): *node {
 	var n: *node;
 	var e: *node;
 	var a: *node;
 
-	a = parse_ident(c);
+	a = parse_enum_item(c);
 	if (!a) {
 		return 0:*node;
 	}
@@ -1120,7 +1145,7 @@ parse_enum_list(c: *compiler): *node {
 		}
 		feed(c);
 
-		a = parse_ident(c);
+		a = parse_enum_item(c);
 		if (!a) {
 			return n;
 		}
