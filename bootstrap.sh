@@ -2,22 +2,40 @@
 
 set -ue
 
+uptodate() {
+	target=$1
+	shift
+	if ! [ -x "${target}" ]; then
+		return 1
+	fi
+	while [ $# -gt 0 ]; do
+		if ! [ -f "$1" ] || [ "$1" -nt "${target}" ]; then
+			return 1
+		fi
+		shift
+	done
+	return 0
+}
+
 # Environmental variables used to compile the bootstrap
 : ${CC:=gcc}
 : ${CFLAGS:=-Wall -Wextra -Wno-unused -pedantic -std=c99}
+LIBS="bufio.c lib.c alloc.c syscall.c"
+SOURCES="cc1.c type.c parse1.c lex1.c as.c ${LIBS}"
+GENLEX_SOURCES="genlex.c ${LIBS}"
 
 # First compile the bootstrap
-${CC} ${CFLAGS} -o cc0 ./cc0.c || exit 1
+uptodate cc0 cc0.c || ${CC} ${CFLAGS} ./cc0.c -o cc0 || { rm -f cc0; echo "bootstrap failed" >&2; exit 1; }
 
 # Then use the bootstrap to compile the compiler
-timeout 1 sh -c './cc0 cc1.c -o cc1' || { echo "cc0 failed"; exit 1; }
-chmod +x cc1
+uptodate cc1 ${SOURCES} || ./cc0 ${SOURCES} -o cc1 || { rm -f cc1; echo "cc0 failed" >&2; exit 1; }
 
 # Then compile the compiler with itself
-timeout 1 sh -c './cc1 cc1.c -o cc2' || { echo "cc1 failed"; exit 1; }
-chmod +x cc2
+uptodate cc2 cc1 ${SOURCES} && false || ./cc1 ${SOURCES} -o cc2 || { rm -f cc2; echo "cc1 failed" >&2; exit 1; }
 
 # And check our work
-diff <(xxd cc1) <(xxd cc2)
+diff <(xxd cc1) <(xxd cc2) || :
 cmp cc1 cc2 || { echo "output mismatch"; exit 1; }
-exit 0
+
+uptodate genlex cc1 ${GENLEX_SOURCES} || ./cc1 ${GENLEX_SOURCES} -o genlex || { rm -f genlex; echo "cc1 failed" >&2; exit 1; }
+uptodate lex3.c genlex cc3.l || ./genlex < cc3.l > lex3.c || { rm -f lex3.c; echo "genlex failed" >&2; exit 1; }

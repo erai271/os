@@ -3,3 +3,5 @@ cc1
 cc2
 genlex
 gencc
+lex3.c
+parse3.c
