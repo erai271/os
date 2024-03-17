@@ -471,7 +471,30 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 			compile_expr(c, d, n.b, 1);
 		}
 
-		compile_expr(c, d, n.a, 1);
+		if (n.a.kind == N_IDENT) {
+			v = find(c, n.a.s, 0:*byte, 0);
+			if (v && v.enum_defined) {
+				cdie(c, "type error");
+			}
+
+			v = find(c, d.name, n.a.s, 0);
+			if (v && v.var_defined) {
+				emit_lea(c.as, v.var_offset);
+				emit_load(c.as, n.a.t);
+				n.a.t = v.var_type;
+				emit_call(c.as, count_args(c, n.a.t.arg));
+			} else {
+				v = find(c, n.a.s, 0:*byte, 0);
+				if (!v || !v.func_defined) {
+					cdie(c, "no such function");
+				}
+				n.a.t = v.func_type;
+				emit_lcall(c.as, v.func_label, count_args(c, n.a.t.arg));
+			}
+		} else {
+			compile_expr(c, d, n.a, 1);
+			emit_call(c.as, count_args(c, n.a.t.arg));
+		}
 
 		if (n.a.t.kind != TY_FUNC) {
 			cdie(c, "calling not a function");
@@ -482,8 +505,6 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		} else {
 			unify(c, n.a.t.arg, 0: *type);
 		}
-
-		emit_call(c.as, count_args(c, n.a.t.arg));
 
 		n.t = n.a.t.val;
 	} else if (kind == N_DOT) {

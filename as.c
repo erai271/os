@@ -1,3 +1,27 @@
+enum {
+	R_RAX,
+	R_RCX,
+	R_RDX,
+	R_RBX,
+	R_RSP,
+	R_RBP,
+	R_RSI,
+	R_RDI,
+	R_R8,
+	R_R9,
+	R_R10,
+	R_R11,
+	R_R12,
+	R_R13,
+	R_R14,
+	R_R15,
+	R_RIP,
+}
+
+enum {
+	PLACEHOLDER = 128,
+}
+
 struct fixup {
 	next: *fixup;
 	ptr: *byte;
@@ -121,14 +145,11 @@ addfixup(c: *assembler, l: *label) {
 	var f: *fixup;
 	var here: *byte;
 
-	reserve(c, 4);
+	if (c.text_end.fill < 4) {
+		die("invalid fixup");
+	}
 
-	here = &c.text_end.buf[c.text_end.fill];
-
-	emit(c, 0);
-	emit(c, 0);
-	emit(c, 0);
-	emit(c, 0);
+	here = &c.text_end.buf[c.text_end.fill - 4];
 
 	if (l.fixed) {
 		fixup(c, here, l.at - c.at);
@@ -165,28 +186,19 @@ fixup_label(c: *assembler, l: *label) {
 }
 
 emit_ptr(c: *assembler, l: *label) {
-	// lea %rax, [l]
-	emit(c, 0x48);
-	emit(c, 0x8d);
-	emit(c, 0x05);
+	reserve(c, 16);
+	as_modrm(c, OP_LEA, R_RAX, R_RIP, 0, 0, PLACEHOLDER);
 	addfixup(c, l);
-	// push %rax
-	emit(c, 0x50);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_jmp(c: *assembler, l: *label) {
-	// jmp l
-	emit(c, 0xe9);
-	addfixup(c, l);
+	as_jmp(c, OP_JMP, l);
 }
 
 emit_num(c: *assembler, x: int) {
-	// push x
-	emit(c, 0x68);
-	emit(c, x);
-	emit(c, x >> 8);
-	emit(c, x >> 16);
-	emit(c, x >> 24);
+	as_opri64(c, OP_MOVABS, R_RDX, x);
+	as_opr(c, OP_PUSHR, R_RDX);
 }
 
 emit_str(c: *assembler, s: *byte) {
@@ -197,90 +209,51 @@ emit_str(c: *assembler, s: *byte) {
 	a = mklabel(c);
 	b = mklabel(c);
 
-	// jmp b
-	emit_jmp(c, b);
+	as_jmp(c, OP_JMP, b);
 
-	// a:
 	fixup_label(c, a);
 
 	i = 0;
-	// .string s
 	loop {
 		if (!s[i]) {
 			break;
 		}
-		emit(c, s[i]:int);
+		as_emit(c, s[i]:int);
 		i = i + 1;
 	}
-	emit(c, 0);
+	as_emit(c, 0);
 
-	// nop sled
-	emit(c, 0x90);
-	emit(c, 0x90);
-	emit(c, 0x90);
-	emit(c, 0x90);
-	emit(c, 0x90);
-	emit(c, 0x90);
-	emit(c, 0x90);
-	emit(c, 0x90);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
 
-	// b:
 	fixup_label(c, b);
-	// push a
 	emit_ptr(c, a);
 }
 
 emit_pop(c: *assembler, n: int) {
-	n = n * 8;
-	// add rsp, 8*n
-	emit(c, 0x48);
-	emit(c, 0x81);
-	emit(c, 0xc4);
-	emit(c, n);
-	emit(c, n >> 8);
-	emit(c, n >> 16);
-	emit(c, n >> 24);
+	as_modri(c, OP_ADDI, R_RSP, n << 3);
 }
 
 emit_preamble(c: *assembler, n: int, start: int) {
 	var i: int;
 	if (start) {
-		// xor rbp, rbp
-		emit(c, 0x48);
-		emit(c, 0x31);
-		emit(c, 0xed);
-		// mov rdi, [rsp]
-		emit(c, 0x48);
-		emit(c, 0x8b);
-		emit(c, 0x3c);
-		emit(c, 0x24);
-		// lea rsi, [rsp + 8]
-		emit(c, 0x48);
-		emit(c, 0x8d);
-		emit(c, 0x74);
-		emit(c, 0x24);
-		emit(c, 0x08);
-		// lea rdx, [rsi + rdi * 8 + 8]
-		emit(c, 0x48);
-		emit(c, 0x8d);
-		emit(c, 0x54);
-		emit(c, 0xfe);
-		emit(c, 0x08);
-		// push rdx
-		emit(c, 0x52);
-		// push rsi
-		emit(c, 0x56);
-		// push rdi
-		emit(c, 0x57);
-		// push rbp
-		emit(c, 0x55);
+		as_modrr(c, OP_XORRM, R_RBP, R_RBP);
+		as_modrm(c, OP_LOAD, R_RDI, R_RSP, 0, 0, 0);
+		as_modrm(c, OP_LEA, R_RSI, R_RSP, 0, 0, 8);
+		as_modrm(c, OP_LEA, R_RDX, R_RSI, R_RDI, 8, 8);
+		as_opr(c, OP_PUSHR, R_RDX);
+		as_opr(c, OP_PUSHR, R_RSI);
+		as_opr(c, OP_PUSHR, R_RDI);
+		as_opr(c, OP_PUSHR, R_RBP);
 	}
-	// push rbp
-	emit(c, 0x55);
-	// mov rbp, rsp
-	emit(c, 0x48);
-	emit(c, 0x89);
-	emit(c, 0xe5);
+	as_opr(c, OP_PUSHR, R_RBP);
+	as_modrr(c, OP_MOVE, R_RBP, R_RSP);
 	i = 0;
 	loop {
 		if (i >= n) {
@@ -292,451 +265,216 @@ emit_preamble(c: *assembler, n: int, start: int) {
 }
 
 emit_store(c: *assembler, t: *type) {
-	// pop rdi
-	emit(c, 0x5f);
-	// pop rax
-	emit(c, 0x58);
+	as_opr(c, OP_POPR, R_RDI);
+	as_opr(c, OP_POPR, R_RAX);
 	if (t.kind == TY_BYTE) {
-		// mov [rdi], al
-		emit(c, 0x88);
-		emit(c, 0x07);
+		as_modrm(c, OP_STOREB, R_RAX, R_RDI, 0, 0, 0);
 	} else if (type_isprim(t)) {
-		// mov [rdi], rax
-		emit(c, 0x48);
-		emit(c, 0x89);
-		emit(c, 0x07);
+		as_modrm(c, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
 	} else {
 		die("invalid store");
 	}
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_load(c: *assembler, t: *type) {
-	// pop rdi
-	emit(c, 0x5f);
+	as_opr(c, OP_POPR, R_RDI);
 	if (t.kind == TY_BYTE) {
-		// xor rax, rax
-		emit(c, 0x48);
-		emit(c, 0x31);
-		emit(c, 0xc0);
-		// mov al, [rdi]
-		emit(c, 0x8a);
-		emit(c, 0x07);
+		as_modrr(c, OP_XORRM, R_RAX, R_RAX);
+		as_modrm(c, OP_LOADB, R_RAX, R_RDI, 0, 0, 0);
 	} else if (type_isprim(t)) {
-		// mov rax, [rdi]
-		emit(c, 0x48);
-		emit(c, 0x8b);
-		emit(c, 0x07);
+		as_modrm(c, OP_LOAD, R_RAX, R_RDI, 0, 0, 0);
 	} else {
 		die("invalid load");
 	}
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_jz(c: *assembler, l: *label) {
-	// pop rax
-	emit(c, 0x58);
-	// test rax, rax
-	emit(c, 0x48);
-	emit(c, 0x85);
-	emit(c, 0xc0);
-	// jz no
-	emit(c, 0x0f);
-	emit(c, 0x84);
-	addfixup(c, l);
+	as_opr(c, OP_POPR, R_RAX);
+	as_modrr(c, OP_TESTRM, R_RAX, R_RAX);
+	as_jmp(c, OP_JCC + CC_E, l);
 }
 
 emit_lea(c: *assembler, offset: int) {
-	// lea rax, [rbp + offset]
-	emit(c, 0x48);
-	emit(c, 0x8d);
-	emit(c, 0x85);
-	emit(c, offset);
-	emit(c, offset >> 8);
-	emit(c, offset >> 16);
-	emit(c, offset >> 24);
-	// push rax
-	emit(c, 0x50);
+	as_modrm(c, OP_LEA, R_RAX, R_RBP, 0, 0, offset);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_and(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// pop rdx
-	emit(c, 0x5a);
-	// and rdx, rax
-	emit(c, 0x48);
-	emit(c, 0x21);
-	emit(c, 0xd0);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RDX);
+	as_modrr(c, OP_ANDRM, R_RAX, R_RDX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_or(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// pop rdx
-	emit(c, 0x5a);
-	// or rdx, rax
-	emit(c, 0x48);
-	emit(c, 0x09);
-	emit(c, 0xd0);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RDX);
+	as_modrr(c, OP_ORRM, R_RAX, R_RDX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_xor(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// pop rdx
-	emit(c, 0x5a);
-	// xor rdx, rax
-	emit(c, 0x48);
-	emit(c, 0x31);
-	emit(c, 0xd0);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RDX);
+	as_modrr(c, OP_XORRM, R_RAX, R_RDX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_add(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// pop rdx
-	emit(c, 0x5a);
-	// add rdx, rax
-	emit(c, 0x48);
-	emit(c, 0x01);
-	emit(c, 0xd0);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RDX);
+	as_modrr(c, OP_ADDRM, R_RAX, R_RDX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_ret(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// mov rsp, rbp
-	emit(c, 0x48);
-	emit(c, 0x89);
-	emit(c, 0xec);
-	// pop rbp
-	emit(c, 0x5d);
-	// ret
-	emit(c, 0xc3);
+	as_opr(c, OP_POPR, R_RAX);
+	as_modrr(c, OP_MOVE, R_RSP, R_RBP);
+	as_opr(c, OP_POPR, R_RBP);
+	as_op(c, OP_RET);
 }
 
 emit_call(c: *assembler, n: int) {
-	// pop rax
-	emit(c, 0x58);
-	// call rax
-	emit(c, 0xff);
-	emit(c, 0xd0);
-	// add rsp, 8*(n+1)
+	as_opr(c, OP_POPR, R_RAX);
+	as_modr(c, OP_ICALLM, R_RAX);
 	emit_pop(c, n);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_PUSHR, R_RAX);
+}
+
+emit_lcall(c: *assembler, l: *label, n: int) {
+	as_jmp(c, OP_CALL, l);
+	emit_pop(c, n);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_gt(c: *assembler) {
-	// pop rdx
-	emit(c, 0x5a);
-	// pop rcx
-	emit(c, 0x59);
-	// xor rax, rax
-	emit(c, 0x48);
-	emit(c, 0x31);
-	emit(c, 0xc0);
-	// cmp rdx, rcx
-	emit(c, 0x48);
-	emit(c, 0x39);
-	emit(c, 0xca);
-	// setg al
-	emit(c, 0x0f);
-	emit(c, 0x9f);
-	emit(c, 0xc0);
-	// mov rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RDX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
+	as_modrr(c, OP_CMPRM, R_RDX, R_RCX);
+	as_modrr(c, OP_SETCC + CC_G, 0, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_lt(c: *assembler) {
-	// pop rdx
-	emit(c, 0x5a);
-	// pop rcx
-	emit(c, 0x59);
-	// xor rax, rax
-	emit(c, 0x48);
-	emit(c, 0x31);
-	emit(c, 0xc0);
-	// cmp rdx, rcx
-	emit(c, 0x48);
-	emit(c, 0x39);
-	emit(c, 0xca);
-	// setl al
-	emit(c, 0x0f);
-	emit(c, 0x9c);
-	emit(c, 0xc0);
-	// mov rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RDX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
+	as_modrr(c, OP_CMPRM, R_RDX, R_RCX);
+	as_modrr(c, OP_SETCC + CC_L, 0, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_ge(c: *assembler) {
-	// pop rdx
-	emit(c, 0x5a);
-	// pop rcx
-	emit(c, 0x59);
-	// xor rax, rax
-	emit(c, 0x48);
-	emit(c, 0x31);
-	emit(c, 0xc0);
-	// cmp rdx, rcx
-	emit(c, 0x48);
-	emit(c, 0x39);
-	emit(c, 0xca);
-	// setge al
-	emit(c, 0x0f);
-	emit(c, 0x9d);
-	emit(c, 0xc0);
-	// mov rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RDX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
+	as_modrr(c, OP_CMPRM, R_RDX, R_RCX);
+	as_modrr(c, OP_SETCC + CC_GE, 0, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_le(c: *assembler) {
-	// pop rdx
-	emit(c, 0x5a);
-	// pop rcx
-	emit(c, 0x59);
-	// xor rax, rax
-	emit(c, 0x48);
-	emit(c, 0x31);
-	emit(c, 0xc0);
-	// cmp rdx, rcx
-	emit(c, 0x48);
-	emit(c, 0x39);
-	emit(c, 0xca);
-	// setle al
-	emit(c, 0x0f);
-	emit(c, 0x9e);
-	emit(c, 0xc0);
-	// mov rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RDX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
+	as_modrr(c, OP_CMPRM, R_RDX, R_RCX);
+	as_modrr(c, OP_SETCC + CC_LE, 0, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_eq(c: *assembler) {
-	// pop rdx
-	emit(c, 0x5a);
-	// pop rcx
-	emit(c, 0x59);
-	// xor rax, rax
-	emit(c, 0x48);
-	emit(c, 0x31);
-	emit(c, 0xc0);
-	// cmp rdx, rcx
-	emit(c, 0x48);
-	emit(c, 0x39);
-	emit(c, 0xca);
-	// sete al
-	emit(c, 0x0f);
-	emit(c, 0x94);
-	emit(c, 0xc0);
-	// mov rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RDX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
+	as_modrr(c, OP_CMPRM, R_RDX, R_RCX);
+	as_modrr(c, OP_SETCC + CC_E, 0, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_ne(c: *assembler) {
-	// pop rdx
-	emit(c, 0x5a);
-	// pop rcx
-	emit(c, 0x59);
-	// xor rax, rax
-	emit(c, 0x48);
-	emit(c, 0x31);
-	emit(c, 0xc0);
-	// cmp rdx, rcx
-	emit(c, 0x48);
-	emit(c, 0x39);
-	emit(c, 0xca);
-	// setne al
-	emit(c, 0x0f);
-	emit(c, 0x95);
-	emit(c, 0xc0);
-	// mov rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RDX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
+	as_modrr(c, OP_CMPRM, R_RDX, R_RCX);
+	as_modrr(c, OP_SETCC + CC_NE, 0, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_sub(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// pop rdx
-	emit(c, 0x5a);
-	// add rax, rdx
-	emit(c, 0x48);
-	emit(c, 0x29);
-	emit(c, 0xd0);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RDX);
+	as_modrr(c, OP_SUBRM, R_RAX, R_RDX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_mul(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// pop rcx
-	emit(c, 0x59);
-	// mul rcx
-	emit(c, 0x48);
-	emit(c, 0xf7);
-	emit(c, 0xe1);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modr(c, OP_IMULM, R_RCX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_div(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// pop rcx
-	emit(c, 0x59);
-	// xor rdx, rdx
-	emit(c, 0x48);
-	emit(c, 0x31);
-	emit(c, 0xd2);
-	// test rax, rax
-	emit(c, 0x48);
-	emit(c, 0x85);
-	emit(c, 0xc0);
-	// sets dl
-	emit(c, 0x0f);
-	emit(c, 0x98);
-	emit(c, 0xc2);
-	// neg rdx
-	emit(c, 0x48);
-	emit(c, 0xf7);
-	emit(c, 0xda);
-	// idiv rcx
-	emit(c, 0x48);
-	emit(c, 0xf7);
-	emit(c, 0xf9);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modrr(c, OP_XORRM, R_RDX, R_RDX);
+	as_modrr(c, OP_TESTRM, R_RAX, R_RAX);
+	as_modrr(c, OP_SETCC + CC_S, 0, R_RDX);
+	as_modr(c, OP_NEGM, R_RDX);
+	as_modr(c, OP_IDIVM, R_RCX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_mod(c: *assembler) {
-        // pop rax
-        emit(c, 0x58);
-        // pop rcx
-        emit(c, 0x59);
-        // xor rdx, rdx
-        emit(c, 0x48);
-        emit(c, 0x31);
-        emit(c, 0xd2);
-        // test rax, rax
-        emit(c, 0x48);
-        emit(c, 0x85);
-        emit(c, 0xc0);
-        // sets dl
-        emit(c, 0x0f);
-        emit(c, 0x98);
-        emit(c, 0xc2);
-        // neg rdx
-        emit(c, 0x48);
-        emit(c, 0xf7);
-        emit(c, 0xda);
-        // idiv rcx
-        emit(c, 0x48);
-        emit(c, 0xf7);
-        emit(c, 0xf9);
-        // push rdx
-        emit(c, 0x52);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modrr(c, OP_XORRM, R_RDX, R_RDX);
+	as_modrr(c, OP_TESTRM, R_RAX, R_RAX);
+	as_modrr(c, OP_SETCC + CC_S, 0, R_RDX);
+	as_modr(c, OP_NEGM, R_RDX);
+	as_modr(c, OP_IDIVM, R_RCX);
+	as_opr(c, OP_PUSHR, R_RDX);
 }
 
 emit_lsh(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// pop rcx
-	emit(c, 0x59);
-	// shl rax, cl
-	emit(c, 0x48);
-	emit(c, 0xd3);
-	emit(c, 0xe0);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modr(c, OP_SHLM, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_rsh(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// pop rcx
-	emit(c, 0x59);
-	// shr rax, cl
-	emit(c, 0x48);
-	emit(c, 0xd3);
-	emit(c, 0xe8);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_opr(c, OP_POPR, R_RCX);
+	as_modr(c, OP_SHRM, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_not(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// neg rax
-	emit(c, 0x48);
-	emit(c, 0xf7);
-	emit(c, 0xd0);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_modr(c, OP_NOTM, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_neg(c: *assembler) {
-	// pop rax
-	emit(c, 0x58);
-	// neg rax
-	emit(c, 0x48);
-	emit(c, 0xf7);
-	emit(c, 0xd8);
-	// push rax
-	emit(c, 0x50);
+	as_opr(c, OP_POPR, R_RAX);
+	as_modr(c, OP_NEGM, R_RAX);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 emit_syscall(c: *assembler) {
-	// mov rax, [rbp + 16]
-	emit(c, 0x48);
-	emit(c, 0x8b);
-	emit(c, 0x45);
-	emit(c, 0x10);
-	// mov rdi, [rbp + 24]
-	emit(c, 0x48);
-	emit(c, 0x8b);
-	emit(c, 0x7d);
-	emit(c, 0x18);
-	// mov rsi, [rbp + 32]
-	emit(c, 0x48);
-	emit(c, 0x8b);
-	emit(c, 0x75);
-	emit(c, 0x20);
-	// mov rdx, [rbp + 40]
-	emit(c, 0x48);
-	emit(c, 0x8b);
-	emit(c, 0x55);
-	emit(c, 0x28);
-	// mov r10, [rbp + 48]
-	emit(c, 0x4c);
-	emit(c, 0x8b);
-	emit(c, 0x55);
-	emit(c, 0x30);
-	// mov r8, [rbp + 56]
-	emit(c, 0x4c);
-	emit(c, 0x8b);
-	emit(c, 0x45);
-	emit(c, 0x38);
-	// mov r9, [rbp + 64]
-	emit(c, 0x4c);
-	emit(c, 0x8b);
-	emit(c, 0x4d);
-	emit(c, 0x40);
-	// syscall
-	emit(c, 0x0f);
-	emit(c, 0x05);
-	// push rax
-	emit(c, 0x50);
+	as_modrm(c, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
+	as_modrm(c, OP_LOAD, R_RDI, R_RBP, 0, 0, 24);
+	as_modrm(c, OP_LOAD, R_RSI, R_RBP, 0, 0, 32);
+	as_modrm(c, OP_LOAD, R_RDX, R_RBP, 0, 0, 40);
+	as_modrm(c, OP_LOAD, R_R10, R_RBP, 0, 0, 48);
+	as_modrm(c, OP_LOAD, R_R8, R_RBP, 0, 0, 56);
+	as_modrm(c, OP_LOAD, R_R9, R_RBP, 0, 0, 64);
+	as_op(c, OP_SYSCALL);
+	as_opr(c, OP_PUSHR, R_RAX);
 }
 
 writeout(c: *assembler, start: *label) {
@@ -937,14 +675,14 @@ writeout(c: *assembler, start: *label) {
 	putchar(c, 0);
 
 	// nop sled
-	putchar(c, 0x90);
-	putchar(c, 0x90);
-	putchar(c, 0x90);
-	putchar(c, 0x90);
-	putchar(c, 0x90);
-	putchar(c, 0x90);
-	putchar(c, 0x90);
-	putchar(c, 0x90);
+	putchar(c, OP_NOP);
+	putchar(c, OP_NOP);
+	putchar(c, OP_NOP);
+	putchar(c, OP_NOP);
+	putchar(c, OP_NOP);
+	putchar(c, OP_NOP);
+	putchar(c, OP_NOP);
+	putchar(c, OP_NOP);
 
 	b = c.text;
 	loop {
@@ -963,4 +701,280 @@ writeout(c: *assembler, start: *label) {
 	}
 
 	fflush(c.out);
+}
+
+enum {
+	CC_O  = 0x00,
+	CC_NO = 0x01,
+	CC_B  = 0x02,
+	CC_AE = 0x03,
+	CC_E  = 0x04,
+	CC_NE = 0x05,
+	CC_BE = 0x06,
+	CC_A  = 0x07,
+	CC_S  = 0x08,
+	CC_NS = 0x09,
+	CC_P  = 0x0a,
+	CC_NP = 0x0b,
+	CC_L  = 0x0c,
+	CC_GE = 0x0d,
+	CC_LE = 0x0e,
+	CC_G  = 0x0f,
+}
+
+enum {
+	OP_NOP = 0x90,
+	OP_RET = 0xc3,
+	OP_CALL = 0xe8,
+	OP_JMP = 0xe9,
+	OP_JCC = 0x0f80,
+	OP_SETCC = 0x0f90,
+
+	OP_ICALLM = 0x02ff,
+
+	OP_NOTM = 0x02f7,
+	OP_NEGM = 0x03f7,
+
+	OP_ANDRM = 0x23,
+	OP_ORRM = 0x0b,
+	OP_CMPRM = 0x3b,
+	OP_TESTRM = 0x85,
+	OP_SUBRM = 0x2b,
+	OP_ADDRM = 0x03,
+	OP_XORRM = 0x33,
+
+	OP_ADDI = 0x0081,
+
+	OP_IMULM = 0x04f7,
+	OP_IDIVM = 0x07f7,
+	OP_SHLM = 0x04d3,
+	OP_SHRM = 0x05d3,
+
+	OP_PUSHR = 0x50,
+
+	OP_POPR = 0x58,
+
+	OP_MOVABS = 0xb8,
+
+	OP_SYSCALL = 0x0f05,
+
+	OP_LEA = 0x8d,
+	OP_LOAD = 0x8b,
+	OP_LOADB = 0x8a,
+	OP_STOREB = 0x88,
+	OP_STORE = 0x89,
+	OP_MOVE = 0x8b,
+}
+
+as_emit(a: *assembler, b: int) {
+	emit(a, b);
+}
+
+as_rex(a: *assembler, op: int, r: int, i: int, b: int) {
+	var w: int;
+	w = 0x08;
+	if op == OP_LOADB || op == OP_STOREB {
+		w = 0;
+	}
+	as_emit(a, 0x40 + w + ((r >> 1) & 4) + ((i >> 2) & 2) + ((b >> 3) & 1));
+}
+
+as_op(a: *assembler, op: int) {
+	if op > 0xff {
+		as_emit(a, op >> 8);
+		as_emit(a, op);
+	} else {
+		as_emit(a, op);
+	}
+}
+
+// op + r
+as_opr(a: *assembler, op: int, r: int) {
+	if r < 0 || r > 15 {
+		die("invalid reg");
+	}
+	if op != OP_PUSHR && op != OP_POPR || r > 7 {
+		as_rex(a, op, r, 0, 0);
+	}
+	as_op(a, op + (r & 7));
+}
+
+as_opri64(a: *assembler, op: int, r: int, x: int) {
+	if op != OP_MOVABS {
+		die("only movabs");
+	}
+	as_opr(a, op, r);
+	as_emit(a, x);
+	as_emit(a, x >> 8);
+	as_emit(a, x >> 16);
+	as_emit(a, x >> 24);
+	as_emit(a, x >> 32);
+	as_emit(a, x >> 40);
+	as_emit(a, x >> 48);
+	as_emit(a, x >> 56);
+}
+
+// modrm
+as_modrr(a: *assembler, op: int, r: int, b: int) {
+	if r < 0 || r > 15 || b < 0 || b > 15 {
+		die("invalid reg");
+	}
+	as_rex(a, op, r, 0, b);
+	as_op(a, op);
+	as_emit(a, 0xc0 + ((r << 3) & 0x38) + (b & 0x07));
+}
+
+// modrm /op
+as_modr(a: *assembler, op: int, b: int) {
+	as_modrr(a, op & 0xff, op >> 8, b);
+}
+
+// modrm + sib + disp
+as_modrm(a: *assembler, op: int, r: int, b: int, i: int, s: int, d: int) {
+	var sib: int;
+	var mod: int;
+	var rm: int;
+	var dw: int;
+
+	if r < 0 || r > 15 {
+		die("invalid reg");
+	}
+
+	rm = (r << 3) & 0x38;
+
+	if d != 0 {
+		if d >= -128 && d <= 127 {
+			mod = 1;
+			dw = 1;
+		} else {
+			mod = 2;
+			dw = 4;
+		}
+	} else {
+		mod = 0;
+		dw = 0;
+	}
+
+	if mod == 0 {
+		if b < 0 || b > 16 {
+			die("invalid reg");
+		}
+
+		if s {
+			if b == R_RIP {
+				die("invalid base");
+			}
+
+			if i == R_RSP {
+				die("invalid index");
+			}
+
+			rm = rm + R_RSP;
+		} else {
+			if i != 0 {
+				die("invalid index");
+			}
+
+			if b == R_RIP {
+				mod = 0;
+				dw = 4;
+				rm = rm + R_RBP;
+			} else if b == R_RSP || b == R_R12 {
+				s = 1;
+				i = R_RSP;
+				rm = rm + R_RSP;
+			} else if b == R_RBP || b == R_R13 {
+				mod = 1;
+				dw = 1;
+				rm = rm + R_RBP;
+			} else {
+				rm = rm + (b & 7);
+			}
+		}
+	} else {
+		if b < 0 || b > 16 || i < 0 || i > 15 {
+			die("invalid reg");
+		}
+
+		if s {
+			if b == R_RIP {
+				die("invalid base");
+			}
+
+			if i == R_RSP {
+				die("invalid index");
+			}
+
+			rm = rm + R_RSP;
+		} else {
+			if i != 0 {
+				die("invalid index");
+			}
+
+			if b == R_RIP {
+				mod = 0;
+				dw = 4;
+				rm = rm + R_RBP;
+			} else if b == R_RSP || b == R_R12 {
+				s = 1;
+				i = R_RSP;
+				rm = rm + R_RSP;
+			} else {
+				rm = rm + (b & 7);
+			}
+		}
+	}
+
+	as_rex(a, op, r, i, b);
+	as_op(a, op);
+	as_emit(a, (mod << 6) + rm);
+
+	if s {
+		sib = ((i << 3) & 0x38) + (b & 0x07);
+		if s == 2 {
+			sib = sib + 0x40;
+		} else if s == 4 {
+			sib = sib + 0x80;
+		} else if s == 8 {
+			sib = sib + 0xc0;
+		} else if s != 1 {
+			die("invalid scale");
+		}
+		as_emit(a, sib);
+	}
+
+	if dw == 1 {
+		as_emit(a, d);
+	} else if dw == 4 {
+		as_emit(a, d);
+		as_emit(a, d >> 8);
+		as_emit(a, d >> 16);
+		as_emit(a, d >> 24);
+	}
+}
+
+// modrm /op
+as_modm(a: *assembler, op: int, b: int, i: int, s: int, d: int) {
+	as_modrm(a, op & 0xff, op >> 8, b, i, s, d);
+}
+
+as_modri(a: *assembler, op: int, r: int, x: int) {
+	if x < -(1 << 31) || x >= (1 << 31) {
+		die("immediate too large");
+	}
+	as_modrr(a, op & 0xff, op >> 8, r);
+	as_emit(a, x);
+	as_emit(a, x >> 8);
+	as_emit(a, x >> 16);
+	as_emit(a, x >> 24);
+}
+
+as_jmp(a: *assembler, op: int, l: *label) {
+	reserve(a, 16);
+	as_op(a, op);
+	as_emit(a, 0);
+	as_emit(a, 0);
+	as_emit(a, 0);
+	as_emit(a, 0);
+	addfixup(a, l);
 }

@@ -3520,14 +3520,21 @@ emit_jmp(struct label *l)
 }
 
 void
-emit_num(int x)
+emit_num(long x)
 {
-	// push x
-	emit(0x68);
+	// movabs rdx, x
+	emit(0x48);
+	emit(0xba);
 	emit(x);
 	emit(x >> 8);
 	emit(x >> 16);
 	emit(x >> 24);
+	emit(x >> 32);
+	emit(x >> 40);
+	emit(x >> 48);
+	emit(x >> 56);
+	// push rdx
+	emit(0x52);
 }
 
 void
@@ -3592,7 +3599,7 @@ emit_preamble(int n, int start)
 	if (start) {
 		// xor rbp, rbp
 		emit(0x48);
-		emit(0x31);
+		emit(0x33);
 		emit(0xed);
 		// mov rdi, [rsp]
 		emit(0x48);
@@ -3624,8 +3631,8 @@ emit_preamble(int n, int start)
 	emit(0x55);
 	// mov rbp, rsp
 	emit(0x48);
-	emit(0x89);
-	emit(0xe5);
+	emit(0x8b);
+	emit(0xec);
 	i = 0;
 	while (1) {
 		if (i >= n) {
@@ -3645,6 +3652,7 @@ emit_store(struct type *t)
 	emit(0x58);
 	if (t->kind == TY_BYTE) {
 		// mov [rdi], al
+		emit(0x40);
 		emit(0x88);
 		emit(0x07);
 	} else if (type_isprim(t)) {
@@ -3667,9 +3675,10 @@ emit_load(struct type *t)
 	if (t->kind == TY_BYTE) {
 		// xor rax, rax
 		emit(0x48);
-		emit(0x31);
+		emit(0x33);
 		emit(0xc0);
 		// mov al, [rdi]
+		emit(0x40);
 		emit(0x8a);
 		emit(0x07);
 	} else if (type_isprim(t)) {
@@ -3704,14 +3713,22 @@ emit_lea(struct vdecl *v)
 {
 	int offset;
 	offset = v->offset;
-	// lea rax, [rbp + v]
-	emit(0x48);
-	emit(0x8d);
-	emit(0x85);
-	emit(offset);
-	emit(offset >> 8);
-	emit(offset >> 16);
-	emit(offset >> 24);
+	if (offset >= -128 && offset <= 127) {
+		// lea rax, [rbp + v]
+		emit(0x48);
+		emit(0x8d);
+		emit(0x45);
+		emit(offset);
+	} else {
+		// lea rax, [rbp + v]
+		emit(0x48);
+		emit(0x8d);
+		emit(0x85);
+		emit(offset);
+		emit(offset >> 8);
+		emit(offset >> 16);
+		emit(offset >> 24);
+	}
 	// push rax
 	emit(0x50);
 }
@@ -3725,8 +3742,8 @@ emit_and(void)
 	emit(0x5a);
 	// and rdx, rax
 	emit(0x48);
-	emit(0x21);
-	emit(0xd0);
+	emit(0x23);
+	emit(0xc2);
 	// push rax
 	emit(0x50);
 }
@@ -3740,8 +3757,8 @@ emit_or(void)
 	emit(0x5a);
 	// or rdx, rax
 	emit(0x48);
-	emit(0x09);
-	emit(0xd0);
+	emit(0x0b);
+	emit(0xc2);
 	// push rax
 	emit(0x50);
 }
@@ -3755,8 +3772,8 @@ emit_xor(void)
 	emit(0x5a);
 	// xor rdx, rax
 	emit(0x48);
-	emit(0x31);
-	emit(0xd0);
+	emit(0x33);
+	emit(0xc2);
 	// push rax
 	emit(0x50);
 }
@@ -3770,8 +3787,8 @@ emit_add(void)
 	emit(0x5a);
 	// add rdx, rax
 	emit(0x48);
-	emit(0x01);
-	emit(0xd0);
+	emit(0x03);
+	emit(0xc2);
 	// push rax
 	emit(0x50);
 }
@@ -3783,12 +3800,24 @@ emit_ret(void)
 	emit(0x58);
 	// mov rsp, rbp
 	emit(0x48);
-	emit(0x89);
-	emit(0xec);
+	emit(0x8b);
+	emit(0xe5);
 	// pop rbp
 	emit(0x5d);
 	// ret
 	emit(0xc3);
+}
+
+void
+emit_lcall(struct label *l, int n)
+{
+	// call l
+	emit(0xe8);
+	addfixup(l);
+	// add rsp, 8*(n+1)
+	emit_pop(n);
+	// push rax
+	emit(0x50);
 }
 
 void
@@ -3814,13 +3843,14 @@ emit_gt(void)
 	emit(0x59);
 	// xor rax, rax
 	emit(0x48);
-	emit(0x31);
+	emit(0x33);
 	emit(0xc0);
 	// cmp rdx, rcx
 	emit(0x48);
-	emit(0x39);
-	emit(0xca);
+	emit(0x3b);
+	emit(0xd1);
 	// setg al
+	emit(0x48);
 	emit(0x0f);
 	emit(0x9f);
 	emit(0xc0);
@@ -3837,13 +3867,14 @@ emit_lt(void)
 	emit(0x59);
 	// xor rax, rax
 	emit(0x48);
-	emit(0x31);
+	emit(0x33);
 	emit(0xc0);
 	// cmp rdx, rcx
 	emit(0x48);
-	emit(0x39);
-	emit(0xca);
+	emit(0x3b);
+	emit(0xd1);
 	// setl al
+	emit(0x48);
 	emit(0x0f);
 	emit(0x9c);
 	emit(0xc0);
@@ -3860,13 +3891,14 @@ emit_ge(void)
 	emit(0x59);
 	// xor rax, rax
 	emit(0x48);
-	emit(0x31);
+	emit(0x33);
 	emit(0xc0);
 	// cmp rdx, rcx
 	emit(0x48);
-	emit(0x39);
-	emit(0xca);
+	emit(0x3b);
+	emit(0xd1);
 	// setge al
+	emit(0x48);
 	emit(0x0f);
 	emit(0x9d);
 	emit(0xc0);
@@ -3883,13 +3915,14 @@ emit_le(void)
 	emit(0x59);
 	// xor rax, rax
 	emit(0x48);
-	emit(0x31);
+	emit(0x33);
 	emit(0xc0);
 	// cmp rdx, rcx
 	emit(0x48);
-	emit(0x39);
-	emit(0xca);
+	emit(0x3b);
+	emit(0xd1);
 	// setle al
+	emit(0x48);
 	emit(0x0f);
 	emit(0x9e);
 	emit(0xc0);
@@ -3906,13 +3939,14 @@ emit_eq(void)
 	emit(0x59);
 	// xor rax, rax
 	emit(0x48);
-	emit(0x31);
+	emit(0x33);
 	emit(0xc0);
 	// cmp rdx, rcx
 	emit(0x48);
-	emit(0x39);
-	emit(0xca);
+	emit(0x3b);
+	emit(0xd1);
 	// sete al
+	emit(0x48);
 	emit(0x0f);
 	emit(0x94);
 	emit(0xc0);
@@ -3929,13 +3963,14 @@ emit_ne(void)
 	emit(0x59);
 	// xor rax, rax
 	emit(0x48);
-	emit(0x31);
+	emit(0x33);
 	emit(0xc0);
 	// cmp rdx, rcx
 	emit(0x48);
-	emit(0x39);
-	emit(0xca);
+	emit(0x3b);
+	emit(0xd1);
 	// setne al
+	emit(0x48);
 	emit(0x0f);
 	emit(0x95);
 	emit(0xc0);
@@ -3952,8 +3987,8 @@ emit_sub(void)
 	emit(0x5a);
 	// sub rax, rdx
 	emit(0x48);
-	emit(0x29);
-	emit(0xd0);
+	emit(0x2b);
+	emit(0xc2);
 	// push rax
 	emit(0x50);
 }
@@ -3982,13 +4017,14 @@ emit_div(void)
 	emit(0x59);
 	// xor rdx, rdx
 	emit(0x48);
-	emit(0x31);
+	emit(0x33);
 	emit(0xd2);
 	// test rax, rax
 	emit(0x48);
 	emit(0x85);
 	emit(0xc0);
 	// sets dl
+	emit(0x48);
 	emit(0x0f);
 	emit(0x98);
 	emit(0xc2);
@@ -4013,13 +4049,14 @@ emit_mod(void)
 	emit(0x59);
 	// xor rdx, rdx
 	emit(0x48);
-	emit(0x31);
+	emit(0x33);
 	emit(0xd2);
 	// test rax, rax
 	emit(0x48);
 	emit(0x85);
 	emit(0xc0);
 	// sets dl
+	emit(0x48);
 	emit(0x0f);
 	emit(0x98);
 	emit(0xc2);
@@ -4336,8 +4373,8 @@ add_stdlib(void)
 		emit(0x55);
 		// mov rbp, rsp
 		emit(0x48);
-		emit(0x89);
-		emit(0xe5);
+		emit(0x8b);
+		emit(0xec);
 		// mov rax, [rbp + 16]
 		emit(0x48);
 		emit(0x8b);
@@ -4382,8 +4419,8 @@ add_stdlib(void)
 		emit(0x58);
 		// mov rsp, rbp
 		emit(0x48);
-		emit(0x89);
-		emit(0xec);
+		emit(0x8b);
+		emit(0xe5);
 		// pop rbp
 		emit(0x5d);
 		// ret
@@ -4462,8 +4499,20 @@ texpr(struct node *n, int rhs)
 		if (n->b) {
 			texpr(n->b, 1);
 		}
-		texpr(n->a, 0);
-		emit_call(nargs);
+		if (n->a->kind == N_IDENT) {
+			v = vfind(curfunc, n->a->s, 0);
+			if (v) {
+				emit_lea(v);
+				emit_load(n->a->t);
+				emit_call(nargs);
+			} else {
+				d = find(n->a->s);
+				emit_lcall(d->label, nargs);
+			}
+		} else {
+			texpr(n->a, 0);
+			emit_call(nargs);
+		}
 	} else if (kind == N_DOT) {
 		texpr(n->a, 0);
 		if (n->a->t->kind == TY_PTR) {

@@ -6,10 +6,12 @@ uptodate() {
 	target=$1
 	shift
 	if ! [ -f "${target}" ]; then
+		echo "[B] ${target}" >&2
 		return 1
 	fi
 	while [ $# -gt 0 ]; do
 		if ! [ -f "$1" ] || [ "$1" -nt "${target}" ]; then
+			echo "[B] ${target}" >&2
 			return 1
 		fi
 		shift
@@ -28,10 +30,10 @@ GENLEX_SOURCES="genlex.c ${LIBS}"
 uptodate cc0 cc0.c || ${CC} ${CFLAGS} ./cc0.c -o cc0 || { rm -f cc0; echo "bootstrap failed" >&2; exit 1; }
 
 # Then use the bootstrap to compile the compiler
-uptodate cc1 ${SOURCES} || ./cc0 ${SOURCES} -o cc1 || { rm -f cc1; echo "cc0 failed" >&2; exit 1; }
+uptodate cc1 cc0 ${SOURCES} || ./cc0 ${SOURCES} -o cc1 || { rm -f cc1; echo "cc0 failed" >&2; exit 1; }
 
 # Then compile the compiler with itself
-uptodate cc2 cc1 ${SOURCES} && false || ./cc1 ${SOURCES} -o cc2 || { rm -f cc2; echo "cc1 failed" >&2; exit 1; }
+uptodate cc2 cc1 ${SOURCES} || ./cc1 ${SOURCES} -o cc2 || { rm -f cc2; echo "cc1 failed" >&2; exit 1; }
 
 # And check our work
 diff <(xxd cc1) <(xxd cc2) || :
