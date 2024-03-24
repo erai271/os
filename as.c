@@ -19,7 +19,66 @@ enum {
 }
 
 enum {
-	PLACEHOLDER = 128,
+	CC_O  = 0x00,
+	CC_NO = 0x01,
+	CC_B  = 0x02,
+	CC_AE = 0x03,
+	CC_E  = 0x04,
+	CC_NE = 0x05,
+	CC_BE = 0x06,
+	CC_A  = 0x07,
+	CC_S  = 0x08,
+	CC_NS = 0x09,
+	CC_P  = 0x0a,
+	CC_NP = 0x0b,
+	CC_L  = 0x0c,
+	CC_GE = 0x0d,
+	CC_LE = 0x0e,
+	CC_G  = 0x0f,
+}
+
+enum {
+	OP_NOP = 0x90,
+	OP_RET = 0xc3,
+	OP_CALL = 0xe8,
+	OP_JMP = 0xe9,
+	OP_JCC = 0x0f80,
+	OP_SETCC = 0x0f90,
+
+	OP_ICALLM = 0x02ff,
+
+	OP_NOTM = 0x02f7,
+	OP_NEGM = 0x03f7,
+
+	OP_ANDRM = 0x23,
+	OP_ORRM = 0x0b,
+	OP_CMPRM = 0x3b,
+	OP_TESTRM = 0x85,
+	OP_SUBRM = 0x2b,
+	OP_ADDRM = 0x03,
+	OP_XORRM = 0x33,
+
+	OP_ADDI = 0x0081,
+
+	OP_IMULM = 0x04f7,
+	OP_IDIVM = 0x07f7,
+	OP_SHLM = 0x04d3,
+	OP_SHRM = 0x05d3,
+
+	OP_PUSHR = 0x50,
+
+	OP_POPR = 0x58,
+
+	OP_MOVABS = 0xb8,
+
+	OP_SYSCALL = 0x0f05,
+
+	OP_LEA = 0x8d,
+	OP_LOAD = 0x8b,
+	OP_LOADB = 0x8a,
+	OP_STOREB = 0x88,
+	OP_STORE = 0x89,
+	OP_MOVE = 0x8b,
 }
 
 struct fixup {
@@ -187,7 +246,7 @@ fixup_label(c: *assembler, l: *label) {
 
 emit_ptr(c: *assembler, l: *label) {
 	reserve(c, 16);
-	as_modrm(c, OP_LEA, R_RAX, R_RIP, 0, 0, PLACEHOLDER);
+	as_modrm(c, OP_LEA, R_RAX, R_RIP, 0, 0, 128);
 	addfixup(c, l);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
@@ -701,69 +760,6 @@ writeout(c: *assembler, start: *label) {
 	}
 
 	fflush(c.out);
-}
-
-enum {
-	CC_O  = 0x00,
-	CC_NO = 0x01,
-	CC_B  = 0x02,
-	CC_AE = 0x03,
-	CC_E  = 0x04,
-	CC_NE = 0x05,
-	CC_BE = 0x06,
-	CC_A  = 0x07,
-	CC_S  = 0x08,
-	CC_NS = 0x09,
-	CC_P  = 0x0a,
-	CC_NP = 0x0b,
-	CC_L  = 0x0c,
-	CC_GE = 0x0d,
-	CC_LE = 0x0e,
-	CC_G  = 0x0f,
-}
-
-enum {
-	OP_NOP = 0x90,
-	OP_RET = 0xc3,
-	OP_CALL = 0xe8,
-	OP_JMP = 0xe9,
-	OP_JCC = 0x0f80,
-	OP_SETCC = 0x0f90,
-
-	OP_ICALLM = 0x02ff,
-
-	OP_NOTM = 0x02f7,
-	OP_NEGM = 0x03f7,
-
-	OP_ANDRM = 0x23,
-	OP_ORRM = 0x0b,
-	OP_CMPRM = 0x3b,
-	OP_TESTRM = 0x85,
-	OP_SUBRM = 0x2b,
-	OP_ADDRM = 0x03,
-	OP_XORRM = 0x33,
-
-	OP_ADDI = 0x0081,
-
-	OP_IMULM = 0x04f7,
-	OP_IDIVM = 0x07f7,
-	OP_SHLM = 0x04d3,
-	OP_SHRM = 0x05d3,
-
-	OP_PUSHR = 0x50,
-
-	OP_POPR = 0x58,
-
-	OP_MOVABS = 0xb8,
-
-	OP_SYSCALL = 0x0f05,
-
-	OP_LEA = 0x8d,
-	OP_LOAD = 0x8b,
-	OP_LOADB = 0x8a,
-	OP_STOREB = 0x88,
-	OP_STORE = 0x89,
-	OP_MOVE = 0x8b,
 }
 
 as_emit(a: *assembler, b: int) {
