@@ -1274,6 +1274,8 @@ main(argc: int, argv: **byte, envp: **byte) {
 	var c: *compiler;
 	var p: *node;
 	var d: *decl;
+	var start: *label;
+	var kstart: *label;
 	var i: int;
 
 	setup_alloc(&a);
@@ -1327,10 +1329,17 @@ main(argc: int, argv: **byte, envp: **byte) {
 		emit_ret(c.as);
 	}
 
+	start = 0: *label;
 	d = find(c, "_start", 0:*byte, 0);
-	if (!d || !d.func_defined) {
-		die("no _start");
+	if (d && d.func_defined) {
+		start = d.func_label;
 	}
 
-	writeout(c.as, d.func_label);
+	kstart = 0: *label;
+	d = find(c, "_kstart", 0:*byte, 0);
+	if (d && d.func_defined) {
+		kstart = d.func_label;
+	}
+
+	writeout(c.as, start, kstart);
 }

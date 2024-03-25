@@ -39,16 +39,24 @@ enum {
 
 enum {
 	OP_NOP = 0x90,
+
 	OP_RET = 0xc3,
 	OP_CALL = 0xe8,
 	OP_JMP = 0xe9,
 	OP_JCC = 0x0f80,
 	OP_SETCC = 0x0f90,
 
-	OP_ICALLM = 0x02ff,
+	OP_PUSHF = 0x9c,
+	OP_IRET = 0xcf,
+	OP_IRETQ = 0x48cf,
+	OP_WRMSR = 0x0f30,
+	OP_WRCRM = 0x0f20,
+	OP_LGDTM = 0x020f01,
 
-	OP_NOTM = 0x02f7,
-	OP_NEGM = 0x03f7,
+	OP_ICALLM = 0x0200ff,
+
+	OP_NOTM = 0x0200f7,
+	OP_NEGM = 0x0300f7,
 
 	OP_ANDRM = 0x23,
 	OP_ORRM = 0x0b,
@@ -60,10 +68,10 @@ enum {
 
 	OP_ADDI = 0x0081,
 
-	OP_IMULM = 0x04f7,
-	OP_IDIVM = 0x07f7,
-	OP_SHLM = 0x04d3,
-	OP_SHRM = 0x05d3,
+	OP_IMULM = 0x0400f7,
+	OP_IDIVM = 0x0700f7,
+	OP_SHLM = 0x0400d3,
+	OP_SHRM = 0x0500d3,
 
 	OP_PUSHR = 0x50,
 
@@ -536,12 +544,18 @@ emit_syscall(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-writeout(c: *assembler, start: *label) {
+writeout(c: *assembler, start: *label, kstart: *label) {
 	var b: *chunk;
 	var i: int;
 	var text_size: int;
+	var text_end: int;
 	var load_addr: int;
 	var entry: int;
+	var kentry: int;
+	var mb_magic: int;
+	var mb_flags: int;
+	var mb_checksum: int;
+	var mb_addr: int;
 
 	if (!c.out) {
 		open_output(c, "a.out");
@@ -554,8 +568,21 @@ writeout(c: *assembler, start: *label) {
 		die("_start is not defined");
 	}
 
-	entry = load_addr + start.at + 128;
-	text_size = text_size + 128;
+	entry = load_addr + start.at + 128 + 32;
+	text_size = text_size + 128 + 32;
+	text_end = load_addr + text_size;
+
+	mb_magic = 0x1badb002;
+	mb_flags = 0x00010003;
+	mb_checksum = -(mb_magic + mb_flags);
+	mb_addr = load_addr + 120;
+
+	if (kstart && kstart.fixed) {
+		kentry = load_addr + kstart.at + 128 + 32;
+	} else {
+		mb_magic = 0;
+		kentry = 0;
+	}
 
 	// magic
 	putchar(c, 0x7f);
@@ -733,6 +760,54 @@ writeout(c: *assembler, start: *label) {
 	putchar(c, 0);
 	putchar(c, 0);
 
+	// multiboot magic
+	putchar(c, mb_magic);
+	putchar(c, mb_magic >> 8);
+	putchar(c, mb_magic >> 16);
+	putchar(c, mb_magic >> 24);
+
+	// multiboot flags
+	putchar(c, mb_flags);
+	putchar(c, mb_flags >> 8);
+	putchar(c, mb_flags >> 16);
+	putchar(c, mb_flags >> 24);
+
+	// multboot checksum
+	putchar(c, mb_checksum);
+	putchar(c, mb_checksum >> 8);
+	putchar(c, mb_checksum >> 16);
+	putchar(c, mb_checksum >> 24);
+
+	// multiboot header_addr
+	putchar(c, mb_addr);
+	putchar(c, mb_addr >> 8);
+	putchar(c, mb_addr >> 16);
+	putchar(c, mb_addr >> 24);
+
+	// multiboot load_addr
+	putchar(c, load_addr);
+	putchar(c, load_addr >> 8);
+	putchar(c, load_addr >> 16);
+	putchar(c, load_addr >> 24);
+
+	// multiboot load_end_addr
+	putchar(c, text_end);
+	putchar(c, text_end >> 8);
+	putchar(c, text_end >> 16);
+	putchar(c, text_end >> 24);
+
+	// multiboot bss_end_addr
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+	putchar(c, 0);
+
+	// entry_addr
+	putchar(c, kentry);
+	putchar(c, kentry >> 8);
+	putchar(c, kentry >> 16);
+	putchar(c, kentry >> 24);
+
 	// nop sled
 	putchar(c, OP_NOP);
 	putchar(c, OP_NOP);
@@ -822,7 +897,7 @@ as_modrr(a: *assembler, op: int, r: int, b: int) {
 
 // modrm /op
 as_modr(a: *assembler, op: int, b: int) {
-	as_modrr(a, op & 0xff, op >> 8, b);
+	as_modrr(a, op & 0xffff, op >> 16, b);
 }
 
 // modrm + sib + disp

@@ -4137,12 +4137,34 @@ writeout(void)
 	int entry;
 	struct decl *d;
 	struct buf *b;
-
-	load_addr = 0x100000;
+	int kentry;
+	int magic;
+	int flags;
+	int checksum;
+	int addr;
+	int end;
 
 	d = find((unsigned char *)"_start");
 	if (!d->defined || !d->label->fixed) {
 		die("no _start function");
+	}
+
+	load_addr = 0x100000;
+	entry = load_addr + d->label->at + 128 + 32;
+	at = at + 128 + 32;
+	end = load_addr + at;
+
+	magic = 0x1badb002;
+	flags = 0x00010003;
+	checksum = -(magic + flags);
+	addr = load_addr + 120;
+
+	d = find((unsigned char *)"_kstart");
+	if (d->defined && d->label->fixed) {
+		kentry = load_addr + d->label->at +128 + 32;
+	} else {
+		magic = 0;
+		kentry = 0;
 	}
 
 	// magic
@@ -4188,8 +4210,6 @@ writeout(void)
 	fputc(0, fout);
 	fputc(0, fout);
 	fputc(0, fout);
-
-	entry = load_addr + d->label->at + 128;
 
 	// entry point
 	fputc(entry, fout);
@@ -4293,8 +4313,6 @@ writeout(void)
 	fputc(0, fout);
 	fputc(0, fout);
 
-	at = at + 128;
-
 	// phdr[0].filesize
 	fputc(at, fout);
 	fputc(at >> 8, fout);
@@ -4324,6 +4342,54 @@ writeout(void)
 	fputc(0, fout);
 	fputc(0, fout);
 	fputc(0, fout);
+
+	// mb.magic
+	fputc(magic, fout);
+	fputc(magic >> 8, fout);
+	fputc(magic >> 16, fout);
+	fputc(magic >> 24, fout);
+
+	// mb.flags
+	fputc(flags, fout);
+	fputc(flags >> 8, fout);
+	fputc(flags >> 16, fout);
+	fputc(flags >> 24, fout);
+
+	// mb.checksum
+	fputc(checksum, fout);
+	fputc(checksum >> 8, fout);
+	fputc(checksum >> 16, fout);
+	fputc(checksum >> 24, fout);
+
+	// mb.header
+	fputc(addr, fout);
+	fputc(addr >> 8, fout);
+	fputc(addr >> 16, fout);
+	fputc(addr >> 24, fout);
+
+	// mb.load
+	fputc(load_addr, fout);
+	fputc(load_addr >> 8, fout);
+	fputc(load_addr >> 16, fout);
+	fputc(load_addr >> 24, fout);
+
+	// mb.load_end
+	fputc(end, fout);
+	fputc(end >> 8, fout);
+	fputc(end >> 16, fout);
+	fputc(end >> 24, fout);
+
+	// mb.bss_end
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// mb.entry
+	fputc(kentry, fout);
+	fputc(kentry >> 8, fout);
+	fputc(kentry >> 16, fout);
+	fputc(kentry >> 24, fout);
 
 	// nop sled
 	fputc(0x90, fout);
