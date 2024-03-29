@@ -303,6 +303,7 @@ compile_func(c: *compiler, d: *decl) {
 	var t: *type;
 	var offset: int;
 	var n: *node;
+	var pragma: int;
 
 	if (!d.func_def) {
 		return;
@@ -335,10 +336,18 @@ compile_func(c: *compiler, d: *decl) {
 	// Hoist locals
 	offset = hoist_locals(c, d, d.func_def.b, 0);
 
+	if (!strcmp(d.name, "_start")) {
+		pragma = 1;
+	} else if (!strcmp(d.name, "_kstart")) {
+		pragma = 2;
+	} else {
+		pragma = 0;
+	}
+
 	// Compile the function body
 	emit_str(c.as, d.name);
 	fixup_label(c.as, d.func_label);
-	emit_preamble(c.as, offset, !strcmp(d.name, "_start"));
+	emit_preamble(c.as, offset, pragma);
 	compile_stmt(c, d, d.func_def.b, 0:*label, 0:*label);
 	emit_num(c.as, 0);
 	emit_ret(c.as);

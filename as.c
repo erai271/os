@@ -16,6 +16,22 @@ enum {
 	R_R14,
 	R_R15,
 	R_RIP,
+
+	R_ES = 0,
+	R_CS = 1,
+	R_SS = 2,
+	R_DS = 3,
+	R_FS = 4,
+	R_GS = 5,
+
+	R_CR0 = 0,
+	R_CR1 = 1,
+	R_CR2 = 2,
+	R_CR3 = 3,
+	R_CR4 = 4,
+	R_CR5 = 5,
+	R_CR6 = 6,
+	R_CR7 = 7,
 }
 
 enum {
@@ -38,7 +54,21 @@ enum {
 }
 
 enum {
+	OP_CLD = 0xfc,
+	OP_CLI = 0xfa,
+	OP_STI = 0xfb,
+	OP_CPUID = 0x0fa2,
+	OP_IN = 0xec,
+	OP_OUT = 0xee,
+	OP_HLT = 0xf4,
 	OP_NOP = 0x90,
+	OP_WBINVD = 0x0f09,
+
+	OP_INVLPGM = 0x070f01,
+	OP_LLDM = 0x020f00,
+	OP_LTRM = 0x030f00,
+
+	OP_MOVSRM = 0x8e,
 
 	OP_RET = 0xc3,
 	OP_CALL = 0xe8,
@@ -50,8 +80,12 @@ enum {
 	OP_IRET = 0xcf,
 	OP_IRETQ = 0x48cf,
 	OP_WRMSR = 0x0f30,
-	OP_WRCRM = 0x0f20,
+	OP_RDMSR = 0x0f32,
+	OP_RDCRR = 0x0f20,
+	OP_WRCRR = 0x0f22,
 	OP_LGDTM = 0x020f01,
+	OP_LIDTM = 0x030f01,
+	OP_LLDTM = 0x020f00,
 
 	OP_ICALLM = 0x0200ff,
 
@@ -64,9 +98,14 @@ enum {
 	OP_TESTRM = 0x85,
 	OP_SUBRM = 0x2b,
 	OP_ADDRM = 0x03,
+	OP_ADCRM = 0x13,
 	OP_XORRM = 0x33,
 
-	OP_ADDI = 0x0081,
+	OP_ANDI = 0x040081,
+	OP_ADDI = 0x000081,
+	OP_SUBI = 0x050081,
+	OP_ORI = 0x010081,
+	OP_CMPI = 0x070081,
 
 	OP_IMULM = 0x0400f7,
 	OP_IDIVM = 0x0700f7,
@@ -77,6 +116,7 @@ enum {
 
 	OP_POPR = 0x58,
 
+	OP_MOVI = 0x00c7,
 	OP_MOVABS = 0xb8,
 
 	OP_SYSCALL = 0x0f05,
@@ -114,6 +154,7 @@ struct assembler {
 	at: int;
 	text: *chunk;
 	text_end: *chunk;
+	bits32: int;
 }
 
 setup_assembler(a: *alloc): *assembler {
@@ -124,6 +165,7 @@ setup_assembler(a: *alloc): *assembler {
 	c.at = 0;
 	c.text = 0:*chunk;
 	c.text_end = 0:*chunk;
+	c.bits32 = 0;
 	return c;
 }
 
@@ -307,9 +349,188 @@ emit_pop(c: *assembler, n: int) {
 	as_modri(c, OP_ADDI, R_RSP, n << 3);
 }
 
-emit_preamble(c: *assembler, n: int, start: int) {
+emit_kstart(c: *assembler) {
+	var hang: *label;
+	var loop_top: *label;
+	var do_iret: *label;
+	var do_ret: *label;
+	var done: *label;
+
+	c.bits32 = 1;
+
+	hang = mklabel(c);
+	loop_top = mklabel(c);
+	do_iret = mklabel(c);
+	do_ret = mklabel(c);
+	done = mklabel(c);
+
+	// Check for valid multiboot magic
+	as_modri(c, OP_MOVI, R_RDX, 0x2badb002);
+	as_modrr(c, OP_CMPRM, R_RAX, R_RDX);
+	as_jmp(c, OP_JCC + CC_NE, hang);
+
+	// Setup an early stack
+	as_modri(c, OP_MOVI, R_RSP, 0x00080000);
+
+	// Allocate space for the gdt
+	as_modri(c, OP_SUBI, R_RSP, 64);
+	as_modrr(c, OP_MOVE, R_RBP, R_RSP);
+
+	// Align stack to page
+	as_modri(c, OP_ANDI, R_RSP, -0x1000);
+
+	// Null Segment
+	as_modri(c, OP_MOVI, R_RAX, 0x00000000);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 8);
+	as_modri(c, OP_MOVI, R_RAX, 0x00000000);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 12);
+
+	// Kernel code segment
+	as_modri(c, OP_MOVI, R_RAX, 0x00000000);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 16);
+	as_modri(c, OP_MOVI, R_RAX, 0x00209800);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 20);
+
+	// Kernel data segment
+	as_modri(c, OP_MOVI, R_RAX, 0x00000000);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 24);
+	as_modri(c, OP_MOVI, R_RAX, 0x00009200);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 28);
+
+	// Load gdt
+	as_modri(c, OP_MOVI, R_RAX, 23);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 0);
+	as_modrm(c, OP_LEA, R_RAX, R_RBP, 0, 0, 8);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 2);
+	as_modm(c, OP_LGDTM, R_RBP, 0, 0, 0);
+
+	// Load null lldt
+	as_modri(c, OP_MOVI, R_RAX, 0);
+	as_modr(c, OP_LLDTM, R_RAX);
+
+	// Load null idt
+	as_modm(c, OP_LIDTM, R_RBP, 0, 0, 8);
+
+	// pt1 -> physical
+	as_modri(c, OP_MOVI, R_RAX, 3);
+	as_modri(c, OP_MOVI, R_RDX, 0);
+	as_modri(c, OP_MOVI, R_RDI, 0);
+	as_modri(c, OP_SUBI, R_RSP, 0x1000);
+	fixup_label(c, loop_top);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, R_RDI, 1, 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, R_RDI, 1, 4);
+	as_modri(c, OP_ADDI, R_RAX, 0x1000);
+	as_modri(c, OP_ADDI, R_RDI, 8);
+	as_modri(c, OP_CMPI, R_RDI, 0x1000);
+	as_jmp(c, OP_JCC + CC_NE, loop_top);
+
+	// pt2 -> pt1
+	as_modrr(c, OP_MOVE, R_RAX, R_RSP);
+	as_modri(c, OP_SUBI, R_RSP, 0x1000);
+	as_modri(c, OP_ORI, R_RAX, 3);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
+
+	// pt3 -> pt2
+	as_modrr(c, OP_MOVE, R_RAX, R_RSP);
+	as_modri(c, OP_SUBI, R_RSP, 0x1000);
+	as_modri(c, OP_ORI, R_RAX, 3);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 510 * 8 + 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 510 * 8 + 4);
+
+	// pt4 -> pt3
+	as_modrr(c, OP_MOVE, R_RAX, R_RSP);
+	as_modri(c, OP_SUBI, R_RSP, 0x1000);
+	as_modri(c, OP_ORI, R_RAX, 3);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 511 * 8 + 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 511 * 8 + 4);
+
+	// Load page table pt4
+	as_modrr(c, OP_WRCRR, R_CR3, R_RSP);
+
+	// Enable pae
+	as_modri(c, OP_MOVI, R_RAX, 0xa0);
+	as_modrr(c, OP_WRCRR, R_CR4, R_RAX);
+
+	// Enable long mode
+	as_modri(c, OP_MOVI, R_RCX, (-1 << 32) + (0xc0 << 24) + 0x000080);
+	as_op(c, OP_RDMSR);
+	as_modri(c, OP_ORI, R_RAX, 0x100);
+	as_op(c, OP_WRMSR);
+
+	// Enable paging
+	as_modrr(c, OP_RDCRR, R_CR0, R_RAX);
+	as_modri(c, OP_ORI, R_RAX, (-0x8000 << 16) | (0x0001));
+	as_modrr(c, OP_WRCRR, R_CR0, R_RAX);
+
+	// flags
+	as_modri(c, OP_MOVI, R_RAX, 0);
+	as_opr(c, OP_PUSHR, R_RAX);
+	// cs
+	as_modri(c, OP_MOVI, R_RAX, 8);
+	as_opr(c, OP_PUSHR, R_RAX);
+	// pointer
+	as_jmp(c, OP_CALL, do_iret);
+
+	c.bits32 = 0;
+
+	// Jump to top half
+	as_jmp(c, OP_CALL, do_ret);
+
+	// Reload the gdt in the top half
+	as_modri(c, OP_ORI, R_RBP, (-0x8000 << 16));
+	as_modri(c, OP_MOVI, R_RAX, 23);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 0);
+	as_modrm(c, OP_LEA, R_RAX, R_RBP, 0, 0, 8);
+	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 2);
+	as_modm(c, OP_LGDTM, R_RBP, 0, 0, 0);
+
+	// Reload segments
+	as_modri(c, OP_MOVI, R_RAX, 16);
+	as_modrr(c, OP_MOVSRM, R_ES, R_RAX);
+	as_modrr(c, OP_MOVSRM, R_DS, R_RAX);
+	as_modrr(c, OP_MOVSRM, R_FS, R_RAX);
+	as_modrr(c, OP_MOVSRM, R_GS, R_RAX);
+	as_modrr(c, OP_MOVSRM, R_SS, R_RAX);
+	as_modrr(c, OP_MOVE, R_RSP, R_RSP);
+
+	// Reload stack in the top half
+	as_modri(c, OP_ORI, R_RSP, (-0x8000 << 16));
+
+	// Setup a call frame for _kstart
+	as_jmp(c, OP_JMP, done);
+
+	// hlt forever
+	fixup_label(c, hang);
+	as_op(c, OP_CLI);
+	as_op(c, OP_HLT);
+	as_jmp(c, OP_JMP, hang);
+
+	// iret to long mode
+	fixup_label(c, do_iret);
+	as_op(c, OP_IRET);
+
+	// ret to top half
+	fixup_label(c, do_ret);
+	as_opr(c, OP_POPR, R_RAX);
+	as_modri(c, OP_ORI, R_RAX, (-0x8000 << 16));
+	as_opr(c, OP_PUSHR, R_RAX);
+	as_op(c, OP_RET);
+
+	// Setup a call frame for _kstart
+	fixup_label(c, done);
+	as_modrr(c, OP_XORRM, R_RBP, R_RBP);
+	as_opr(c, OP_PUSHR, R_RBX);
+	as_opr(c, OP_PUSHR, R_RBP);
+}
+
+emit_preamble(c: *assembler, n: int, pragma: int) {
 	var i: int;
-	if (start) {
+	if (pragma == 1) {
 		as_modrr(c, OP_XORRM, R_RBP, R_RBP);
 		as_modrm(c, OP_LOAD, R_RDI, R_RSP, 0, 0, 0);
 		as_modrm(c, OP_LEA, R_RSI, R_RSP, 0, 0, 8);
@@ -318,6 +539,8 @@ emit_preamble(c: *assembler, n: int, start: int) {
 		as_opr(c, OP_PUSHR, R_RSI);
 		as_opr(c, OP_PUSHR, R_RDI);
 		as_opr(c, OP_PUSHR, R_RBP);
+	} else if (pragma > 1) {
+		emit_kstart(c);
 	}
 	as_opr(c, OP_PUSHR, R_RBP);
 	as_modrr(c, OP_MOVE, R_RBP, R_RSP);
@@ -843,6 +1066,9 @@ as_emit(a: *assembler, b: int) {
 
 as_rex(a: *assembler, op: int, r: int, i: int, b: int) {
 	var w: int;
+	if a.bits32 {
+		return;
+	}
 	w = 0x08;
 	if op == OP_LOADB || op == OP_STOREB {
 		w = 0;
@@ -1026,14 +1252,14 @@ as_modrm(a: *assembler, op: int, r: int, b: int, i: int, s: int, d: int) {
 
 // modrm /op
 as_modm(a: *assembler, op: int, b: int, i: int, s: int, d: int) {
-	as_modrm(a, op & 0xff, op >> 8, b, i, s, d);
+	as_modrm(a, op & 0xffff, op >> 16, b, i, s, d);
 }
 
 as_modri(a: *assembler, op: int, r: int, x: int) {
 	if x < -(1 << 31) || x >= (1 << 31) {
 		die("immediate too large");
 	}
-	as_modrr(a, op & 0xff, op >> 8, r);
+	as_modrr(a, op & 0xffff, op >> 16, r);
 	as_emit(a, x);
 	as_emit(a, x >> 8);
 	as_emit(a, x >> 16);
