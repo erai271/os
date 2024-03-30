@@ -4918,6 +4918,12 @@ tfunc(struct decl *d)
 	tstmt(d->body);
 
 	emit_num(0);
+
+	if (!cmp(d->name, (unsigned char *)"_start")) {
+		emit(0x0f);
+		emit(0x0b);
+	}
+
 	emit_ret();
 }
 

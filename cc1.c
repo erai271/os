@@ -350,6 +350,11 @@ compile_func(c: *compiler, d: *decl) {
 	emit_preamble(c.as, offset, pragma);
 	compile_stmt(c, d, d.func_def.b, 0:*label, 0:*label);
 	emit_num(c.as, 0);
+
+	if (pragma) {
+		emit_ud(c.as);
+	}
+
 	emit_ret(c.as);
 }
 

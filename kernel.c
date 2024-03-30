@@ -1,7 +1,6 @@
 // in out iretq rdmsr wrmsr wrcr rdcr lgdt lldt lidt ltr hlt cli sti syscall sysret wbinvld invlpg
 
 _start() {
-	loop { }
 }
 
 ru32(p: *byte): int {

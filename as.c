@@ -63,6 +63,7 @@ enum {
 	OP_HLT = 0xf4,
 	OP_NOP = 0x90,
 	OP_WBINVD = 0x0f09,
+	OP_UD2 = 0x0f0b,
 
 	OP_INVLPGM = 0x070f01,
 	OP_LLDM = 0x020f00,
@@ -604,6 +605,10 @@ emit_add(c: *assembler) {
 	as_opr(c, OP_POPR, R_RDX);
 	as_modrr(c, OP_ADDRM, R_RAX, R_RDX);
 	as_opr(c, OP_PUSHR, R_RAX);
+}
+
+emit_ud(c: *assembler) {
+	as_op(c, OP_UD2);
 }
 
 emit_ret(c: *assembler) {
