@@ -351,7 +351,6 @@ emit_pop(c: *assembler, n: int) {
 
 emit_kstart(c: *assembler) {
 	var hang: *label;
-	var loop_top: *label;
 	var do_iret: *label;
 	var do_ret: *label;
 	var done: *label;
@@ -359,7 +358,6 @@ emit_kstart(c: *assembler) {
 	c.bits32 = 1;
 
 	hang = mklabel(c);
-	loop_top = mklabel(c);
 	do_iret = mklabel(c);
 	do_ret = mklabel(c);
 	done = mklabel(c);
@@ -370,14 +368,36 @@ emit_kstart(c: *assembler) {
 	as_jmp(c, OP_JCC + CC_NE, hang);
 
 	// Setup an early stack
-	as_modri(c, OP_MOVI, R_RSP, 0x00080000);
+	as_modri(c, OP_MOVI, R_RSP, 0x00200000);
+
+	// Align stack to page
+	as_modri(c, OP_ANDI, R_RSP, -0x1000);
+
+	// pt3 -> 1g
+	as_modri(c, OP_SUBI, R_RSP, 0x1000);
+	as_modri(c, OP_MOVI, R_RAX, 0x83);
+	as_modri(c, OP_MOVI, R_RDX, 0);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 510 * 8 + 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 510 * 8 + 4);
+
+	// pt4 -> pt3
+	as_modrr(c, OP_MOVE, R_RAX, R_RSP);
+	as_modri(c, OP_SUBI, R_RSP, 0x1000);
+	as_modri(c, OP_ORI, R_RAX, 3);
+	as_modri(c, OP_MOVI, R_RDX, 0);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
+	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 511 * 8 + 0);
+	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 511 * 8 + 4);
+
+	// Load page table pt4
+	as_modrr(c, OP_WRCRR, R_CR3, R_RSP);
 
 	// Allocate space for the gdt
 	as_modri(c, OP_SUBI, R_RSP, 64);
 	as_modrr(c, OP_MOVE, R_RBP, R_RSP);
-
-	// Align stack to page
-	as_modri(c, OP_ANDI, R_RSP, -0x1000);
 
 	// Null Segment
 	as_modri(c, OP_MOVI, R_RAX, 0x00000000);
@@ -410,47 +430,6 @@ emit_kstart(c: *assembler) {
 
 	// Load null idt
 	as_modm(c, OP_LIDTM, R_RBP, 0, 0, 8);
-
-	// pt1 -> physical
-	as_modri(c, OP_MOVI, R_RAX, 3);
-	as_modri(c, OP_MOVI, R_RDX, 0);
-	as_modri(c, OP_MOVI, R_RDI, 0);
-	as_modri(c, OP_SUBI, R_RSP, 0x1000);
-	fixup_label(c, loop_top);
-	as_modrm(c, OP_STORE, R_RAX, R_RSP, R_RDI, 1, 0);
-	as_modrm(c, OP_STORE, R_RDX, R_RSP, R_RDI, 1, 4);
-	as_modri(c, OP_ADDI, R_RAX, 0x1000);
-	as_modri(c, OP_ADDI, R_RDI, 8);
-	as_modri(c, OP_CMPI, R_RDI, 0x1000);
-	as_jmp(c, OP_JCC + CC_NE, loop_top);
-
-	// pt2 -> pt1
-	as_modrr(c, OP_MOVE, R_RAX, R_RSP);
-	as_modri(c, OP_SUBI, R_RSP, 0x1000);
-	as_modri(c, OP_ORI, R_RAX, 3);
-	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
-	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
-
-	// pt3 -> pt2
-	as_modrr(c, OP_MOVE, R_RAX, R_RSP);
-	as_modri(c, OP_SUBI, R_RSP, 0x1000);
-	as_modri(c, OP_ORI, R_RAX, 3);
-	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
-	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
-	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 510 * 8 + 0);
-	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 510 * 8 + 4);
-
-	// pt4 -> pt3
-	as_modrr(c, OP_MOVE, R_RAX, R_RSP);
-	as_modri(c, OP_SUBI, R_RSP, 0x1000);
-	as_modri(c, OP_ORI, R_RAX, 3);
-	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
-	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
-	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 511 * 8 + 0);
-	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 511 * 8 + 4);
-
-	// Load page table pt4
-	as_modrr(c, OP_WRCRR, R_CR3, R_RSP);
 
 	// Enable pae
 	as_modri(c, OP_MOVI, R_RAX, 0xa0);
@@ -500,6 +479,14 @@ emit_kstart(c: *assembler) {
 
 	// Reload stack in the top half
 	as_modri(c, OP_ORI, R_RSP, (-0x8000 << 16));
+
+	// Kill the lower mapping
+	as_modri(c, OP_MOVI, R_RAX, 0);
+	as_modrm(c, OP_LEA, R_RDI, R_RBP, 0, 0, 64);
+	as_modrm(c, OP_STORE, R_RAX, R_RDI, 0, 0, 4096);
+	as_modrm(c, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
+	as_modri(c, OP_ANDI, R_RDI, 0x7fffffff);
+	as_modrr(c, OP_WRCRR, R_CR3, R_RDI);
 
 	// Setup a call frame for _kstart
 	as_jmp(c, OP_JMP, done);
