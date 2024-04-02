@@ -69,7 +69,8 @@ enum {
 	OP_LLDM = 0x020f00,
 	OP_LTRM = 0x030f00,
 
-	OP_MOVSRM = 0x8e,
+	OP_WRSR = 0x8e,
+	OP_RDSR = 0x8c,
 
 	OP_RET = 0xc3,
 	OP_CALL = 0xe8,
@@ -78,6 +79,7 @@ enum {
 	OP_SETCC = 0x0f90,
 
 	OP_PUSHF = 0x9c,
+	OP_POPF = 0x9d,
 	OP_IRET = 0xcf,
 	OP_IRETQ = 0x48cf,
 	OP_WRMSR = 0x0f30,
@@ -369,7 +371,7 @@ emit_kstart(c: *assembler) {
 	as_jmp(c, OP_JCC + CC_NE, hang);
 
 	// Setup an early stack
-	as_modri(c, OP_MOVI, R_RSP, 0x00200000);
+	as_modri(c, OP_MOVI, R_RSP, 0x00200000);  // FIXME bss
 
 	// Align stack to page
 	as_modri(c, OP_ANDI, R_RSP, -0x1000);
@@ -471,11 +473,11 @@ emit_kstart(c: *assembler) {
 
 	// Reload segments
 	as_modri(c, OP_MOVI, R_RAX, 16);
-	as_modrr(c, OP_MOVSRM, R_ES, R_RAX);
-	as_modrr(c, OP_MOVSRM, R_DS, R_RAX);
-	as_modrr(c, OP_MOVSRM, R_FS, R_RAX);
-	as_modrr(c, OP_MOVSRM, R_GS, R_RAX);
-	as_modrr(c, OP_MOVSRM, R_SS, R_RAX);
+	as_modrr(c, OP_WRSR, R_ES, R_RAX);
+	as_modrr(c, OP_WRSR, R_DS, R_RAX);
+	as_modrr(c, OP_WRSR, R_FS, R_RAX);
+	as_modrr(c, OP_WRSR, R_GS, R_RAX);
+	as_modrr(c, OP_WRSR, R_SS, R_RAX);
 	as_modrr(c, OP_MOVE, R_RSP, R_RSP);
 
 	// Reload stack in the top half
