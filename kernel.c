@@ -181,6 +181,10 @@ bzero(s: *byte, size: int) {
 }
 
 _isr(r: *regs) {
+	if (r.trap == 2) {
+		sputs("NMI\n");
+	}
+
 	// pic end of interrupt
 	if (r.trap >= 32 && r.trap < 48) {
 		if (r.trap < 40) {
@@ -207,6 +211,62 @@ fill_idt(s: *int) {
 	}
 }
 
+memcmp(a: *byte, b: *byte, n: int): int {
+	var i: int;
+
+	i = 0;
+
+	loop {
+		if i == n {
+			return 0;
+		}
+
+		if (a[i] > b[i]) {
+			return 1;
+		}
+
+		if (a[i] < b[i]) {
+			return -1;
+		}
+
+		i = i + 1;
+	}
+}
+
+bytesum(a: *byte, n: int): byte {
+	var i: int;
+	var x: byte;
+
+	i = 0;
+	x = 0:byte;
+	loop {
+		if i == n {
+			return x;
+		}
+
+		x = x + a[i];
+
+		i = i + 1;
+	}
+}
+
+find_rsdp(): int {
+	var p: int;
+	p = 0;
+	loop {
+		if p == 0x100000 {
+			break;
+		}
+		if !memcmp((((-0x8000 << 16) + p):*byte), "RSD PTR ", 8) {
+			if !bytesum((((-0x8000 << 16) + p):*byte), 20) {
+				return p;
+			}
+		}
+		p = p + 16;
+	}
+	return 0;
+}
+
 _kstart(mb: *byte) {
 	var brk: int;
 	var tss: *int;
@@ -215,6 +275,7 @@ _kstart(mb: *byte) {
 	var idt_size: int;
 	var gdt: *int;
 	var gdt_size: int;
+	var rsdp: int;
 
 	setup_serial();
 
@@ -233,7 +294,7 @@ _kstart(mb: *byte) {
 	fill_idt(idt);
 
 	gdt = brk: *int;
-	gdt_size = 8 * 5;
+	gdt_size = 8 * 7;
 
 	// Null segment
 	gdt[0] = 0;
@@ -241,14 +302,18 @@ _kstart(mb: *byte) {
 	gdt[1] = 0x00209800 << 32;
 	// Kernel data segment
 	gdt[2] = 0x00009200 << 32;
+	// User code segment
+	gdt[3] = 0x0020f800 << 32;
+	// User data segment
+	gdt[4] = 0x0000f200 << 32;
 	// Task segment
-	gdt_tss(&gdt[3], tss: int, tss_size, 0x89, 0);
+	gdt_tss(&gdt[5], tss: int, tss_size, 0x89, 0);
 
 	// Load gdt idt tss and segments
 	lgdt(gdt, gdt_size);
 	lseg(8, 16);
 	lldt(0);
-	ltr(24);
+	ltr(5 * 8);
 	lidt(idt, idt_size);
 
 	// interrupt stack
@@ -290,6 +355,8 @@ _kstart(mb: *byte) {
 	// unmask pit
 	outb(IO_PIC1 + 1, 0xfe);
 	outb(IO_PIC2 + 1, 0xff);
+
+	rsdp = find_rsdp();
 
 	// Wait for interrupts
 	loop {
