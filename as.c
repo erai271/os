@@ -127,8 +127,10 @@ enum {
 	OP_LEA = 0x8d,
 	OP_LOAD = 0x8b,
 	OP_LOADB = 0x8a,
+	OP_LOAD16 = 0x668a,
 	OP_STOREB = 0x88,
 	OP_STORE = 0x89,
+	OP_STORE16 = 0x6689,
 	OP_MOVE = 0x8b,
 }
 

@@ -494,8 +494,8 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 			v = find(c, d.name, n.a.s, 0);
 			if (v && v.var_defined) {
 				emit_lea(c.as, v.var_offset);
-				emit_load(c.as, n.a.t);
 				n.a.t = v.var_type;
+				emit_load(c.as, n.a.t);
 				emit_call(c.as, count_args(c, n.a.t.arg));
 			} else {
 				v = find(c, n.a.s, 0:*byte, 0);
@@ -1787,6 +1787,57 @@ main(argc: int, argv: **byte, envp: **byte) {
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
                 emit_isr(c);
+	}
+
+	d = find(c, "_r32", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
+		c.as.bits32 = 1;
+		as_modrm(c.as, OP_LOAD, R_RAX, R_RSI, 0, 0, 0);
+		c.as.bits32 = 0;
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
+	}
+
+	d = find(c, "_w32", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
+		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		c.as.bits32 = 1;
+		as_modrm(c.as, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
+		c.as.bits32 = 0;
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
+	}
+
+	d = find(c, "_r16", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
+		as_modrr(c.as, OP_XORRM, R_RAX, R_RAX);
+		c.as.bits32 = 1;
+		as_modrm(c.as, OP_LOAD16, R_RAX, R_RDI, 0, 0, 0);
+		c.as.bits32 = 0;
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
+	}
+
+	d = find(c, "_w16", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
+		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		c.as.bits32 = 1;
+		as_modrm(c.as, OP_STORE16, R_RAX, R_RDI, 0, 0, 0);
+		c.as.bits32 = 0;
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
 	}
 
 	d = find(c, "taskswitch", 0:*byte, 1);
