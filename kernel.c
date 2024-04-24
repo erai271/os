@@ -184,31 +184,38 @@ bzero(s: *byte, size: int) {
 
 _isr(r: *regs) {
 	if (r.trap < 32) {
-		sputs("EX ");
-		sputd(r.trap);
-		sputs("\n");
+		//sputs("EX ");
+		//sputd(r.trap);
+		//sputs("\n");
 	}
 
 	if (r.trap == 2) {
-		sputs("NMI\n");
+		//sputs("NMI\n");
 	}
+
+	var vga: *byte;
+
+	vga = ptov(0xB8000);
+
+	vga[2] = ('A' + r.trap):byte;
+	vga[3] = 0x0e:byte;
 
 	// pic end of interrupt
 	if (r.trap >= 32 && r.trap < 48) {
 		if (r.trap == 32) {
 		} else if (r.trap == 42) {
-			sputc('n');
-			sputc('\n');
+			//sputc('n');
+			//sputc('\n');
 		} else if (r.trap == 43) {
 			// ethernet interrupt
-			sputc('e');
+			//sputc('e');
 		}
 		if (r.trap < 40) {
 			outb(IO_PIC1, 0x0b);
 			if inb(IO_PIC1) & (1 << (r.trap & 7)) {
 				outb(IO_PIC1, 0x20);
 			} else {
-				sputs("s\n");
+				//sputs("s\n");
 			}
 		} else {
 			outb(IO_PIC2, 0x0b);
@@ -216,7 +223,7 @@ _isr(r: *regs) {
 				outb(IO_PIC2, 0x20);
 				outb(IO_PIC1, 0x20);
 			} else {
-				sputs("s\n");
+				//sputs("s\n");
 			}
 		}
 	}
@@ -311,13 +318,34 @@ valid_table(p: int, sig: *byte): int {
 	return len;
 }
 
-find_rsdt(): int {
+show_addr(x: int) {
+	var vga: *byte;
+	var i: int;
+	var j: int;
+
+	vga = ptov(0xB8000);
+
+	i = 64;
+	j = 160;
+	loop {
+		if i == 0 {
+			break;
+		}
+		i = i - 4;
+		vga[j] = "0123456789abcdef"[(x >> i) & 15];
+		vga[j + 1] = 0x0e:byte;
+		j = j + 2;
+	}
+
+}
+
+find_xsdt(): int {
 	var p: int;
 
 	// Find the RDSP
-	p = 0;
+	p = 0xe0000;
 	loop {
-		if p == 0x100000 {
+		if p + 20 >= 0xfffff {
                         return 0;
 		}
 		if !memcmp(ptov(p), "RSD PTR ", 8) {
@@ -328,11 +356,13 @@ find_rsdt(): int {
 		p = p + 16;
 	}
 
-	p = _r32(ptov(p + 16));
+	//p = _r32(ptov(p + 16));
 
-	if valid_table(p, "RSDT") == 0 {
-		return 0;
-	}
+	p = ptov(p + 24):*int[0];
+	show_addr(p);
+	//if valid_table(p, "XSDT") == 0 {
+		//return 0;
+	//}
 
 	return p;
 }
@@ -723,7 +753,7 @@ init_nvme(dev: *pcidev) {
 
 }
 
-_kstart(mb: *byte) {
+_kstart(mb: int) {
 	var brk: int;
 	var tss: *int;
 	var tss_size: int;
@@ -731,13 +761,19 @@ _kstart(mb: *byte) {
 	var idt_size: int;
 	var gdt: *int;
 	var gdt_size: int;
-        var rsdt: int;
+        var xsdt: int;
         var mcfg: int;
 	var pcip: int;
 	var pci: *byte;
 	var flag: int;
+	var vga: *byte;
 
-	setup_serial();
+	vga = ptov(0xB8000);
+
+	vga[0] = 'a':byte;
+	vga[1] = 0x0e:byte;
+
+	//setup_serial();
 
 	brk = ptov(1024 * 512 * 3):int;
 
@@ -816,19 +852,22 @@ _kstart(mb: *byte) {
 	outb(IO_PIC1 + 1, 0xfa);
 	outb(IO_PIC2 + 1, 0xf3);
 
-        // Find ACPI tables
-	rsdt = find_rsdt();
-        mcfg = find_acpi(rsdt, "MCFG");
+	show_addr(ptov(mb + 44):*int[0]);
 
-	pcip = (ptov(mcfg + 44):*int)[0];
-	pci = map_pci(ptov(-(1<<31)), pcip);
+        // Find ACPI tables
+	//xsdt = find_xsdt();
+
+        //mcfg = find_acpi(xsdt, "MCFG");
+
+	//pcip = (ptov(mcfg + 44):*int)[0];
+	//pci = map_pci(ptov(-(1<<31)), pcip);
 
 	//scan_pci(pci, show_pcidev, 0:*void);
-	scan_pci(pci, clear_int, 0:*void);
-	flag = 0;
-	scan_pci(pci, init_e1000, (&flag):*void);
-	flag = 0;
-	scan_pci(pci, init_nvme, (&flag):*void);
+	//scan_pci(pci, clear_int, 0:*void);
+	//flag = 0;
+	//scan_pci(pci, init_e1000, (&flag):*void);
+	//flag = 0;
+	//scan_pci(pci, init_nvme, (&flag):*void);
 
 	// Wait for interrupts
 	loop {
