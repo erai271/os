@@ -1527,6 +1527,50 @@ main(argc: int, argv: **byte, envp: **byte) {
 		emit_ret(c.as);
 	}
 
+	d = find(c, "inw", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_emit(c.as, OP_OS);
+		as_op(c.as, OP_IND);
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
+	}
+
+	d = find(c, "outw", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		as_emit(c.as, OP_OS);
+		as_op(c.as, OP_OUTD);
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
+	}
+
+	d = find(c, "ind", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_op(c.as, OP_IND);
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
+	}
+
+	d = find(c, "outd", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		as_op(c.as, OP_OUTD);
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
+	}
+
 	d = find(c, "rdmsr", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
@@ -1787,6 +1831,17 @@ main(argc: int, argv: **byte, envp: **byte) {
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
                 emit_isr(c);
+	}
+
+	d = find(c, "_rgs", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
+		as_emit(c.as, OP_GS);
+		as_modrm(c.as, OP_LOAD, R_RAX, R_RSI, 0, 0, 0);
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
 	}
 
 	d = find(c, "_r32", 0:*byte, 1);

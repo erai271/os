@@ -54,12 +54,17 @@ enum {
 }
 
 enum {
+	OP_GS = 0x65,
+	OP_OS = 0x66,
+
 	OP_CLD = 0xfc,
 	OP_CLI = 0xfa,
 	OP_STI = 0xfb,
 	OP_CPUID = 0x0fa2,
 	OP_IN = 0xec,
+	OP_IND = 0xed,
 	OP_OUT = 0xee,
+	OP_OUTD = 0xef,
 	OP_HLT = 0xf4,
 	OP_NOP = 0x90,
 	OP_WBINVD = 0x0f09,

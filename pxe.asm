@@ -196,6 +196,8 @@ detect_mem:
 .1:
 	pop bp
 	sub bp, .1
+	push cs
+	pop es
 	; BIOS  - Get memory size
 	clc
 	int 0x12
@@ -204,7 +206,7 @@ detect_mem:
 	xor eax, eax
 	pop ax
 	shl eax, 10
-	mov cs:[bp + low_mem_size], eax
+	mov es:[bp + low_mem_size], eax
 	; BIOS - Get high memory size
 	mov ah, 0x88
 	clc
@@ -214,13 +216,13 @@ detect_mem:
 	xor eax, eax
 	pop ax
 	shl eax, 10
-	mov cs:[bp + high_mem_size], eax
+	mov es:[bp + high_mem_size], eax
 	; Zero kernel size
-	mov dword cs:[bp + kernel_size], 0
+	mov dword es:[bp + kernel_size], 0
 	mov di, bp
 	add di, mmap + 4
 	mov ebx, 0
-	mov word cs:[bp + mmap_size], 0
+	mov word es:[bp + mmap_size], 0
 .loop:
 	; BIOS - Get system memory map
 	mov edx, 0x534D4150
@@ -234,9 +236,9 @@ detect_mem:
 	jnz .no_mem
 	cmp ecx, 20
 	jnz .no_mem
-	mov cs:[di - 4], ecx
-	add word cs:[bp + mmap_size], 24
-	cmp word cs:[bp + mmap_size], (mmap_end - mmap)
+	mov es:[di - 4], ecx
+	add word es:[bp + mmap_size], 24
+	cmp word es:[bp + mmap_size], (mmap_end - mmap)
 	jz .no_mem
 	add di, 24
 	test ebx, ebx
@@ -268,7 +270,6 @@ enter_unreal:
 .1:
 	xor ebx, ebx
 	pop bx
-
 	; Load the gdt
 	sub sp, 6
 	mov bp, sp
@@ -797,7 +798,8 @@ parse_mb:
 	mov dword ds:[edi + 8], eax
 
 	; Save mmap_len
-	mov eax, cs:[bx + mmap_size - .1]
+	xor eax, eax
+	mov ax, cs:[bx + mmap_size - .1]
 	mov dword ds:[edi + 44], eax
 
 	; Save mmap_addr
@@ -805,7 +807,7 @@ parse_mb:
 	mov ax, cs
 	shl eax, 4
 	add eax, ebx
-	mov eax, (mmap - .1)
+	add eax, (mmap + 4 - .1)
 	mov dword ds:[edi + 48], eax
 
 	popf
@@ -993,5 +995,5 @@ frame equ $
 page equ frame + 256
 	;times 512 db 0
 mmap equ page + 512
-	;times 8192 db 0
-mmap_end equ mmap + 8192
+	;times (8192 + 8192) db 0
+mmap_end equ mmap + (8192 + 8192)
