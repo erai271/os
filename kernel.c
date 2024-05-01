@@ -228,6 +228,8 @@ panic(r: *regs) {
 	kputh(r.rbp);
 	kputs(" ");
 	kputh(r.rsp);
+	kputs(" ");
+	kputh16(r.ss);
 	kputs("\n");
 
 	kputh(r.rip);
@@ -235,6 +237,10 @@ panic(r: *regs) {
 	kputh(r.rflags);
 	kputs(" ");
 	kputh(rdcr2());
+	kputs(" ");
+	kputh(rdcr4());
+	kputs(" ");
+	kputh16(r.cs);
 	kputs("\n");
 
 	loop {

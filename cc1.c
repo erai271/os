@@ -1350,7 +1350,7 @@ emit_isr(c: *compiler) {
 	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 0);
 	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 160);
 	// err
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 0);
+	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 8);
 	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 168);
 	// rip
 	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 16);
