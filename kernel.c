@@ -260,7 +260,6 @@ _isr(r: *regs) {
 		tick();
 		outb(IO_PIC1, 0x20);
 	} else {
-		kputd(r.trap);
 		if (r.trap == 33) {
 			isr_realtek();
 		} else if (r.trap == 34) {
@@ -1587,8 +1586,6 @@ isr_ahci() {
 	var ahci_port: *ahci_port;
 	var i: int;
 
-	kputc('a');
-
 	global = g();
 
 	ahci_port = global.ahci_port;
@@ -1596,6 +1593,8 @@ isr_ahci() {
 		if !ahci_port {
 			break;
 		}
+
+		_w32(&ahci_port.port[0x10], -1);
 
 		ahci_port = ahci_port.next;
 	}
