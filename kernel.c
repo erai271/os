@@ -190,6 +190,58 @@ bzero(s: *byte, size: int) {
 	}
 }
 
+panic(r: *regs) {
+	cli();
+
+	kputs("\n");
+	kputh(r.rax);
+	kputs(" ");
+	kputh(r.rcx);
+	kputs(" ");
+	kputh(r.rdx);
+	kputs(" ");
+	kputh(r.rbx);
+	kputs("\n");
+
+	kputh(r.rsi);
+	kputs(" ");
+	kputh(r.rdi);
+	kputs(" ");
+	kputh(r.r8);
+	kputs(" ");
+	kputh(r.r9);
+	kputs("\n");
+
+	kputh(r.r10);
+	kputs(" ");
+	kputh(r.r11);
+	kputs(" ");
+	kputh(r.r12);
+	kputs(" ");
+	kputh(r.r13);
+	kputs("\n");
+
+	kputh(r.r14);
+	kputs(" ");
+	kputh(r.r15);
+	kputs(" ");
+	kputh(r.rbp);
+	kputs(" ");
+	kputh(r.rsp);
+	kputs("\n");
+
+	kputh(r.rip);
+	kputs(" ");
+	kputh(r.rflags);
+	kputs(" ");
+	kputh(rdcr2());
+	kputs("\n");
+
+	loop {
+		hlt();
+	}
+}
+
 _isr(r: *regs) {
 	var global: *global;
 	global = g();
@@ -197,10 +249,22 @@ _isr(r: *regs) {
 	if (r.trap < 32) {
 		kputs("EX ");
 		kputd(r.trap);
+		kputs(":");
+		kputd(r.err);
 		kputs("\n");
+		panic(r);
+		loop {
+			hlt();
+		}
+	} else if (r.trap == 32) {
+		tick();
+		outb(IO_PIC1, 0x20);
 	} else {
-		if (r.trap == 32) {
+		kputd(r.trap);
+		if (r.trap == 33) {
 			isr_realtek();
+		} else if (r.trap == 34) {
+			isr_ahci();
 		}
 		// apic end of interrupt
 		_w32(&global.lapic[0xb0], 0);
@@ -437,12 +501,17 @@ find_acpi(xsdt: int, sig: *byte): int {
 	}
 }
 
-map_pci(va: *byte, pa: int): *byte {
+map_pci(pa: int): *byte {
+	var global: *global;
+	var va: int;
 	var pt4p: int;
 	var pt4: *int;
 	var pt3: *int;
 	var v2: int;
 	var flags: int;
+	global = g();
+	global.mmio = global.mmio - (1 << 31);
+	va = global.mmio;
 	pt4p = rdcr3();
 	pt4 = ptov(pt4p):*int;
 	v2 = ((va: int) >> 30) & 511;
@@ -451,7 +520,7 @@ map_pci(va: *byte, pa: int): *byte {
 	pt3[v2] = (pa & -(1 << 30)) | flags;
 	pt3[v2 + 1] = ((pa + (1 << 30)) & -(1 << 30)) | flags;
 	wrcr3(pt4p);
-	return &va[pa & ((1 << 30) - 1)];
+	return (va + (pa & ((1 << 30) - 1))):*byte;
 }
 
 struct pcidev {
@@ -521,6 +590,7 @@ scan_pci(base: *byte, visit: func(dev: *pcidev)) {
 
 				if capid == 5 {
 					dev.msi = &base[i * 4096 + cap];
+					break;
 				}
 
 				cap = base[i * 4096 + cap + 1]:int;
@@ -559,45 +629,25 @@ show_pcidev(dev: *pcidev) {
 	kputc('\n');
 }
 
-map_bar(va: *byte, dev: *pcidev): *byte {
-	var type: int;
-	var pa: int;
-
-	type = (dev.bar0 >> 1) & 3;
-	pa = dev.bar0 & -16;
-
-	// io bar
-	if (dev.bar0 & 1) != 0 || type == 3 {
-		return 0:*byte;
-	}
-
-	// 64 bit bar
-	if type == 1 {
-		pa = pa | (dev.bar1 << 32);
-	}
-
-	return map_pci(va, pa);
-}
-
-enum {
-	E1_TXDESCLO = 0x3800,
-	E1_TXDESCHI = 0x3804,
-	E1_TXDESCLEN = 0x3808,
-	E1_TXDESCHEAD = 0x3810,
-	E1_TXDESCTAIL = 0x3818,
-	E1_TCTRL = 0x0400,
-	E1_TIPG = 0x0410,
-
-	E1_RXDESCLO = 0x2800,
-	E1_RXDESCHI = 0x2804,
-	E1_RXDESCLEN = 0x2808,
-	E1_RXDESCHEAD = 0x2810,
-	E1_RXDESCTAIL = 0x2818,
-	E1_RCTRL = 0x0100,
-
-	E1_IMASK = 0x00d0,
-	E1_ICR = 0x00C0,
-}
+//enum {
+//	E1_TXDESCLO = 0x3800,
+//	E1_TXDESCHI = 0x3804,
+//	E1_TXDESCLEN = 0x3808,
+//	E1_TXDESCHEAD = 0x3810,
+//	E1_TXDESCTAIL = 0x3818,
+//	E1_TCTRL = 0x0400,
+//	E1_TIPG = 0x0410,
+//
+//	E1_RXDESCLO = 0x2800,
+//	E1_RXDESCHI = 0x2804,
+//	E1_RXDESCLEN = 0x2808,
+//	E1_RXDESCHEAD = 0x2810,
+//	E1_RXDESCTAIL = 0x2818,
+//	E1_RCTRL = 0x0100,
+//
+//	E1_IMASK = 0x00d0,
+//	E1_ICR = 0x00C0,
+//}
 
 onesum(h: *byte, n: int): int {
 	var i: int;
@@ -633,182 +683,182 @@ icmp_checksum(p: *byte) {
 	p[3] = s:byte;
 }
 
-init_e1000(dev: *pcidev) {
-	var flag: *int;
-	var base: *byte;
-	var mac: int;
-	var i: int;
-	var txring: *byte;
+//init_e1000(dev: *pcidev) {
+//	var flag: *int;
+//	var base: *byte;
+//	var mac: int;
+//	var i: int;
+//	var txring: *byte;
+//
+//	if *flag || dev.vid != 0x8086 || (
+//		dev.did != 0x100e
+//		&& dev.did != 0x1539
+//	) {
+//		return;
+//	}
+//	*flag = 1;
+//	*dev.trap = 10:byte;
+//
+//	base = map_bar(ptov(-(1<<34)), dev);
+//	if !base {
+//		return;
+//	}
+//
+//	// Enable dma
+//	_w16(&dev.addr[4], 6);
+//
+//	// Disable interrupts
+//	_w32(&base[E1_IMASK], 0);
+//
+//	// Clear MTA
+//	i = 0;
+//	loop {
+//		if i == 0x80 {
+//			break;
+//		}
+//		_w32(&base[0x5200 + 4 * i], 0);
+//		i = i + 1;
+//	}
+//
+//	// Read mac
+//	mac = _r32(&base[0x5400]) + (_r32(&base[0x5404])) << 32;
+//
+//	txring = alloc_page();
+//
+//	i = 0;
+//	loop {
+//		if i == 16 {
+//			break;
+//		}
+//		bzero(&txring[16*32 + 16*i], 16);
+//		((&txring[16*32 + 16*i]):*int)[0] = 1024*1024*3 + 4096 * (i + 1);
+//		_w16(&txring[16*32 + 16*i + 8], 2048);
+//		i = i + 1;
+//	}
+//
+//	// Create tx descriptors
+//	_w32(&base[E1_TXDESCLO], 1024*1024*3);
+//	_w32(&base[E1_TXDESCHI], 0);
+//	_w32(&base[E1_TXDESCLEN], 16*32);
+//	_w32(&base[E1_TXDESCHEAD], 0);
+//	_w32(&base[E1_TXDESCTAIL], 0);
+//
+//	// Create rx descriptors
+//	_w32(&base[E1_RXDESCLO], 1024*1024*3+16*32);
+//	_w32(&base[E1_RXDESCHI], 0);
+//	_w32(&base[E1_RXDESCLEN], 16*32);
+//	_w32(&base[E1_RXDESCHEAD], 0);
+//	_w32(&base[E1_RXDESCTAIL], 31);
+//
+//	// Enable interrupts
+//	_w32(&base[E1_IMASK], 0);
+//
+//	// Enable rx and tx
+//	_w32(&base[E1_TCTRL], 0x3003f0fa);
+//	_w32(&base[E1_RCTRL],
+//		// Enable
+//		(1 << 1)
+//		// StoreBadPackets
+//		+ (1 << 2)
+//		// UnicastPromiscuous
+//		+ (1 << 3)
+//		// MulticastPromiscuous
+//		+ (1 << 4)
+//		// LoobackMode
+//		+ (0 << 6)
+//		// BroadcastAccept
+//		+ (1 << 15)
+//		// ReceiveBufferSize
+//		+ (0 << 16)
+//		// StripEthernetCRC
+//		+ (1 << 26));
+//
+//	// Send a packet
+//	(txring:*int)[0] = 1024*1024*3 + 16*32*2;
+//	_w16(&txring[8], 60);
+//	txring[10] = 0:byte;
+//	// ReportStatus + InsertFrameCheckSequence + EndOfPacket
+//	txring[11] = ((0 << 3) + (1 << 1) + 1):byte;
+//	txring[12] = 0:byte;
+//	txring[13] = 0:byte;
+//	txring[14] = 0:byte;
+//	txring[15] = 0:byte;
+//	txring[16*32*2 + 0] = (mac >> 40):byte;
+//	txring[16*32*2 + 1] = (mac >> 32):byte;
+//	txring[16*32*2 + 2] = (mac >> 24):byte;
+//	txring[16*32*2 + 3] = (mac >> 16):byte;
+//	txring[16*32*2 + 4] = (mac >> 8):byte;
+//	txring[16*32*2 + 5] = mac:byte;
+//	txring[16*32*2 + 6] = 0x36:byte;
+//	txring[16*32*2 + 7] = 0xb9:byte;
+//	txring[16*32*2 + 8] = 0x55:byte;
+//	txring[16*32*2 + 9] = 0x54:byte;
+//	txring[16*32*2 + 10] = 0xba:byte;
+//	txring[16*32*2 + 11] = 0xcf:byte;
+//	txring[16*32*2 + 12] = 0x08:byte;
+//	txring[16*32*2 + 13] = 0x00:byte;
+//
+//	txring[16*32*2 + 14] = 0x45:byte;
+//	txring[16*32*2 + 15] = 0:byte;
+//	txring[16*32*2 + 16] = 0:byte;
+//	txring[16*32*2 + 17] = 28:byte;
+//	txring[16*32*2 + 18] = 0:byte;
+//	txring[16*32*2 + 19] = 0:byte;
+//	txring[16*32*2 + 20] = 0:byte;
+//	txring[16*32*2 + 21] = 0:byte;
+//	txring[16*32*2 + 22] = 64:byte;
+//	txring[16*32*2 + 23] = 1:byte;
+//	txring[16*32*2 + 24] = 0:byte;
+//	txring[16*32*2 + 25] = 0:byte;
+//	txring[16*32*2 + 26] = 192:byte;
+//	txring[16*32*2 + 27] = 168:byte;
+//	txring[16*32*2 + 28] = 32:byte;
+//	txring[16*32*2 + 29] = 2:byte;
+//	txring[16*32*2 + 30] = 192:byte;
+//	txring[16*32*2 + 31] = 168:byte;
+//	txring[16*32*2 + 32] = 32:byte;
+//	txring[16*32*2 + 33] = 1:byte;
+//
+//	ip_checksum(&txring[16*32*2 + 14]);
+//
+//	txring[16*32*2 + 34] = 8:byte;
+//	txring[16*32*2 + 35] = 0:byte;
+//	txring[16*32*2 + 36] = 0:byte;
+//	txring[16*32*2 + 37] = 0:byte;
+//	txring[16*32*2 + 38] = 0:byte;
+//	txring[16*32*2 + 39] = 0:byte;
+//	txring[16*32*2 + 40] = 0:byte;
+//
+//	icmp_checksum(&txring[16*32*2 + 34]);
+//
+//	_w32(&base[E1_TXDESCTAIL], 1);
+//	_w32(&base[E1_IMASK], (1 << 0) + (1 << 4));
+//}
 
-	if *flag || dev.vid != 0x8086 || (
-		dev.did != 0x100e
-		&& dev.did != 0x1539
-	) {
-		return;
-	}
-	*flag = 1;
-	*dev.trap = 10:byte;
-
-	base = map_bar(ptov(-(1<<34)), dev);
-	if !base {
-		return;
-	}
-
-	// Enable dma
-	_w16(&dev.addr[4], 6);
-
-	// Disable interrupts
-	_w32(&base[E1_IMASK], 0);
-
-	// Clear MTA
-	i = 0;
-	loop {
-		if i == 0x80 {
-			break;
-		}
-		_w32(&base[0x5200 + 4 * i], 0);
-		i = i + 1;
-	}
-
-	// Read mac
-	mac = _r32(&base[0x5400]) + (_r32(&base[0x5404])) << 32;
-
-	txring = map_pci((-(1<<35)):*byte, 1024*1024*3);
-
-	i = 0;
-	loop {
-		if i == 16 {
-			break;
-		}
-		bzero(&txring[16*32 + 16*i], 16);
-		((&txring[16*32 + 16*i]):*int)[0] = 1024*1024*3 + 4096 * (i + 1);
-		_w16(&txring[16*32 + 16*i + 8], 2048);
-		i = i + 1;
-	}
-
-	// Create tx descriptors
-	_w32(&base[E1_TXDESCLO], 1024*1024*3);
-	_w32(&base[E1_TXDESCHI], 0);
-	_w32(&base[E1_TXDESCLEN], 16*32);
-	_w32(&base[E1_TXDESCHEAD], 0);
-	_w32(&base[E1_TXDESCTAIL], 0);
-
-	// Create rx descriptors
-	_w32(&base[E1_RXDESCLO], 1024*1024*3+16*32);
-	_w32(&base[E1_RXDESCHI], 0);
-	_w32(&base[E1_RXDESCLEN], 16*32);
-	_w32(&base[E1_RXDESCHEAD], 0);
-	_w32(&base[E1_RXDESCTAIL], 31);
-
-	// Enable interrupts
-	_w32(&base[E1_IMASK], 0);
-
-	// Enable rx and tx
-	_w32(&base[E1_TCTRL], 0x3003f0fa);
-	_w32(&base[E1_RCTRL],
-		// Enable
-		(1 << 1)
-		// StoreBadPackets
-		+ (1 << 2)
-		// UnicastPromiscuous
-		+ (1 << 3)
-		// MulticastPromiscuous
-		+ (1 << 4)
-		// LoobackMode
-		+ (0 << 6)
-		// BroadcastAccept
-		+ (1 << 15)
-		// ReceiveBufferSize
-		+ (0 << 16)
-		// StripEthernetCRC
-		+ (1 << 26));
-
-	// Send a packet
-	(txring:*int)[0] = 1024*1024*3 + 16*32*2;
-	_w16(&txring[8], 60);
-	txring[10] = 0:byte;
-	// ReportStatus + InsertFrameCheckSequence + EndOfPacket
-	txring[11] = ((0 << 3) + (1 << 1) + 1):byte;
-	txring[12] = 0:byte;
-	txring[13] = 0:byte;
-	txring[14] = 0:byte;
-	txring[15] = 0:byte;
-	txring[16*32*2 + 0] = (mac >> 40):byte;
-	txring[16*32*2 + 1] = (mac >> 32):byte;
-	txring[16*32*2 + 2] = (mac >> 24):byte;
-	txring[16*32*2 + 3] = (mac >> 16):byte;
-	txring[16*32*2 + 4] = (mac >> 8):byte;
-	txring[16*32*2 + 5] = mac:byte;
-	txring[16*32*2 + 6] = 0x36:byte;
-	txring[16*32*2 + 7] = 0xb9:byte;
-	txring[16*32*2 + 8] = 0x55:byte;
-	txring[16*32*2 + 9] = 0x54:byte;
-	txring[16*32*2 + 10] = 0xba:byte;
-	txring[16*32*2 + 11] = 0xcf:byte;
-	txring[16*32*2 + 12] = 0x08:byte;
-	txring[16*32*2 + 13] = 0x00:byte;
-
-	txring[16*32*2 + 14] = 0x45:byte;
-	txring[16*32*2 + 15] = 0:byte;
-	txring[16*32*2 + 16] = 0:byte;
-	txring[16*32*2 + 17] = 28:byte;
-	txring[16*32*2 + 18] = 0:byte;
-	txring[16*32*2 + 19] = 0:byte;
-	txring[16*32*2 + 20] = 0:byte;
-	txring[16*32*2 + 21] = 0:byte;
-	txring[16*32*2 + 22] = 64:byte;
-	txring[16*32*2 + 23] = 1:byte;
-	txring[16*32*2 + 24] = 0:byte;
-	txring[16*32*2 + 25] = 0:byte;
-	txring[16*32*2 + 26] = 192:byte;
-	txring[16*32*2 + 27] = 168:byte;
-	txring[16*32*2 + 28] = 32:byte;
-	txring[16*32*2 + 29] = 2:byte;
-	txring[16*32*2 + 30] = 192:byte;
-	txring[16*32*2 + 31] = 168:byte;
-	txring[16*32*2 + 32] = 32:byte;
-	txring[16*32*2 + 33] = 1:byte;
-
-	ip_checksum(&txring[16*32*2 + 14]);
-
-	txring[16*32*2 + 34] = 8:byte;
-	txring[16*32*2 + 35] = 0:byte;
-	txring[16*32*2 + 36] = 0:byte;
-	txring[16*32*2 + 37] = 0:byte;
-	txring[16*32*2 + 38] = 0:byte;
-	txring[16*32*2 + 39] = 0:byte;
-	txring[16*32*2 + 40] = 0:byte;
-
-	icmp_checksum(&txring[16*32*2 + 34]);
-
-	_w32(&base[E1_TXDESCTAIL], 1);
-	_w32(&base[E1_IMASK], (1 << 0) + (1 << 4));
-}
-
-init_nvme(dev: *pcidev) {
-	var flag: *int;
-	var base: *byte;
-
-	if *flag || dev.cls != 1 || dev.subcls != 8 {
-		return;
-	}
-	*flag = 1;
-	*dev.trap = 11:byte;
-
-	// Enable dma
-	_w16(&dev.addr[4], 6);
-
-	// Map bar
-	base = map_bar(ptov(-(1<<36)), dev);
-	if !base {
-		return;
-	}
-
-	kputs("nvme\n");
-
-	// setup admin ring
-	// enable interrupts
-}
+//init_nvme(dev: *pcidev) {
+//	var flag: *int;
+//	var base: *byte;
+//
+//	if *flag || dev.cls != 1 || dev.subcls != 8 {
+//		return;
+//	}
+//	*flag = 1;
+//	*dev.trap = 11:byte;
+//
+//	// Enable dma
+//	_w16(&dev.addr[4], 6);
+//
+//	// Map bar
+//	base = map_bar(ptov(-(1<<36)), dev);
+//	if !base {
+//		return;
+//	}
+//
+//	kputs("nvme\n");
+//
+//	// setup admin ring
+//	// enable interrupts
+//}
 
 struct vga {
 	base: *byte;
@@ -914,14 +964,15 @@ kputs(s: *byte) {
 
 struct global {
 	ptr: *global;
+	ms: int;
 	vga: vga;
 	fr: *free_range;
 	fpage: *free_page;
 	lapicp: int;
 	lapic: *byte;
-	rtkio: int;
-	rxring: int;
-	txring: int;
+	mmio: int;
+	realtek_port: *realtek_port;
+	ahci_port: *ahci_port;
 }
 
 struct free_page {
@@ -1221,10 +1272,17 @@ fill_packet(ringp: int) {
 	ring:*int[0] = (0xb000 << 16) + (64);
 }
 
+struct realtek_port {
+	next: *realtek_port;
+	io: int;
+	rxring: *byte;
+	txring: *byte;
+}
+
 init_realtek(dev: *pcidev) {
 	var global: *global;
+	var realtek_port: *realtek_port;
 	var io: int;
-	var pg: int;
 
 	global = g();
 
@@ -1232,8 +1290,11 @@ init_realtek(dev: *pcidev) {
 		return;
 	}
 
+	if dev.bar0 & 1 != 1 {
+		return;
+	}
+
 	io = dev.bar0 & -2;
-	global.rtkio = io;
 
 	// Enable dma
 	_w16(&dev.addr[4], 7);
@@ -1246,11 +1307,14 @@ init_realtek(dev: *pcidev) {
 		}
 	}
 
+	// Disable interrupts
+	outw(io + 0x3c, 0x0000);
+
 	// Setup MSI
 	_w16(&dev.msi[2], 0x0081);
 	_w32(&dev.msi[4], global.lapicp);
-	_w32(&dev.msi[8], 0);
-	_w16(&dev.msi[12], 32);
+	_w32(&dev.msi[8], global.lapicp >> 32);
+	_w16(&dev.msi[12], 33);
 
 	// Config write enable
 	outb(io + 0x50, 0xc0);
@@ -1268,25 +1332,25 @@ init_realtek(dev: *pcidev) {
 	// tx packet size
 	outd(io + 0xec, 0x00000010);
 
-	pg = alloc_page();
-	setup_ring(pg, 0);
-	fill_packet(pg);
-	global.txring = pg;
+	var txringp: int;
+	txringp = alloc_page();
+	setup_ring(txringp, 0);
+	fill_packet(txringp);
 
 	// tx ring
-	outd(io + 0x20, pg);
-	outd(io + 0x24, pg >> 32);
+	outd(io + 0x20, txringp);
+	outd(io + 0x24, txringp >> 32);
 
 	// tx max size
 	outb(io + 0xec, 16);
 
-	pg = alloc_page();
-	setup_ring(pg, 1);
-	global.rxring = pg;
+	var rxringp: int;
+	rxringp = alloc_page();
+	setup_ring(rxringp, 1);
 
 	// rx ring
-	outd(io + 0xe4, pg);
-	outd(io + 0xe8, pg >> 32);
+	outd(io + 0xe4, rxringp);
+	outd(io + 0xe8, rxringp >> 32);
 
 	// Enable rx/tx
 	outd(io + 0x37, 0x0c);
@@ -1300,33 +1364,280 @@ init_realtek(dev: *pcidev) {
 
 	// TX Doorbell
 	outb(io + 0x38, 0x40);
+
+	realtek_port = ptov(alloc_page()):*realtek_port;
+	realtek_port.next = global.realtek_port;
+	realtek_port.io = io;
+	realtek_port.rxring = ptov(rxringp);
+	realtek_port.txring = ptov(txringp);
+	global.realtek_port = realtek_port;
 }
 
 isr_realtek() {
-	var v: *byte;
 	var global: *global;
+	var realtek_port: *realtek_port;
 	var i: int;
 
 	global = g();
 
-	v = ptov(global.rxring);
-
-	i = 0;
+	realtek_port = global.realtek_port;
 	loop {
-		if i == 16 {
+		if !realtek_port {
 			break;
 		}
 
-		_w32(&v[i * 16], (1 << 31) | ((i == 15) << 30) | 4096);
-		_w32(&v[i * 16 + 4], 0);
+		i = 0;
+		loop {
+			if i == 16 {
+				break;
+			}
 
-		i = i + 1;
+			_w32(&realtek_port.rxring[i * 16], (1 << 31) | ((i == 15) << 30) | 4096);
+			_w32(&realtek_port.rxring[i * 16 + 4], 0);
+
+			i = i + 1;
+		}
+
+		// clear interrupt flags
+		outw(realtek_port.io + 0x3e, 0xffff);
+
+		realtek_port = realtek_port.next;
+	}
+}
+
+init_ahci(dev: *pcidev) {
+	var global: *global;
+	var ahci: *byte;
+
+	global = g();
+
+	if dev.cls != 1 || dev.subcls != 6 {
+		return;
 	}
 
-	kputc('.');
+	ahci = map_pci(dev.bar5);
 
-	// clear interrupt flags
-	outw(global.rtkio + 0x3e, 0xffff);
+	// Enable dma
+	_w16(&dev.addr[4], 6);
+
+	// Enable message signaled interrupts
+	_w16(&dev.msi[8], 34);
+	_w32(&dev.msi[4], global.lapicp);
+	_w16(&dev.msi[2], 0x0001);
+
+	// Find populated ports
+	if _r32(&ahci[0x00]) & (1 << 31) == 0 {
+		kputs("AHCI does not support 64 bit dma\n");
+		return;
+	}
+
+	// Enable ahci and interrupts
+	_w32(&ahci[0x4], (1 << 31) + (1 << 1));
+	_w32(&ahci[0x08], -1);
+
+	var pi: int;
+	var i: int;
+
+	pi = _r32(&ahci[0xc]);
+	i = 0;
+	loop {
+		if pi == 0 {
+			break;
+		}
+
+		if pi & 1 {
+			init_ahci_port(ahci, i);
+		}
+
+		pi = pi >> 1;
+		i = i + 1;
+	}
+}
+
+struct ahci_port {
+	next: *ahci_port;
+	ahci: *byte;
+	port: *byte;
+	cmd: *byte;
+	ctabp: int;
+	ctab: *byte;
+	fis: *byte;
+	bufp: int;
+	buf: *byte;
+}
+
+init_ahci_port(ahci: *byte, i: int) {
+	var global: *global;
+	var port: *byte;
+
+	global = g();
+
+	port = &ahci[0x100 + 0x80 * i];
+
+	// Set ST=0
+	_w32(&port[0x18], _r32(&port[0x18]) & -2 & ~(15 << 28));
+
+	// Wait for DMA finish
+	loop {
+		if _r32(&port[0x18]) & (1 << 15) == 0 {
+			break;
+		}
+	}
+
+	// Clear errors
+	_w32(&port[0x30], -1);
+
+	var ahci_port: *ahci_port;
+	ahci_port = ptov(alloc_page()): *ahci_port;
+	ahci_port.next = 0:*ahci_port;
+	ahci_port.ahci = ahci;
+	ahci_port.port = port;
+
+	// Allocate queues
+	var cmdp: int;
+	var fisp: int;
+	var ctabp: int;
+
+	// each command list header is 32 bytes, there are 32 of them
+	cmdp = alloc_page();
+	ahci_port.cmd = ptov(cmdp);
+	bzero(ahci_port.cmd, 4096);
+
+	//// each table must be aligned to 128 bytes
+	//// allocate one 128 block to each command list from this page
+	ctabp = alloc_page();
+	ahci_port.ctabp = ctabp;
+	ahci_port.ctab = ptov(ctabp);
+	bzero(ahci_port.ctab, 4096);
+
+	//// fis is 256 bytes
+	fisp = alloc_page();
+	ahci_port.fis = ptov(fisp);
+	bzero(ahci_port.fis, 4096);
+
+	// Set command list and fis pointers
+	_w32(&port[0x00], cmdp);
+	_w32(&port[0x04], cmdp >> 32);
+	_w32(&port[0x08], fisp);
+	_w32(&port[0x0c], fisp >> 32);
+
+	// Spin up device
+	_w32(&port[0x18], 0x11);
+
+	// Wait for busy and drq to clear
+	loop {
+		if _r32(&port[0x20]) & 0x88 == 0 {
+			break;
+		}
+	}
+
+	// Enable interrupts
+	_w32(&port[0x14], -1);
+	_w32(&port[0x10], -1);
+
+	// Send ATA IDENTIFY
+	ahci_port.bufp = alloc_page();
+	ahci_port.buf = ptov(ahci_port.bufp);
+
+	// Set command list header
+	bzero(ahci_port.cmd, 4096);
+	_w32(&ahci_port.cmd[0x00], (1 << 16) + (1 << 10) + 5);
+	_w32(&ahci_port.cmd[0x04], 0);
+	_w32(&ahci_port.cmd[0x08], ahci_port.ctabp);
+	_w32(&ahci_port.cmd[0x0c], ahci_port.ctabp >> 32);
+
+	bzero(ahci_port.ctab, 4096);
+
+	// Fill command FIS
+	ahci_port.ctab[0x00] = 0x27:byte;
+	ahci_port.ctab[0x01] = 0x80:byte;
+	ahci_port.ctab[0x02] = 0xec:byte;
+
+	// Fill PRDT
+	_w32(&ahci_port.ctab[0x80], ahci_port.bufp);
+	_w32(&ahci_port.ctab[0x84], ahci_port.bufp >> 32);
+	_w32(&ahci_port.ctab[0x88], 0);
+	_w32(&ahci_port.ctab[0x8c], (1 << 31) + 511);
+
+	// Set AHCI Doorbell
+	_w32(&ahci_port.port[0x38], 1);
+
+	//loop {
+	//	_w32(&port[0x30], -1);
+	//	if _r32(&ahci_port.port[0x38]) & 1 == 0 {
+	//		break;
+	//	}
+	//}
+
+	//if _r32(&port[0x30]) != 0 {
+	//	kputs("got error");
+	//	return;
+	//}
+
+	//kputs("Found ");
+	//kputd((512 * (&ahci_port.buf[200]):*int[0]) / 1000000000);
+	//kputs("GB\n");
+
+	ahci_port.next = global.ahci_port;
+	global.ahci_port = ahci_port;
+}
+
+isr_ahci() {
+	var global: *global;
+	var ahci_port: *ahci_port;
+	var i: int;
+
+	kputc('a');
+
+	global = g();
+
+	ahci_port = global.ahci_port;
+	loop {
+		if !ahci_port {
+			break;
+		}
+
+		ahci_port = ahci_port.next;
+	}
+}
+
+tick() {
+	var global: *global;
+	global = g();
+	global.ms = global.ms + 1;
+}
+
+kdie(msg: *byte) {
+	kputs("die: ");
+	kputs(msg);
+	kputs("\n");
+	cli();
+	loop {
+		hlt();
+	}
+}
+
+sleep(ms: int) {
+	var global: *global;
+	var deadline: int;
+
+	global = g();
+
+	if ms <= 0 {
+		return;
+	}
+
+	if rdflags() & 0x200 == 0 {
+		kdie("attempt to sleep with interrupts disabled");
+	}
+
+	deadline = global.ms + ms;
+	loop {
+		if global.ms > deadline {
+			break;
+		}
+		hlt();
+	}
 }
 
 _kstart(mb: int) {
@@ -1349,8 +1660,11 @@ _kstart(mb: int) {
 	var mmap_count: int;
 	var fr: *free_range;
 
+	bzero((&global):*byte, sizeof(global));
 	global.ptr = &global;
 	wrmsr((0xc000 << 16) + 0x0101, global.ptr:int);
+
+	global.mmio = -(1 << 31);
 
 	vinit(&global.vga, ptov(0xB8000));
 	vclear(&global.vga);
@@ -1381,7 +1695,7 @@ _kstart(mb: int) {
 
 		if i + 1 < mmap_count {
 			if mmap_end > mmap[i * 3 + 3] {
-				kputs("panic: OVERLAP\n");
+				kdie("OVERLAP");
 				loop {
 					cli();
 					hlt();
@@ -1478,18 +1792,16 @@ _kstart(mb: int) {
 	outb(IO_PIC1 + 1, 32);
 	outb(IO_PIC2 + 1, 40);
 
-	// 100 hz pit
+	// 1000 hz pit
 	outb(IO_PIT + 3, 0x36);
-	outb(IO_PIT + 0, 0x9b);
-	outb(IO_PIT + 0, 0x2e);
-
-	// Disable serial ports
-	outb(0x3f8 + 1, 0x00);
-	outb(0x2f8 + 1, 0x00);
+	outb(IO_PIT + 0, 0xa9);
+	outb(IO_PIT + 0, 0x04);
 
 	// unmask pit
-	outb(IO_PIC1 + 1, 0xff);
+	outb(IO_PIC1 + 1, 0xfe);
 	outb(IO_PIC2 + 1, 0xff);
+
+	sti();
 
         // Find ACPI tables
 	xsdt = find_xsdt();
@@ -1507,19 +1819,19 @@ _kstart(mb: int) {
 	var lapicp: int;
 	lapicp = rdmsr(0x1b) & -4096;
 	var lapic: *byte;
-	lapic = map_pci(ptov(-32 << 30), lapicp);
+	lapic = map_pci(lapicp);
 	_w32(&lapic[0xf0], _r32(&lapic[0xf0]) | 0x1ff);
 	global.lapicp = lapicp;
 	global.lapic = lapic;
 
-	pci = map_pci(ptov(-34 << 30), pcip);
+	pci = map_pci(pcip);
 	scan_pci(pci, show_pcidev);
 	scan_pci(pci, init_realtek);
+	scan_pci(pci, init_ahci);
 
 	// Wait for interrupts
 	kputs("Sleeping...\n");
 	loop {
-		sti();
 		hlt();
 	}
 }
