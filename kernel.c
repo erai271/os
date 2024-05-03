@@ -1546,7 +1546,7 @@ init_ahci_port(ahci: *byte, i: int) {
 
 	bzero(ahci_port.buf, 4096);
 
-	fill_fis_h2d(ahci_port, ATA_READ, 0, 1);
+	fill_fis_h2d(ahci_port, ATA_READ, 0);
 
 	// Set AHCI Doorbell
 	_w32(&ahci_port.port[0x38], 1);
@@ -1561,14 +1561,20 @@ enum {
 	ATA_WRITE = 0x35,
 }
 
-fill_fis_h2d(ahci_port: *ahci_port, cmd: int, lba: int, count: int) {
+fill_fis_h2d(ahci_port: *ahci_port, cmd: int, lba: int) {
 	var w: int;
+	var size: int;
+
+	size = 4096;
+	if cmd == ATA_IDENTIFY {
+		size = 512;
+	}
 
 	bzero(ahci_port.cmd, 4096);
 
 	w = (cmd == ATA_WRITE);
 
-	// Set command list header
+	// Set command list header: prd_count + cmd + write + cmd_words
 	_w32(&ahci_port.cmd[0x00], (1 << 16) + (1 << 10) + (w << 6) + 5);
 	_w32(&ahci_port.cmd[0x04], 0);
 	_w32(&ahci_port.cmd[0x08], ahci_port.ctabp);
@@ -1592,8 +1598,9 @@ fill_fis_h2d(ahci_port: *ahci_port, cmd: int, lba: int, count: int) {
 	ahci_port.ctab[10] = (lba >> 40):byte;
 	ahci_port.ctab[11] = 0:byte;
 
-	ahci_port.ctab[12] = count:byte;
-	ahci_port.ctab[13] = (count >> 8):byte;
+	// Count of sectors
+	ahci_port.ctab[12] = (size >> 9):byte;
+	ahci_port.ctab[13] = (size >> 17):byte;
 	ahci_port.ctab[14] = 0:byte;
 	ahci_port.ctab[15] = 0:byte;
 
@@ -1606,7 +1613,7 @@ fill_fis_h2d(ahci_port: *ahci_port, cmd: int, lba: int, count: int) {
 	_w32(&ahci_port.ctab[0x80], ahci_port.bufp);
 	_w32(&ahci_port.ctab[0x84], ahci_port.bufp >> 32);
 	_w32(&ahci_port.ctab[0x88], 0);
-	_w32(&ahci_port.ctab[0x8c], (1 << 31) + 511);
+	_w32(&ahci_port.ctab[0x8c], (1 << 31) + (size - 1));
 }
 
 isr_ahci() {
@@ -1622,7 +1629,7 @@ isr_ahci() {
 			break;
 		}
 
-		xxd(ahci_port.buf, 512);
+		xxd(ahci_port.buf, 4096);
 
 		_w32(&ahci_port.port[0x10], -1);
 
