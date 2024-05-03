@@ -1544,9 +1544,32 @@ init_ahci_port(ahci: *byte, i: int) {
 	ahci_port.bufp = alloc_page();
 	ahci_port.buf = ptov(ahci_port.bufp);
 
-	// Set command list header
+	bzero(ahci_port.buf, 4096);
+
+	fill_fis_h2d(ahci_port, ATA_READ, 0, 1);
+
+	// Set AHCI Doorbell
+	_w32(&ahci_port.port[0x38], 1);
+
+	ahci_port.next = global.ahci_port;
+	global.ahci_port = ahci_port;
+}
+
+enum {
+	ATA_IDENTIFY = 0xec,
+	ATA_READ = 0x25,
+	ATA_WRITE = 0x35,
+}
+
+fill_fis_h2d(ahci_port: *ahci_port, cmd: int, lba: int, count: int) {
+	var w: int;
+
 	bzero(ahci_port.cmd, 4096);
-	_w32(&ahci_port.cmd[0x00], (1 << 16) + (1 << 10) + 5);
+
+	w = (cmd == ATA_WRITE);
+
+	// Set command list header
+	_w32(&ahci_port.cmd[0x00], (1 << 16) + (1 << 10) + (w << 6) + 5);
 	_w32(&ahci_port.cmd[0x04], 0);
 	_w32(&ahci_port.cmd[0x08], ahci_port.ctabp);
 	_w32(&ahci_port.cmd[0x0c], ahci_port.ctabp >> 32);
@@ -1554,37 +1577,36 @@ init_ahci_port(ahci: *byte, i: int) {
 	bzero(ahci_port.ctab, 4096);
 
 	// Fill command FIS
-	ahci_port.ctab[0x00] = 0x27:byte;
-	ahci_port.ctab[0x01] = 0x80:byte;
-	ahci_port.ctab[0x02] = 0xec:byte;
+	ahci_port.ctab[0] = 0x27:byte;
+	ahci_port.ctab[1] = 0x80:byte;
+	ahci_port.ctab[2] = cmd:byte;
+	ahci_port.ctab[3] = 0:byte;
+
+	ahci_port.ctab[4] = lba:byte;
+	ahci_port.ctab[5] = (lba >> 8):byte;
+	ahci_port.ctab[6] = (lba >> 16):byte;
+	ahci_port.ctab[7] = (1 << 6):byte;
+
+	ahci_port.ctab[8] = (lba >> 24):byte;
+	ahci_port.ctab[9] = (lba >> 32):byte;
+	ahci_port.ctab[10] = (lba >> 40):byte;
+	ahci_port.ctab[11] = 0:byte;
+
+	ahci_port.ctab[12] = count:byte;
+	ahci_port.ctab[13] = (count >> 8):byte;
+	ahci_port.ctab[14] = 0:byte;
+	ahci_port.ctab[15] = 0:byte;
+
+	ahci_port.ctab[16] = 0:byte;
+	ahci_port.ctab[17] = 0:byte;
+	ahci_port.ctab[18] = 0:byte;
+	ahci_port.ctab[19] = 0:byte;
 
 	// Fill PRDT
 	_w32(&ahci_port.ctab[0x80], ahci_port.bufp);
 	_w32(&ahci_port.ctab[0x84], ahci_port.bufp >> 32);
 	_w32(&ahci_port.ctab[0x88], 0);
 	_w32(&ahci_port.ctab[0x8c], (1 << 31) + 511);
-
-	// Set AHCI Doorbell
-	_w32(&ahci_port.port[0x38], 1);
-
-	//loop {
-	//	_w32(&port[0x30], -1);
-	//	if _r32(&ahci_port.port[0x38]) & 1 == 0 {
-	//		break;
-	//	}
-	//}
-
-	//if _r32(&port[0x30]) != 0 {
-	//	kputs("got error");
-	//	return;
-	//}
-
-	//kputs("Found ");
-	//kputd((512 * (&ahci_port.buf[200]):*int[0]) / 1000000000);
-	//kputs("GB\n");
-
-	ahci_port.next = global.ahci_port;
-	global.ahci_port = ahci_port;
 }
 
 isr_ahci() {
@@ -1599,6 +1621,8 @@ isr_ahci() {
 		if !ahci_port {
 			break;
 		}
+
+		xxd(ahci_port.buf, 512);
 
 		_w32(&ahci_port.port[0x10], -1);
 
@@ -1642,6 +1666,68 @@ sleep(ms: int) {
 			break;
 		}
 		hlt();
+	}
+}
+
+xxd(data: *byte, len: int) {
+	var i: int;
+	var j: int;
+	loop {
+		if i >= len {
+			break;
+		}
+
+		kputh32(i);
+
+		kputc(':');
+		kputc(' ');
+
+		j = 0;
+
+		loop {
+			if j == 16 {
+				break;
+			}
+
+			if i + j < len {
+				kputh8(data[i + j]: int);
+			} else {
+				kputc(' ');
+				kputc(' ');
+			}
+
+			if i + j + 1 < len {
+				kputh8(data[i + j + 1]: int);
+			} else {
+				kputc(' ');
+				kputc(' ');
+			}
+
+			kputc(' ');
+
+			j = j + 2;
+		}
+
+		kputc(' ');
+
+		j = 0;
+		loop {
+			if j == 16 || i + j >= len {
+				break;
+			}
+
+			if data[i + j]:int >= 0x20 && data[i + j]:int < 0x80 {
+				kputc(data[i + j]: int);
+			} else {
+				kputc('.');
+			}
+
+			j = j + 1;
+		}
+
+		kputc('\n');
+
+		i = i + 16;
 	}
 }
 
@@ -1812,12 +1898,12 @@ _kstart(mb: int) {
 	xsdt = find_xsdt();
         mcfg = find_acpi(xsdt, "MCFG");
 	if !mcfg {
-		kputs("No mcfg?\n");
+		kdie("No mcfg?\n");
 	}
 
 	pcip = (ptov(mcfg + 44):*int)[0];
 	if !pcip {
-		kputs("No pci?\n");
+		kdie("No pci?\n");
 	}
 
 	// Enable the local apic
