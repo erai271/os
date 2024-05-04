@@ -274,26 +274,6 @@ _isr(r: *regs) {
 		// apic end of interrupt
 		_w32(&global.lapic[0xb0], 0);
 	}
-
-	// pic end of interrupt
-	//if (r.trap >= 32 && r.trap < 48) {
-	//	if (r.trap < 40) {
-	//		outb(IO_PIC1, 0x0b);
-	//		if inb(IO_PIC1) & (1 << (r.trap & 7)) {
-	//			outb(IO_PIC1, 0x20);
-	//		} else {
-	//			kputs("s\n");
-	//		}
-	//	} else {
-	//		outb(IO_PIC2, 0x0b);
-	//		if inb(IO_PIC2) & (1 << (r.trap & 7)) {
-	//			outb(IO_PIC2, 0x20);
-	//			outb(IO_PIC1, 0x20);
-	//		} else {
-	//			kputs("s\n");
-	//		}
-	//	}
-	//}
 }
 
 fill_idt(s: *int) {
@@ -358,6 +338,23 @@ ptov(p: int): *byte {
 	} else {
 		return (p + (-1 << 47)): *byte;
 	}
+}
+
+vtop(v: *byte): int {
+	var va: int;
+	va = v:int;
+
+	// direct map
+	if va >= (-1 << 47) && va < (-1 << 46) {
+		return va & ((1 << 46) - 1);
+	}
+
+	// -2G to -1G is mapped to 0 - 1G
+	if va >= (-1 << 31) && va < (-1 << 30) {
+		return va & ((1 << 30) - 1);
+	}
+
+	kdie("BAD VA");
 }
 
 acpi_len(p: int): int {
@@ -634,33 +631,19 @@ show_pcidev(dev: *pcidev) {
 	kputc('\n');
 }
 
-//enum {
-//	E1_TXDESCLO = 0x3800,
-//	E1_TXDESCHI = 0x3804,
-//	E1_TXDESCLEN = 0x3808,
-//	E1_TXDESCHEAD = 0x3810,
-//	E1_TXDESCTAIL = 0x3818,
-//	E1_TCTRL = 0x0400,
-//	E1_TIPG = 0x0410,
-//
-//	E1_RXDESCLO = 0x2800,
-//	E1_RXDESCHI = 0x2804,
-//	E1_RXDESCLEN = 0x2808,
-//	E1_RXDESCHEAD = 0x2810,
-//	E1_RXDESCTAIL = 0x2818,
-//	E1_RCTRL = 0x0100,
-//
-//	E1_IMASK = 0x00d0,
-//	E1_ICR = 0x00C0,
-//}
-
-onesum(h: *byte, n: int): int {
+onesum(h: *byte, n: int, s: int): int {
 	var i: int;
-	var s: int;
 	i = 0;
-	s = 0;
+	s = (s & 0xffff) + (s >> 16);
+	s = (s & 0xffff) + (s >> 16);
+	s = (s & 0xffff) + (s >> 16);
 	loop {
 		if i >= n {
+			break;
+		}
+		if i + 1 == n {
+			s = s + (h[i]:int << 8);
+			s = (s & 0xffff) + ((s >> 16) & 1);
 			break;
 		}
 		s = s + (h[i]:int << 8) + (h[i + 1]:int);
@@ -674,7 +657,7 @@ ip_checksum(h: *byte) {
 	var s: int;
 	h[10] = 0:byte;
 	h[11] = 0:byte;
-	s = ~onesum(h, 20);
+	s = ~onesum(h, 20, 0);
 	h[10] = (s >> 8):byte;
 	h[11] = s:byte;
 }
@@ -683,187 +666,10 @@ icmp_checksum(p: *byte) {
 	var s: int;
 	p[2] = 0: byte;
 	p[3] = 0: byte;
-	s = ~onesum(p, 8);
+	s = ~onesum(p, 8, 0);
 	p[2] = (s >> 8):byte;
 	p[3] = s:byte;
 }
-
-//init_e1000(dev: *pcidev) {
-//	var flag: *int;
-//	var base: *byte;
-//	var mac: int;
-//	var i: int;
-//	var txring: *byte;
-//
-//	if *flag || dev.vid != 0x8086 || (
-//		dev.did != 0x100e
-//		&& dev.did != 0x1539
-//	) {
-//		return;
-//	}
-//	*flag = 1;
-//	*dev.trap = 10:byte;
-//
-//	base = map_bar(ptov(-(1<<34)), dev);
-//	if !base {
-//		return;
-//	}
-//
-//	// Enable dma
-//	_w16(&dev.addr[4], 6);
-//
-//	// Disable interrupts
-//	_w32(&base[E1_IMASK], 0);
-//
-//	// Clear MTA
-//	i = 0;
-//	loop {
-//		if i == 0x80 {
-//			break;
-//		}
-//		_w32(&base[0x5200 + 4 * i], 0);
-//		i = i + 1;
-//	}
-//
-//	// Read mac
-//	mac = _r32(&base[0x5400]) + (_r32(&base[0x5404])) << 32;
-//
-//	txring = alloc_page();
-//
-//	i = 0;
-//	loop {
-//		if i == 16 {
-//			break;
-//		}
-//		bzero(&txring[16*32 + 16*i], 16);
-//		((&txring[16*32 + 16*i]):*int)[0] = 1024*1024*3 + 4096 * (i + 1);
-//		_w16(&txring[16*32 + 16*i + 8], 2048);
-//		i = i + 1;
-//	}
-//
-//	// Create tx descriptors
-//	_w32(&base[E1_TXDESCLO], 1024*1024*3);
-//	_w32(&base[E1_TXDESCHI], 0);
-//	_w32(&base[E1_TXDESCLEN], 16*32);
-//	_w32(&base[E1_TXDESCHEAD], 0);
-//	_w32(&base[E1_TXDESCTAIL], 0);
-//
-//	// Create rx descriptors
-//	_w32(&base[E1_RXDESCLO], 1024*1024*3+16*32);
-//	_w32(&base[E1_RXDESCHI], 0);
-//	_w32(&base[E1_RXDESCLEN], 16*32);
-//	_w32(&base[E1_RXDESCHEAD], 0);
-//	_w32(&base[E1_RXDESCTAIL], 31);
-//
-//	// Enable interrupts
-//	_w32(&base[E1_IMASK], 0);
-//
-//	// Enable rx and tx
-//	_w32(&base[E1_TCTRL], 0x3003f0fa);
-//	_w32(&base[E1_RCTRL],
-//		// Enable
-//		(1 << 1)
-//		// StoreBadPackets
-//		+ (1 << 2)
-//		// UnicastPromiscuous
-//		+ (1 << 3)
-//		// MulticastPromiscuous
-//		+ (1 << 4)
-//		// LoobackMode
-//		+ (0 << 6)
-//		// BroadcastAccept
-//		+ (1 << 15)
-//		// ReceiveBufferSize
-//		+ (0 << 16)
-//		// StripEthernetCRC
-//		+ (1 << 26));
-//
-//	// Send a packet
-//	(txring:*int)[0] = 1024*1024*3 + 16*32*2;
-//	_w16(&txring[8], 60);
-//	txring[10] = 0:byte;
-//	// ReportStatus + InsertFrameCheckSequence + EndOfPacket
-//	txring[11] = ((0 << 3) + (1 << 1) + 1):byte;
-//	txring[12] = 0:byte;
-//	txring[13] = 0:byte;
-//	txring[14] = 0:byte;
-//	txring[15] = 0:byte;
-//	txring[16*32*2 + 0] = (mac >> 40):byte;
-//	txring[16*32*2 + 1] = (mac >> 32):byte;
-//	txring[16*32*2 + 2] = (mac >> 24):byte;
-//	txring[16*32*2 + 3] = (mac >> 16):byte;
-//	txring[16*32*2 + 4] = (mac >> 8):byte;
-//	txring[16*32*2 + 5] = mac:byte;
-//	txring[16*32*2 + 6] = 0x36:byte;
-//	txring[16*32*2 + 7] = 0xb9:byte;
-//	txring[16*32*2 + 8] = 0x55:byte;
-//	txring[16*32*2 + 9] = 0x54:byte;
-//	txring[16*32*2 + 10] = 0xba:byte;
-//	txring[16*32*2 + 11] = 0xcf:byte;
-//	txring[16*32*2 + 12] = 0x08:byte;
-//	txring[16*32*2 + 13] = 0x00:byte;
-//
-//	txring[16*32*2 + 14] = 0x45:byte;
-//	txring[16*32*2 + 15] = 0:byte;
-//	txring[16*32*2 + 16] = 0:byte;
-//	txring[16*32*2 + 17] = 28:byte;
-//	txring[16*32*2 + 18] = 0:byte;
-//	txring[16*32*2 + 19] = 0:byte;
-//	txring[16*32*2 + 20] = 0:byte;
-//	txring[16*32*2 + 21] = 0:byte;
-//	txring[16*32*2 + 22] = 64:byte;
-//	txring[16*32*2 + 23] = 1:byte;
-//	txring[16*32*2 + 24] = 0:byte;
-//	txring[16*32*2 + 25] = 0:byte;
-//	txring[16*32*2 + 26] = 192:byte;
-//	txring[16*32*2 + 27] = 168:byte;
-//	txring[16*32*2 + 28] = 32:byte;
-//	txring[16*32*2 + 29] = 2:byte;
-//	txring[16*32*2 + 30] = 192:byte;
-//	txring[16*32*2 + 31] = 168:byte;
-//	txring[16*32*2 + 32] = 32:byte;
-//	txring[16*32*2 + 33] = 1:byte;
-//
-//	ip_checksum(&txring[16*32*2 + 14]);
-//
-//	txring[16*32*2 + 34] = 8:byte;
-//	txring[16*32*2 + 35] = 0:byte;
-//	txring[16*32*2 + 36] = 0:byte;
-//	txring[16*32*2 + 37] = 0:byte;
-//	txring[16*32*2 + 38] = 0:byte;
-//	txring[16*32*2 + 39] = 0:byte;
-//	txring[16*32*2 + 40] = 0:byte;
-//
-//	icmp_checksum(&txring[16*32*2 + 34]);
-//
-//	_w32(&base[E1_TXDESCTAIL], 1);
-//	_w32(&base[E1_IMASK], (1 << 0) + (1 << 4));
-//}
-
-//init_nvme(dev: *pcidev) {
-//	var flag: *int;
-//	var base: *byte;
-//
-//	if *flag || dev.cls != 1 || dev.subcls != 8 {
-//		return;
-//	}
-//	*flag = 1;
-//	*dev.trap = 11:byte;
-//
-//	// Enable dma
-//	_w16(&dev.addr[4], 6);
-//
-//	// Map bar
-//	base = map_bar(ptov(-(1<<36)), dev);
-//	if !base {
-//		return;
-//	}
-//
-//	kputs("nvme\n");
-//
-//	// setup admin ring
-//	// enable interrupts
-//}
 
 struct vga {
 	base: *byte;
@@ -967,21 +773,41 @@ kputs(s: *byte) {
 	}
 }
 
+struct arp_entry {
+	mac: int;
+	ip: int;
+	last_seen: int;
+	state: int;
+}
+
+struct tcp_state {
+}
+
 struct global {
 	ptr: *global;
 	ms: int;
 	vga: vga;
 	fr: *free_range;
-	fpage: *free_page;
+	fp: *free_page;
 	lapicp: int;
 	lapic: *byte;
 	mmio: int;
 	realtek_port: *realtek_port;
 	ahci_port: *ahci_port;
+	boot_time: int;
+	ip: int;
+	ip_router: int;
+	ip_mask: int;
+	arp: *arp_entry;
+	arp_count: int;
+	tcp: **tcp_state;
+	tcp_count: int;
+	rng: int;
 }
 
 struct free_page {
 	next: *free_page;
+	pa: int;
 }
 
 struct free_range {
@@ -992,6 +818,15 @@ struct free_range {
 
 g(): *global {
 	return _rgs(0):**global[0];
+}
+
+rand(): int {
+	var global: *global;
+	var ret: int;
+	global = g();
+	ret = global.rng;
+	global.rng = ret * 5 + 1;
+	return ret;
 }
 
 memset(dest: *byte, c: int, size: int) {
@@ -1112,11 +947,51 @@ mmap_cmp(a: *void, b: *void): int {
 	return 0;
 }
 
+free(p: *byte) {
+	var global: *global;
+	var fp: *free_page;
+	var flags: int;
+
+	global = g();
+
+	if !p {
+		return;
+	}
+
+	if p:int & 4095 != 0 {
+		kdie("BAD FREE");
+	}
+
+	fp = p:*free_page;
+	fp.pa = vtop(p);
+
+	kputh(p:int);
+	kputh(fp.pa:int);
+
+	flags = rdflags();
+	cli();
+	fp.next = global.fp;
+	global.fp = fp;
+	wrflags(flags);
+}
+
 alloc_page(): int {
 	var global: *global;
 	var fr: *free_range;
+	var fp: *free_page;
+	var flags: int;
 	var ret: int;
 	global = g();
+
+	flags = rdflags();
+	cli();
+
+	fp = global.fp;
+	if fp {
+		global.fp = fp.next;
+		wrflags(flags);
+		return fp.pa;
+	}
 	fr = global.fr;
 	loop {
 		if !fr {
@@ -1126,18 +1001,14 @@ alloc_page(): int {
 		if fr.start < fr.end {
 			ret = fr.start;
 			fr.start = fr.start + 4096;
+			wrflags(flags);
 			return ret;
 		}
 
 		fr = fr.next;
 	}
 
-	kputs("OOM\n");
-
-	loop {
-		cli();
-		hlt();
-	}
+	kdie("OOM");
 }
 
 direct_map(brk: *int) {
@@ -1277,11 +1148,43 @@ fill_packet(ringp: int) {
 	ring:*int[0] = (0xb000 << 16) + (64);
 }
 
+struct realtek_desc {
+	flags: int;
+	framep: int;
+}
+
 struct realtek_port {
 	next: *realtek_port;
 	io: int;
-	rxring: *byte;
-	txring: *byte;
+	mac: int;
+	tx: realtek_ring;
+	rx: realtek_ring;
+}
+
+struct realtek_ring {
+	ringp: int;
+	ring: *realtek_desc;
+	count: int;
+}
+
+alloc(): *byte {
+	return ptov(alloc_page());
+}
+
+realtek_mkring(ring: *realtek_ring, rx: int) {
+	var i: int;
+	ring.count = 4096 >> 4;
+	ring.ringp = alloc_page();
+	ring.ring = ptov(ring.ringp):*realtek_desc;
+	i = 0;
+	loop {
+		if i == ring.count {
+			break;
+		}
+		ring.ring[i].framep = alloc_page();
+		ring.ring[i].flags = (rx << 31) + (((i + 1) == ring.count) << 30) + 4095;
+		i = i + 1;
+	}
 }
 
 init_realtek(dev: *pcidev) {
@@ -1337,25 +1240,22 @@ init_realtek(dev: *pcidev) {
 	// tx packet size
 	outd(io + 0xec, 0x00000010);
 
-	var txringp: int;
-	txringp = alloc_page();
-	setup_ring(txringp, 0);
-	fill_packet(txringp);
+	realtek_port = alloc():*realtek_port;
+	realtek_port.io = io;
+	realtek_port.mac = ((ind(io + 4) & 0xffff) << 32) + ind(io);
+	realtek_mkring(&realtek_port.tx, 0);
+	realtek_mkring(&realtek_port.rx, 1);
 
 	// tx ring
-	outd(io + 0x20, txringp);
-	outd(io + 0x24, txringp >> 32);
+	outd(io + 0x20, realtek_port.tx.ringp);
+	outd(io + 0x24, realtek_port.tx.ringp >> 32);
 
 	// tx max size
 	outb(io + 0xec, 16);
 
-	var rxringp: int;
-	rxringp = alloc_page();
-	setup_ring(rxringp, 1);
-
 	// rx ring
-	outd(io + 0xe4, rxringp);
-	outd(io + 0xe8, rxringp >> 32);
+	outd(io + 0xe4, realtek_port.rx.ringp);
+	outd(io + 0xe8, realtek_port.rx.ringp >> 32);
 
 	// Enable rx/tx
 	outd(io + 0x37, 0x0c);
@@ -1368,45 +1268,446 @@ init_realtek(dev: *pcidev) {
 	outb(io + 0x50, 0x00);
 
 	// TX Doorbell
-	outb(io + 0x38, 0x40);
+	//fill_packet(txringp);
+	//outb(io + 0x38, 0x40);
 
-	realtek_port = ptov(alloc_page()):*realtek_port;
 	realtek_port.next = global.realtek_port;
-	realtek_port.io = io;
-	realtek_port.rxring = ptov(rxringp);
-	realtek_port.txring = ptov(txringp);
 	global.realtek_port = realtek_port;
 }
 
-isr_realtek() {
+kputmac(a: int) {
+	kputh8((a >> 40) & 0xff);
+	kputc(':');
+	kputh8((a >> 32) & 0xff);
+	kputc(':');
+	kputh8((a >> 24) & 0xff);
+	kputc(':');
+	kputh8((a >> 16) & 0xff);
+	kputc(':');
+	kputh8((a >> 8) & 0xff);
+	kputc(':');
+	kputh8(a & 0xff);
+}
+
+kputip(a: int) {
+	kputd((a >> 24) & 0xff);
+	kputc('.');
+	kputd((a >> 16) & 0xff);
+	kputc('.');
+	kputd((a >> 8) & 0xff);
+	kputc('.');
+	kputd(a & 0xff);
+}
+
+enum {
+	ET_IP = 0x0800,
+	ET_ARP = 0x0806,
+	ARP_ETHER = 1,
+	IP_ICMP = 1,
+	IP_TCP = 6,
+	IP_UDP = 17,
+	ICMP_PONG = 0,
+	ICMP_PING = 8,
+}
+
+struct rxinfo {
+	port: *realtek_port;
+
+	ether: *byte;
+	ether_len: int;
+	ether_src: int;
+	ether_dest: int;
+	ether_type: int;
+
+	arp: *byte;
+	arp_len: int;
+	arp_op: int;
+	arp_ether_src: int;
+	arp_ip_src: int;
+	arp_ether_dest: int;
+	arp_ip_dest: int;
+
+	ip: *byte;
+	ip_len: int;
+	ip_src: int;
+	ip_dest: int;
+	ip_proto: int;
+	ip_psum: int;
+
+	icmp: *byte;
+	icmp_len: int;
+	icmp_type: int;
+	icmp_code: int;
+
+	icmp_seg: *byte;
+	icmp_seg_len: int;
+
+	udp: *byte;
+	udp_len: int;
+	udp_src: int;
+	udp_dest: int;
+
+	udp_seg: *byte;
+	udp_seg_len: int;
+
+	tcp: *byte;
+	tcp_len: int;
+	tcp_src: int;
+	tcp_dest: int;
+	tcp_seq: int;
+	tcp_ack: int;
+	tcp_flags: int;
+	tcp_win: int;
+
+	tcp_seg: *byte;
+	tcp_seg_len: int;
+}
+
+handle_arp(pkt: *rxinfo) {
 	var global: *global;
-	var realtek_port: *realtek_port;
-	var i: int;
+	global = g();
+
+	// Add arp_ether_src arp_ip_src to the arp table
+
+	if pkt.arp_ip_dest != global.ip {
+		return;
+	}
+
+	if pkt.arp_op == 1 {
+		// Send ARP response
+		kputs("arp\n");
+	}
+}
+
+rx_arp(pkt: *rxinfo) {
+	var x: int;
+
+	if pkt.arp_len < 28 {
+		return;
+	}
+
+	// Hardware type
+	x = (pkt.arp[0]:int << 8) + pkt.arp[1]:int;
+	if x != ARP_ETHER {
+		return;
+	}
+
+	// Protocol type
+	x = (pkt.arp[2]:int << 8) + pkt.arp[3]:int;
+	if x != ET_IP {
+		return;
+	}
+
+	// Hardware and protocol length
+	x = (pkt.arp[4]:int << 8) + pkt.arp[5]:int;
+	if x != 0x0604 {
+		return;
+	}
+
+	// Operation
+	pkt.arp_op = (pkt.arp[6]:int << 8) + pkt.arp[7]:int;
+
+	if pkt.arp_op != 1 && pkt.arp_op != 2 {
+		return;
+	}
+
+	pkt.arp_ether_src = (pkt.arp[8]:int << 40)
+		+ (pkt.arp[9]:int << 32)
+		+ (pkt.arp[10]:int << 24)
+		+ (pkt.arp[11]:int << 16)
+		+ (pkt.arp[12]:int << 8)
+		+ pkt.arp[13]:int;
+
+	pkt.arp_ip_src = (pkt.arp[14]:int << 24)
+		+ (pkt.arp[15]:int << 16)
+		+ (pkt.arp[16]:int << 8)
+		+ pkt.arp[17]:int;
+
+	pkt.arp_ether_dest = (pkt.arp[18]:int << 40)
+		+ (pkt.arp[19]:int << 32)
+		+ (pkt.arp[20]:int << 24)
+		+ (pkt.arp[21]:int << 16)
+		+ (pkt.arp[22]:int << 8)
+		+ pkt.arp[23]:int;
+
+	pkt.arp_ip_dest = (pkt.arp[24]:int << 24)
+		+ (pkt.arp[25]:int << 16)
+		+ (pkt.arp[26]:int << 8)
+		+ pkt.arp[27]:int;
+
+	handle_arp(pkt);
+}
+
+handle_icmp(pkt: *rxinfo) {
+	if pkt.icmp_type == ICMP_PING {
+		if pkt.icmp_code == 0 {
+			// Send pong
+		}
+	}
+}
+
+rx_icmp(pkt: *rxinfo) {
+	if pkt.icmp_len < 8 {
+		return;
+	}
+
+	if onesum(pkt.icmp, pkt.icmp_len, 0) != 0xffff {
+		return;
+	}
+
+	pkt.icmp_type = pkt.icmp[0]:int;
+	pkt.icmp_code = pkt.icmp[1]:int;
+
+	pkt.icmp_seg = &pkt.icmp[8];
+	pkt.icmp_seg_len = pkt.icmp_len - 8;
+
+	handle_icmp(pkt);
+}
+
+handle_udp(pkt: *rxinfo) {
+}
+
+rx_udp(pkt: *rxinfo) {
+	var sum: int;
+	var len: int;
+
+	if pkt.udp_len < 8 {
+		return;
+	}
+
+	len = (pkt.udp[4]:int << 8)
+		+ pkt.udp[5]:int;
+	if len < 8 || len > pkt.udp_len {
+		return;
+	}
+
+	pkt.udp_len = len;
+
+	if _r16(&pkt.udp[6]) != 0 {
+		sum = onesum(pkt.udp, pkt.udp_len, pkt.ip_psum);
+		if sum != 0xffff {
+			return;
+		}
+	}
+
+	pkt.udp_src = (pkt.udp[0]:int << 8)
+		+ pkt.udp[1]:int;
+
+	pkt.udp_dest = (pkt.udp[2]:int << 8)
+		+ pkt.udp[3]:int;
+
+	pkt.udp_seg = &pkt.udp[8];
+	pkt.udp_seg_len = pkt.udp_len - 8;
+
+	handle_udp(pkt);
+}
+
+handle_tcp(pkt: *rxinfo) {
+	kputip(pkt.ip_src);
+	kputc(':');
+	kputd(pkt.tcp_src);
+	kputc('>');
+	kputip(pkt.ip_dest);
+	kputc(':');
+	kputd(pkt.tcp_dest);
+	kputc('\n');
+	xxd(pkt.tcp_seg, pkt.tcp_seg_len);
+}
+
+enum {
+	TCP_ACK = 16,
+	TCP_PSH = 8,
+	TCP_RST = 4,
+	TCP_SYN = 2,
+	TCP_FIN = 1,
+}
+
+rx_tcp(pkt: *rxinfo) {
+	var sum: int;
+	var off: int;
+
+	if pkt.tcp_len < 20 {
+		return;
+	}
+
+	sum = onesum(pkt.tcp, pkt.tcp_len, pkt.ip_psum);
+	if sum != 0xffff {
+		return;
+	}
+
+	pkt.tcp_src = (pkt.tcp[0]:int << 8)
+		+ pkt.tcp[1]:int;
+	pkt.tcp_dest = (pkt.tcp[2]:int << 8)
+		+ pkt.tcp[3]:int;
+	pkt.tcp_seq = (pkt.tcp[4]:int << 24)
+		+ (pkt.tcp[5]:int << 16)
+		+ (pkt.tcp[6]:int << 8)
+		+ pkt.tcp[7]:int;
+	pkt.tcp_ack = (pkt.tcp[8]:int << 24)
+		+ (pkt.tcp[9]:int << 16)
+		+ (pkt.tcp[10]:int << 8)
+		+ pkt.tcp[11]:int;
+	pkt.tcp_flags = (pkt.tcp[12]:int << 8)
+		+ pkt.tcp[13]:int;
+	pkt.tcp_win = (pkt.tcp[14]:int << 8)
+		+ pkt.tcp[15]:int;
+
+	off = (pkt.tcp_flags >> 12) << 2;
+	if off < 20 || off > pkt.tcp_len {
+		return;
+	}
+
+	pkt.tcp_seg = &pkt.tcp[off];
+	pkt.tcp_seg_len = pkt.tcp_len - off;
+
+	handle_tcp(pkt);
+}
+
+rx_ip(pkt: *rxinfo) {
+	var global: *global;
+	var len: int;
+	var frag: int;
 
 	global = g();
 
-	realtek_port = global.realtek_port;
+	if pkt.ip_len < 20 {
+		return;
+	}
+
+	if onesum(pkt.ip, 20, 0) != 0xffff {
+		return;
+	}
+
+	if pkt.ip[0] != 0x45:byte {
+		return;
+	}
+
+	len = (pkt.ip[2]:int << 8)
+		+ pkt.ip[3]:int;
+	if len < 20 || len > pkt.ip_len {
+		return;
+	}
+	pkt.ip_len = len;
+
+	frag = (pkt.ip[6]:int << 8)
+		+ pkt.ip[7]:int;
+
+	if frag & (1 << 15) != 0 || frag & 8191 != 0 {
+		return;
+	}
+
+	pkt.ip_proto = pkt.ip[9]:int;
+
+	pkt.ip_src = (pkt.ip[12]:int << 24)
+		+ (pkt.ip[13]:int << 16)
+		+ (pkt.ip[14]:int << 8)
+		+ pkt.ip[15]:int;
+	pkt.ip_dest = (pkt.ip[16]:int << 24)
+		+ (pkt.ip[17]:int << 16)
+		+ (pkt.ip[18]:int << 8)
+		+ pkt.ip[19]:int;
+
+	// Pesudo header sum
+	pkt.ip_psum = (pkt.ip_src & 0xffff)
+		+ ((pkt.ip_src >> 16) & 0xffff)
+		+ (pkt.ip_dest & 0xffff)
+		+ ((pkt.ip_dest >> 16) & 0xffff)
+		+ pkt.ip_proto
+		+ (pkt.ip_len - 20);
+
+	if pkt.ip_dest != global.ip {
+		return;
+	}
+
+	if pkt.ip_proto == IP_ICMP {
+		pkt.icmp = &pkt.ip[20];
+		pkt.icmp_len = pkt.ip_len - 20;
+		rx_icmp(pkt);
+	} else if pkt.ip_proto == IP_TCP {
+		pkt.tcp = &pkt.ip[20];
+		pkt.tcp_len = pkt.ip_len - 20;
+		rx_tcp(pkt);
+	} else if pkt.ip_proto == IP_UDP {
+		pkt.udp = &pkt.ip[20];
+		pkt.udp_len = pkt.ip_len - 20;
+		rx_udp(pkt);
+	}
+}
+
+rx_ether(pkt: *rxinfo) {
+	if pkt.ether_len < 14 {
+		return;
+	}
+
+	pkt.ether_dest = (pkt.ether[0]:int << 40)
+		+ (pkt.ether[1]:int << 32)
+		+ (pkt.ether[2]:int << 24)
+		+ (pkt.ether[3]:int << 16)
+		+ (pkt.ether[4]:int << 8)
+		+ pkt.ether[5]:int;
+	pkt.ether_src = (pkt.ether[6]:int << 40)
+		+ (pkt.ether[7]:int << 32)
+		+ (pkt.ether[8]:int << 24)
+		+ (pkt.ether[9]:int << 16)
+		+ (pkt.ether[10]:int << 8)
+		+ pkt.ether[11]:int;
+	pkt.ether_type = (pkt.ether[12]:int << 8)
+		+ (pkt.ether[13]:int);
+
+	if pkt.ether_type == ET_ARP {
+		pkt.arp = &pkt.ether[14];
+		pkt.arp_len = pkt.ether_len - 14;
+		rx_arp(pkt);
+	} else if pkt.ether_type == ET_IP {
+		pkt.ip = &pkt.ether[14];
+		pkt.ip_len = pkt.ether_len - 14;
+		rx_ip(pkt);
+	}
+}
+
+isr_realtek() {
+	var pkt: rxinfo;
+	var global: *global;
+	var port: *realtek_port;
+	var i: int;
+	var packet: *byte;
+	var len: int;
+
+	global = g();
+
+	port = global.realtek_port;
 	loop {
-		if !realtek_port {
+		if !port {
 			break;
 		}
 
 		i = 0;
 		loop {
-			if i == 16 {
+			if i == port.rx.count {
 				break;
 			}
 
-			_w32(&realtek_port.rxring[i * 16], (1 << 31) | ((i == 15) << 30) | 4096);
-			_w32(&realtek_port.rxring[i * 16 + 4], 0);
+			if port.rx.ring[i].flags & (1 << 31) == 0 {
+				pkt.port = port;
+				pkt.ether = ptov(port.rx.ring[i].framep);
+				pkt.ether_len = port.rx.ring[i].flags & 4095;
+
+				if pkt.ether_len >= 4 {
+					pkt.ether_len = pkt.ether_len - 4;
+				}
+
+				rx_ether(&pkt);
+
+				port.rx.ring[i].flags = (1 << 31) + (((i + 1) == port.rx.count) << 30) + 4095;
+			}
 
 			i = i + 1;
 		}
 
 		// clear interrupt flags
-		outw(realtek_port.io + 0x3e, 0xffff);
+		outw(port.io + 0x3e, 0xffff);
 
-		realtek_port = realtek_port.next;
+		port = port.next;
 	}
 }
 
@@ -1544,12 +1845,10 @@ init_ahci_port(ahci: *byte, i: int) {
 	ahci_port.bufp = alloc_page();
 	ahci_port.buf = ptov(ahci_port.bufp);
 
-	bzero(ahci_port.buf, 4096);
-
-	fill_fis_h2d(ahci_port, ATA_READ, 0);
-
 	// Set AHCI Doorbell
-	_w32(&ahci_port.port[0x38], 1);
+	//bzero(ahci_port.buf, 4096);
+	//fill_fis_h2d(ahci_port, ATA_READ, 0);
+	//_w32(&ahci_port.port[0x38], 1);
 
 	ahci_port.next = global.ahci_port;
 	global.ahci_port = ahci_port;
@@ -1628,8 +1927,6 @@ isr_ahci() {
 		if !ahci_port {
 			break;
 		}
-
-		xxd(ahci_port.buf, 4096);
 
 		_w32(&ahci_port.port[0x10], -1);
 
@@ -1738,6 +2035,124 @@ xxd(data: *byte, len: int) {
 	}
 }
 
+read_cmos(a: int): int {
+	outb(0x70, (a & 0x7f) | 0x80);
+	return inb(0x71);
+}
+
+read_rtc() {
+	var global: *global;
+	var epoch_time: int;
+	var days_since_epoch: int;
+	var sec: int;
+	var min: int;
+	var hour: int;
+	var day: int;
+	var mon: int;
+	var year: int;
+	var flags: int;
+	var days_in_month: *byte;
+	global = g();
+
+	sec = 0;
+	min = 0;
+	hour = 0;
+	day = 0;
+	mon = 0;
+	year = 0;
+	flags = 0;
+
+	loop {
+		if read_cmos(0xa) & 0x80 {
+			continue;
+		}
+
+		if read_cmos(0x00) != sec {
+			sec = read_cmos(0x00);
+			continue;
+		}
+
+		if read_cmos(0x02) != min {
+			min = read_cmos(0x02);
+			continue;
+		}
+
+		if read_cmos(0x04) != hour {
+			hour = read_cmos(0x04);
+			continue;
+		}
+
+		if read_cmos(0x07) != day {
+			day = read_cmos(0x07);
+			continue;
+		}
+
+		if read_cmos(0x08) != mon {
+			mon = read_cmos(0x08);
+			continue;
+		}
+
+		if read_cmos(0x09) != year {
+			year = read_cmos(0x09);
+			continue;
+		}
+
+		if read_cmos(0x0b) != flags {
+			flags = read_cmos(0x0b);
+			continue;
+		}
+
+		break;
+	}
+
+	// bcd -> binary
+	if flags & 0x04 == 0 {
+		sec = (sec & 15) + (((sec >> 4) & 15) * 10);
+		min = (min & 15) + (((min >> 4) & 15) * 10);
+		hour = (hour & 15) + (((hour >> 4) & 15) * 10) + (hour & 0x80);
+		day = (day & 15) + (((day >> 4) & 15) * 10);
+		mon = (mon & 15) + (((mon >> 4) & 15) * 10);
+		year = (year & 15) + (((year >> 4) & 15) * 10);
+	}
+
+	// 12 hour clock
+	if flags & 0x02 == 0 && hour & 0x80 {
+		hour = ((hour & 0x7f) + 12) % 24;
+	}
+
+	// Current century
+	year = year + 2000;
+
+	days_since_epoch = year * 365
+		+ (year / 4)
+		- (year / 100)
+		+ (year / 400)
+		+ (day - 1)
+		- 719527;
+
+	if (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0) {
+		days_in_month = " 313232332323";
+	} else {
+		days_in_month = " 303232332323";
+	}
+
+	var i: int;
+	i = 1;
+	loop {
+		if i >= mon {
+			break;
+		}
+
+		days_since_epoch = days_since_epoch + (days_in_month[i]:int - '0' + 28);
+
+		i = i + 1;
+	}
+
+	epoch_time = days_since_epoch * 86400 + hour * 3600 + min * 60 + sec;
+
+	global.boot_time = epoch_time;
+}
+
 _kstart(mb: int) {
 	var global: global;
 	var brk: int;
@@ -1760,15 +2175,19 @@ _kstart(mb: int) {
 
 	bzero((&global):*byte, sizeof(global));
 	global.ptr = &global;
+	global.ip = (192 << 24) + (168 << 16) + (1 << 8) + 148;
+	global.ip_router = (192 << 24) + (168 << 16) + (1 << 8) + 1;
+	global.ip_mask = 20;
 	wrmsr((0xc000 << 16) + 0x0101, global.ptr:int);
 
 	global.mmio = -(1 << 31);
 
 	vinit(&global.vga, ptov(0xB8000));
 	vclear(&global.vga);
-	kputs("Starting up\n");
+	//kputs("Starting up\n");
 
 	global.fr = 0:*free_range;
+	global.fp = 0:*free_page;
 
 	brk = ptov(1024 * 1024 * 3):int;
 
@@ -1899,6 +2318,16 @@ _kstart(mb: int) {
 	outb(IO_PIC1 + 1, 0xfe);
 	outb(IO_PIC2 + 1, 0xff);
 
+	// Allocate network state tables
+	global.arp = alloc():*arp_entry;
+	global.arp_count = 4096 / sizeof(*global.arp);
+	global.tcp = alloc():**tcp_state;
+	global.tcp_count = 4096 / sizeof(*global.tcp);
+	bzero(global.arp: *byte, 4096);
+	bzero(global.tcp: *byte, 4096);
+
+	read_rtc();
+	global.rng = global.boot_time;
 	sti();
 
         // Find ACPI tables
@@ -1923,12 +2352,12 @@ _kstart(mb: int) {
 	global.lapic = lapic;
 
 	pci = map_pci(pcip);
-	scan_pci(pci, show_pcidev);
+	//scan_pci(pci, show_pcidev);
 	scan_pci(pci, init_realtek);
 	scan_pci(pci, init_ahci);
 
 	// Wait for interrupts
-	kputs("Sleeping...\n");
+	kputs("zzz\n");
 	loop {
 		hlt();
 	}
