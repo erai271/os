@@ -653,24 +653,6 @@ onesum(h: *byte, n: int, s: int): int {
 	return s;
 }
 
-ip_checksum(h: *byte) {
-	var s: int;
-	h[10] = 0:byte;
-	h[11] = 0:byte;
-	s = ~onesum(h, 20, 0);
-	h[10] = (s >> 8):byte;
-	h[11] = s:byte;
-}
-
-icmp_checksum(p: *byte) {
-	var s: int;
-	p[2] = 0: byte;
-	p[3] = 0: byte;
-	s = ~onesum(p, 8, 0);
-	p[2] = (s >> 8):byte;
-	p[3] = s:byte;
-}
-
 struct vga {
 	base: *byte;
 	cx: int;
@@ -796,7 +778,7 @@ struct global {
 	ahci_port: *ahci_port;
 	boot_time: int;
 	ip: int;
-	ip_router: int;
+	ip_gw: int;
 	ip_mask: int;
 	arp: *arp_entry;
 	arp_count: int;
@@ -965,9 +947,6 @@ free(p: *byte) {
 	fp = p:*free_page;
 	fp.pa = vtop(p);
 
-	kputh(p:int);
-	kputh(fp.pa:int);
-
 	flags = rdflags();
 	cli();
 	fp.next = global.fp;
@@ -1089,65 +1068,6 @@ setup_ring(ring: int, own: int) {
 	}
 }
 
-fill_packet(ringp: int) {
-	var ring: *byte;
-	var packet: *byte;
-
-	ring = ptov(ringp);
-	packet = ptov(ring:*int[1]);
-
-	// Send a packet
-	packet[0] = 0xff:byte;
-	packet[1] = 0xff:byte;
-	packet[2] = 0xff:byte;
-	packet[3] = 0xff:byte;
-	packet[4] = 0xff:byte;
-	packet[5] = 0xff:byte;
-	packet[6] = 0xff:byte;
-	packet[7] = 0xff:byte;
-	packet[8] = 0xff:byte;
-	packet[9] = 0xff:byte;
-	packet[10] = 0xff:byte;
-	packet[11] = 0xff:byte;
-	packet[12] = 0x08:byte;
-	packet[13] = 0x00:byte;
-
-	packet[14] = 0x45:byte;
-	packet[15] = 0:byte;
-	packet[16] = 0:byte;
-	packet[17] = 28:byte;
-	packet[18] = 0:byte;
-	packet[19] = 0:byte;
-	packet[20] = 0:byte;
-	packet[21] = 0:byte;
-	packet[22] = 64:byte;
-	packet[23] = 1:byte;
-	packet[24] = 0:byte;
-	packet[25] = 0:byte;
-	packet[26] = 192:byte;
-	packet[27] = 168:byte;
-	packet[28] = 2:byte;
-	packet[29] = 100:byte;
-	packet[30] = 192:byte;
-	packet[31] = 168:byte;
-	packet[32] = 1:byte;
-	packet[33] = 178:byte;
-
-	ip_checksum(&packet[14]);
-
-	packet[34] = 8:byte;
-	packet[35] = 0:byte;
-	packet[36] = 0:byte;
-	packet[37] = 0:byte;
-	packet[38] = 0:byte;
-	packet[39] = 0:byte;
-	packet[40] = 0:byte;
-
-	icmp_checksum(&packet[34]);
-
-	ring:*int[0] = (0xb000 << 16) + (64);
-}
-
 struct realtek_desc {
 	flags: int;
 	framep: int;
@@ -1165,6 +1085,7 @@ struct realtek_ring {
 	ringp: int;
 	ring: *realtek_desc;
 	count: int;
+	index: int;
 }
 
 alloc(): *byte {
@@ -1174,6 +1095,7 @@ alloc(): *byte {
 realtek_mkring(ring: *realtek_ring, rx: int) {
 	var i: int;
 	ring.count = 4096 >> 4;
+	ring.index = 0;
 	ring.ringp = alloc_page();
 	ring.ring = ptov(ring.ringp):*realtek_desc;
 	i = 0;
@@ -1240,9 +1162,16 @@ init_realtek(dev: *pcidev) {
 	// tx packet size
 	outd(io + 0xec, 0x00000010);
 
+	var mac: int;
 	realtek_port = alloc():*realtek_port;
 	realtek_port.io = io;
-	realtek_port.mac = ((ind(io + 4) & 0xffff) << 32) + ind(io);
+	mac = ind(io) + (ind(io + 4) << 32);
+	realtek_port.mac = ((mac >> 40) & 0xff)
+		+ (((mac >> 32) & 0xff) << 8)
+		+ (((mac >> 24) & 0xff) << 16)
+		+ (((mac >> 16) & 0xff) << 24)
+		+ (((mac >> 8) & 0xff) << 32)
+		+ ((mac & 0xff) << 40);
 	realtek_mkring(&realtek_port.tx, 0);
 	realtek_mkring(&realtek_port.rx, 1);
 
@@ -1338,6 +1267,8 @@ struct rxinfo {
 	icmp_len: int;
 	icmp_type: int;
 	icmp_code: int;
+	icmp_id: int;
+	icmp_seq: int;
 
 	icmp_seg: *byte;
 	icmp_seg_len: int;
@@ -1363,11 +1294,269 @@ struct rxinfo {
 	tcp_seg_len: int;
 }
 
+memo_arp(ether: int, ip: int, auth: int) {
+	var global: *global;
+	var mask: int;
+	global = g();
+
+	// Filter multicast ether sources
+	if ether & (1 << 40) {
+		return;
+	}
+
+	// Filter all zeros mac
+	if ether == 0 {
+		return;
+	}
+
+	// Filter all zeros ip or all ones ip
+	if ip == 0 || (ip + 1) >> 32 {
+		return;
+	}
+
+	// Filter different networks
+	mask = -1 << (32 - global.ip_mask);
+	if (global.ip & mask) != (ip & mask) {
+		return;
+	}
+
+	var i: int;
+	var j: int;
+	i = 0;
+	j = 0;
+
+	// Check if ip is already in the table
+	loop {
+		if i == global.arp_count {
+			break;
+		}
+
+		// Update the entry for this ip if we've already seen it
+		if global.arp[i].state != ARP_EMPTY && global.arp[i].ip == ip {
+			global.arp[i].mac = ether;
+			global.arp[i].last_seen = global.ms;
+			global.arp[i].state = ARP_LIVE;
+			return;
+		}
+
+		i = i + 1;
+	}
+
+	if !auth {
+		return;
+	}
+
+	// Find an empty slot
+	i = 0;
+	loop {
+		if i == global.arp_count {
+			i = j;
+			break;
+		}
+
+		// Use the first free entry
+		if global.arp[i].state == ARP_EMPTY {
+			break;
+		}
+
+		// Or evict the oldest entry if none are free
+		if global.arp[i].last_seen < global.arp[j].last_seen {
+			j = i;
+		}
+
+		i = i + 1;
+	}
+
+	// Add it to the memo table
+	global.arp[i].mac = ether;
+	global.arp[i].ip = ip;
+	global.arp[i].last_seen = global.ms;
+	global.arp[i].state = ARP_LIVE;
+}
+
+enum {
+	// Empty entry in the arp table
+	ARP_EMPTY = 0,
+	// Valid entry in the arp table
+	ARP_LIVE = 1,
+	// Time to consider an entry stale
+	ARP_THRESH = 15000,
+}
+
+struct txinfo {
+	buf: *byte;
+	len: int;
+
+	port: *realtek_port;
+
+	ether_type: int;
+	ether_src: int;
+	ether_dest: int;
+
+	ip_proto: int;
+	ip_src: int;
+	ip_dest: int;
+
+	icmp_type: int;
+	icmp_code: int;
+	icmp_id: int;
+	icmp_seq: int;
+
+	udp_src: int;
+	udp_dest: int;
+}
+
+alloc_tx(): *txinfo {
+	var pkt: *txinfo;
+	pkt = alloc():*txinfo;
+	bzero(pkt: *byte, 4096);
+	pkt.buf = &(pkt:*byte)[1024];
+	return pkt;
+}
+
+free_tx(pkt: *txinfo) {
+	free(pkt:*byte);
+}
+
+send_realtek(pkt: *txinfo) {
+	var port: *realtek_port;
+	var i: int;
+	var flags: int;
+
+	flags = rdflags();
+	cli();
+
+	port = pkt.port;
+	if !port {
+		wrflags(flags);
+		return;
+	}
+
+	if port.tx.index >= port.tx.count {
+		port.tx.index = 0;
+	}
+	i = port.tx.index;
+	port.tx.index = i +1;
+
+	if port.tx.ring[i].flags & (1 << 31) != 0 {
+		wrflags(flags);
+		return;
+	}
+
+	memcpy(ptov(port.tx.ring[i].framep), pkt.buf, pkt.len);
+	port.tx.ring[i].flags = (port.tx.ring[i].flags & (1 << 30)) + (0xb << 28) + pkt.len;
+	outd(port.io + 0x38, 0x40);
+	wrflags(flags);
+}
+
+send_ether(pkt: *txinfo) {
+	pkt.buf = &pkt.buf[-14];
+	pkt.len = pkt.len + 14;
+
+	pkt.buf[0] = (pkt.ether_dest >> 40):byte;
+	pkt.buf[1] = (pkt.ether_dest >> 32):byte;
+	pkt.buf[2] = (pkt.ether_dest >> 24):byte;
+	pkt.buf[3] = (pkt.ether_dest >> 16):byte;
+	pkt.buf[4] = (pkt.ether_dest >> 8):byte;
+	pkt.buf[5] = pkt.ether_dest:byte;
+
+	pkt.buf[6] = (pkt.ether_src >> 40):byte;
+	pkt.buf[7] = (pkt.ether_src >> 32):byte;
+	pkt.buf[8] = (pkt.ether_src >> 24):byte;
+	pkt.buf[9] = (pkt.ether_src >> 16):byte;
+	pkt.buf[10] = (pkt.ether_src >> 8):byte;
+	pkt.buf[11] = pkt.ether_src:byte;
+
+	pkt.buf[12] = (pkt.ether_type >> 8): byte;
+	pkt.buf[13] = pkt.ether_type: byte;
+
+	send_realtek(pkt);
+}
+
+send_arp2(port: *realtek_port, tha: int, tpa: int) {
+	var pkt: *txinfo;
+	var global: *global;
+	var sha: int;
+	var spa: int;
+	global = g();
+
+	if tha & (1 << 40) {
+		return;
+	}
+
+	if tha == 0 {
+		return;
+	}
+
+	sha = port.mac;
+	spa = global.ip;
+
+	pkt = alloc_tx();
+	pkt.port = port;
+
+	// htype
+	pkt.buf[0] = 0:byte;
+	pkt.buf[1] = 1:byte;
+
+	// ptype
+	pkt.buf[2] = (ET_IP >> 8):byte;
+	pkt.buf[3] = (ET_IP):byte;
+
+	// hlen
+	pkt.buf[4] = 6:byte;
+
+	// plen
+	pkt.buf[5] = 4:byte;
+
+	// oper
+	pkt.buf[6] = 0: byte;
+	pkt.buf[7] = 2: byte;
+
+	// sha
+	pkt.buf[8] = (sha >> 40): byte;
+	pkt.buf[9] = (sha >> 32): byte;
+	pkt.buf[10] = (sha >> 24): byte;
+	pkt.buf[11] = (sha >> 16): byte;
+	pkt.buf[12] = (sha >> 8): byte;
+	pkt.buf[13] = sha: byte;
+
+	// spa
+	pkt.buf[14] = (spa >> 24): byte;
+	pkt.buf[15] = (spa >> 16): byte;
+	pkt.buf[16] = (spa >> 8): byte;
+	pkt.buf[17] = spa: byte;
+
+	// tha
+	pkt.buf[18] = (tha >> 40): byte;
+	pkt.buf[19] = (tha >> 32): byte;
+	pkt.buf[20] = (tha >> 24): byte;
+	pkt.buf[21] = (tha >> 16): byte;
+	pkt.buf[22] = (tha >> 8): byte;
+	pkt.buf[23] = tha: byte;
+
+	// tpa
+	pkt.buf[24] = (tpa >> 24): byte;
+	pkt.buf[25] = (tpa >> 16): byte;
+	pkt.buf[26] = (tpa >> 8): byte;
+	pkt.buf[27] = tpa: byte;
+
+	pkt.len = 28;
+
+	pkt.ether_type = ET_ARP;
+	pkt.ether_src = sha;
+	pkt.ether_dest = tha;
+
+	send_ether(pkt);
+
+	free_tx(pkt);
+}
+
 handle_arp(pkt: *rxinfo) {
 	var global: *global;
 	global = g();
 
 	// Add arp_ether_src arp_ip_src to the arp table
+	memo_arp(pkt.arp_ether_src, pkt.arp_ip_src, 1);
 
 	if pkt.arp_ip_dest != global.ip {
 		return;
@@ -1375,7 +1564,7 @@ handle_arp(pkt: *rxinfo) {
 
 	if pkt.arp_op == 1 {
 		// Send ARP response
-		kputs("arp\n");
+		send_arp2(pkt.port, pkt.arp_ether_src, pkt.arp_ip_src);
 	}
 }
 
@@ -1438,10 +1627,245 @@ rx_arp(pkt: *rxinfo) {
 	handle_arp(pkt);
 }
 
+send_arp1(port: *realtek_port, tha: int, tpa: int) {
+	var pkt: *txinfo;
+	var global: *global;
+	var sha: int;
+	var spa: int;
+	global = g();
+
+	sha = port.mac;
+	spa = global.ip;
+
+	pkt = alloc_tx();
+	pkt.port = port;
+
+	// htype
+	pkt.buf[0] = 0:byte;
+	pkt.buf[1] = 1:byte;
+
+	// ptype
+	pkt.buf[2] = (ET_IP >> 8):byte;
+	pkt.buf[3] = (ET_IP):byte;
+
+	// hlen
+	pkt.buf[4] = 6:byte;
+
+	// plen
+	pkt.buf[5] = 4:byte;
+
+	// oper
+	pkt.buf[6] = 0: byte;
+	pkt.buf[7] = 1: byte;
+
+	// sha
+	pkt.buf[8] = (sha >> 40): byte;
+	pkt.buf[9] = (sha >> 32): byte;
+	pkt.buf[10] = (sha >> 24): byte;
+	pkt.buf[11] = (sha >> 16): byte;
+	pkt.buf[12] = (sha >> 8): byte;
+	pkt.buf[13] = sha: byte;
+
+	// spa
+	pkt.buf[14] = (spa >> 24): byte;
+	pkt.buf[15] = (spa >> 16): byte;
+	pkt.buf[16] = (spa >> 8): byte;
+	pkt.buf[17] = spa: byte;
+
+	// tha
+	pkt.buf[18] = (tha >> 40): byte;
+	pkt.buf[19] = (tha >> 32): byte;
+	pkt.buf[20] = (tha >> 24): byte;
+	pkt.buf[21] = (tha >> 16): byte;
+	pkt.buf[22] = (tha >> 8): byte;
+	pkt.buf[23] = tha: byte;
+
+	// tpa
+	pkt.buf[24] = (tpa >> 24): byte;
+	pkt.buf[25] = (tpa >> 16): byte;
+	pkt.buf[26] = (tpa >> 8): byte;
+	pkt.buf[27] = tpa: byte;
+
+	pkt.len = 28;
+
+	pkt.ether_type = ET_ARP;
+	pkt.ether_src = sha;
+	pkt.ether_dest = tha;
+
+	send_ether(pkt);
+
+	free_tx(pkt);
+}
+
+find_arp(pkt: *txinfo): int {
+	var flags: int;
+	var global: *global;
+	var mask: int;
+	var now: int;
+	var ret: int;
+	var i: int;
+	var ip: int;
+	global = g();
+
+	if !pkt.port {
+		return 0;
+	}
+
+	ip = pkt.ip_dest;
+
+	// Forward to gateway if on a different network
+	mask = -1 << (32 - global.ip_mask);
+	if (ip & mask) != (global.ip & mask) {
+		ip = global.ip_gw;
+	}
+
+	flags = rdflags();
+	cli();
+
+	i = 0;
+	now = global.ms;
+	loop {
+		if i == global.arp_count {
+			wrflags(flags);
+			send_arp1(pkt.port, (1 << 48) - 1, ip);
+			return 0;
+		}
+
+		// Found the entry that matches
+		if global.arp[i].state != 0 && global.arp[i].ip == ip {
+			ret = global.arp[i].mac;
+			wrflags(flags);
+			return ret;
+		}
+
+		i = i + 1;
+	}
+}
+
+send_ip(pkt: *txinfo) {
+	var id: int;
+	var sum: int;
+	var dest: int;
+	var global: *global;
+	var port: *realtek_port;
+	global = g();
+
+	port = global.realtek_port;
+	if !port {
+		return;
+	}
+
+	pkt.port = port;
+
+	if pkt.ip_src != global.ip {
+		return;
+	}
+
+	dest = find_arp(pkt);
+	if dest == 0 {
+		return;
+	}
+
+	pkt.ether_type = ET_IP;
+	pkt.ether_src = port.mac;
+	pkt.ether_dest = dest;
+
+	pkt.buf = &pkt.buf[-20];
+	pkt.len = pkt.len + 20;
+
+	// version + ihl
+	pkt.buf[0] = 0x45:byte;
+
+	// dscp
+	pkt.buf[1] = 0:byte;
+
+	// length
+	pkt.buf[2] = (pkt.len >> 8):byte;
+	pkt.buf[3] = pkt.len:byte;
+
+	// identifier
+	id = rand();
+	pkt.buf[4] = (id >> 8):byte;
+	pkt.buf[5] = id:byte;
+
+	// fragment offset
+	pkt.buf[6] = 0:byte;
+	pkt.buf[7] = 0:byte;
+
+	// ttl
+	pkt.buf[8] = 64:byte;
+	// proto
+	pkt.buf[9] = pkt.ip_proto:byte;
+
+	// checksum
+	pkt.buf[10] = 0:byte;
+	pkt.buf[11] = 0:byte;
+
+	// src
+	pkt.buf[12] = (pkt.ip_src >> 24):byte;
+	pkt.buf[13] = (pkt.ip_src >> 16):byte;
+	pkt.buf[14] = (pkt.ip_src >> 8):byte;
+	pkt.buf[15] = pkt.ip_src:byte;
+
+	// dest
+	pkt.buf[16] = (pkt.ip_dest >> 24):byte;
+	pkt.buf[17] = (pkt.ip_dest >> 16):byte;
+	pkt.buf[18] = (pkt.ip_dest >> 8):byte;
+	pkt.buf[19] = pkt.ip_dest:byte;
+
+	sum = ~onesum(pkt.buf, 20, 0);
+
+	pkt.buf[10] = (sum >> 8):byte;
+	pkt.buf[11] = sum:byte;
+
+	send_ether(pkt);
+}
+
+send_icmp(pkt: *txinfo) {
+	var sum: int;
+
+	pkt.buf = &pkt.buf[-8];
+	pkt.len = pkt.len + 8;
+
+	pkt.buf[0] = pkt.icmp_type:byte;
+	pkt.buf[1] = pkt.icmp_code:byte;
+	pkt.buf[2] = 0:byte;
+	pkt.buf[3] = 0:byte;
+	pkt.buf[4] = (pkt.icmp_id >> 8):byte;
+	pkt.buf[5] = pkt.icmp_id:byte;
+	pkt.buf[6] = (pkt.icmp_seq >> 8):byte;
+	pkt.buf[7] = pkt.icmp_seq:byte;
+
+	sum = ~onesum(pkt.buf, pkt.len, 0);
+	pkt.buf[2] = (sum >> 8):byte;
+	pkt.buf[3] = sum:byte;
+
+	pkt.ip_proto = IP_ICMP;
+
+	send_ip(pkt);
+}
+
+send_pong(pkt: *rxinfo) {
+	var global: *global;
+	var tx: *txinfo;
+	global = g();
+	tx = alloc_tx();
+	memcpy(tx.buf, pkt.icmp_seg, pkt.icmp_seg_len);
+	tx.len = pkt.icmp_seg_len;
+	tx.ip_src = global.ip;
+	tx.ip_dest = pkt.ip_src;
+	tx.icmp_type = 0;
+	tx.icmp_code = 0;
+	tx.icmp_id = pkt.icmp_id;
+	tx.icmp_seq = pkt.icmp_seq;
+	send_icmp(tx);
+	free_tx(tx);
+}
+
 handle_icmp(pkt: *rxinfo) {
 	if pkt.icmp_type == ICMP_PING {
 		if pkt.icmp_code == 0 {
-			// Send pong
+			send_pong(pkt);
 		}
 	}
 }
@@ -1458,13 +1882,63 @@ rx_icmp(pkt: *rxinfo) {
 	pkt.icmp_type = pkt.icmp[0]:int;
 	pkt.icmp_code = pkt.icmp[1]:int;
 
+	pkt.icmp_id = (pkt.icmp[4]:int << 8) + pkt.icmp[5]:int;
+	pkt.icmp_seq = (pkt.icmp[6]:int << 8) + pkt.icmp[7]:int;
+
 	pkt.icmp_seg = &pkt.icmp[8];
 	pkt.icmp_seg_len = pkt.icmp_len - 8;
 
 	handle_icmp(pkt);
 }
 
+send_udp(pkt: *txinfo) {
+	var sum: int;
+
+	pkt.ip_proto = IP_UDP;
+
+	pkt.buf = &pkt.buf[-8];
+	pkt.len = pkt.len + 8;
+
+	pkt.buf[0] = (pkt.udp_src >> 8): byte;
+	pkt.buf[1] = pkt.udp_src: byte;
+	pkt.buf[2] = (pkt.udp_dest >> 8): byte;
+	pkt.buf[3] = pkt.udp_dest: byte;
+	pkt.buf[4] = (pkt.len >> 8): byte;
+	pkt.buf[5] = pkt.len: byte;
+	pkt.buf[6] = 0: byte;
+	pkt.buf[7] = 0: byte;
+
+	sum = (pkt.ip_src & 0xffff)
+		+ ((pkt.ip_src >> 16) & 0xffff)
+		+ (pkt.ip_dest & 0xffff)
+		+ ((pkt.ip_dest >> 16) & 0xffff)
+		+ IP_UDP
+		+ pkt.len;
+
+	sum = ~onesum(pkt.buf, pkt.len, sum);
+	pkt.buf[6] = (sum >> 8):byte;
+	pkt.buf[7] = sum:byte;
+
+	send_ip(pkt);
+}
+
+udp_echo(pkt: *rxinfo) {
+	var tx: *txinfo;
+	tx = alloc_tx();
+	tx.ip_src = pkt.ip_dest;
+	tx.ip_dest = pkt.ip_src;
+	tx.udp_src = pkt.udp_dest;
+	tx.udp_dest = pkt.udp_src;
+	memcpy(tx.buf, pkt.udp_seg, pkt.udp_seg_len);
+	tx.len = pkt.udp_seg_len;
+	send_udp(tx);
+	free_tx(tx);
+}
+
 handle_udp(pkt: *rxinfo) {
+	if pkt.udp_dest == 8000 {
+		udp_echo(pkt);
+	}
 }
 
 rx_udp(pkt: *rxinfo) {
@@ -1615,6 +2089,8 @@ rx_ip(pkt: *rxinfo) {
 		+ pkt.ip_proto
 		+ (pkt.ip_len - 20);
 
+	memo_arp(pkt.ether_src, pkt.ip_src, 0);
+
 	if pkt.ip_dest != global.ip {
 		return;
 	}
@@ -1681,6 +2157,9 @@ isr_realtek() {
 			break;
 		}
 
+		// clear interrupt flags
+		outw(port.io + 0x3e, 0xffff);
+
 		i = 0;
 		loop {
 			if i == port.rx.count {
@@ -1703,9 +2182,6 @@ isr_realtek() {
 
 			i = i + 1;
 		}
-
-		// clear interrupt flags
-		outw(port.io + 0x3e, 0xffff);
 
 		port = port.next;
 	}
@@ -2176,7 +2652,7 @@ _kstart(mb: int) {
 	bzero((&global):*byte, sizeof(global));
 	global.ptr = &global;
 	global.ip = (192 << 24) + (168 << 16) + (1 << 8) + 148;
-	global.ip_router = (192 << 24) + (168 << 16) + (1 << 8) + 1;
+	global.ip_gw = (192 << 24) + (168 << 16) + (1 << 8) + 1;
 	global.ip_mask = 20;
 	wrmsr((0xc000 << 16) + 0x0101, global.ptr:int);
 
