@@ -763,6 +763,26 @@ struct arp_entry {
 }
 
 struct tcp_state {
+	// Network tuple
+	peer_ip: int;
+	peer_port: int;
+	sock_ip: int;
+	sock_port: int;
+
+	send_una: int;
+	send_nxt: int;
+	send_wnd: int;
+	send_wl1: int;
+	send_wl2: int;
+	send_iss: int;
+
+	rcv_nxt: int;
+	rcv_wnd: int;
+	rcv_up: int;
+	rcv_irs: int;
+
+	send_buf: *byte;
+	recv_buf: *byte;
 }
 
 struct global {
@@ -1289,6 +1309,8 @@ struct rxinfo {
 	tcp_ack: int;
 	tcp_flags: int;
 	tcp_win: int;
+	tcp_opt: *byte;
+	tcp_opt_len: int;
 
 	tcp_seg: *byte;
 	tcp_seg_len: int;
@@ -1404,6 +1426,15 @@ struct txinfo {
 
 	udp_src: int;
 	udp_dest: int;
+
+	tcp_src: int;
+	tcp_dest: int;
+	tcp_seq: int;
+	tcp_ack: int;
+	tcp_flags: int;
+	tcp_win: int;
+	tcp_opt: *byte;
+	tcp_opt_len: int;
 }
 
 alloc_tx(): *txinfo {
@@ -1976,7 +2007,134 @@ rx_udp(pkt: *rxinfo) {
 	handle_udp(pkt);
 }
 
+send_tcp(pkt: *txinfo) {
+	var len: int;
+	var sum: int;
+
+	len = 20 + ((pkt.tcp_opt_len + 3) & -4);
+
+	pkt.buf = &pkt.buf[-len];
+	pkt.len = pkt.len + len;
+
+	bzero(pkt.buf, len);
+
+	pkt.buf[0] = (pkt.tcp_src >> 8):byte;
+	pkt.buf[1] = pkt.tcp_src:byte;
+	pkt.buf[2] = (pkt.tcp_dest >> 8):byte;
+	pkt.buf[3] = pkt.tcp_dest:byte;
+
+	pkt.buf[4] = (pkt.tcp_seq >> 24):byte;
+	pkt.buf[5] = (pkt.tcp_seq >> 16):byte;
+	pkt.buf[6] = (pkt.tcp_seq >> 8):byte;
+	pkt.buf[7] = pkt.tcp_seq:byte;
+
+	pkt.buf[8] = (pkt.tcp_ack >> 24):byte;
+	pkt.buf[9] = (pkt.tcp_ack >> 16):byte;
+	pkt.buf[10] = (pkt.tcp_ack >> 8):byte;
+	pkt.buf[11] = pkt.tcp_ack:byte;
+
+	pkt.buf[12] = (len << 2):byte;
+	pkt.buf[13] = pkt.tcp_flags:byte;
+	pkt.buf[14] = (pkt.tcp_win >> 8):byte;
+	pkt.buf[15] = pkt.tcp_win:byte;
+
+	memcpy(&pkt.buf[20], pkt.tcp_opt, pkt.tcp_opt_len);
+
+	sum = (pkt.ip_src & 0xffff)
+		+ ((pkt.ip_src >> 16) & 0xffff)
+		+ (pkt.ip_dest & 0xffff)
+		+ ((pkt.ip_dest >> 16) & 0xffff)
+		+ IP_TCP
+		+ pkt.len;
+
+	sum = ~onesum(pkt.buf, pkt.len, sum);
+	pkt.buf[16] = (sum >> 8):byte;
+	pkt.buf[17] = sum:byte;
+
+	pkt.ip_proto = IP_TCP;
+
+	xxd(pkt.buf, pkt.len);
+
+	send_ip(pkt);
+}
+
+send_rst(pkt: *rxinfo) {
+	var tx: *txinfo;
+	tx = alloc_tx();
+
+	tx.ip_src = pkt.ip_dest;
+	tx.ip_dest = pkt.ip_src;
+	tx.tcp_src = pkt.tcp_dest;
+	tx.tcp_dest = pkt.tcp_src;
+	tx.tcp_win = 0;
+	tx.tcp_opt = 0:*byte;
+	tx.tcp_opt_len = 0;
+	tx.len = 0;
+
+	if pkt.tcp_flags & TCP_ACK {
+		tx.tcp_seq = pkt.tcp_ack;
+		tx.tcp_ack = 0;
+		tx.tcp_flags = TCP_RST;
+	} else {
+		tx.tcp_seq = 0;
+		tx.tcp_ack = pkt.tcp_seq + pkt.tcp_seg_len;
+		tx.tcp_flags = TCP_RST | TCP_ACK;
+		if pkt.tcp_flags & TCP_SYN {
+			tx.tcp_ack = tx.tcp_ack + 1;
+		}
+	}
+
+	send_tcp(tx);
+
+	free_tx(tx);
+}
+
 handle_tcp(pkt: *rxinfo) {
+	var global: *global;
+	var tcb: *tcp_state;
+	var i: int;
+	global = g();
+
+	// Find the tcb
+	i = 0;
+	loop {
+		if i == global.tcp_count {
+			tcb = 0:*tcp_state;
+			break;
+		}
+
+		tcb = global.tcp[i];
+		if tcb
+			&& tcb.peer_ip == pkt.ip_src
+			&& tcb.peer_port == pkt.tcp_src
+			&& tcb.sock_ip == pkt.ip_dest
+			&& tcb.sock_port == pkt.tcp_dest {
+			break;
+		}
+
+		i = i + 1;
+	}
+
+	// Send a reset
+	if !tcb {
+		if pkt.tcp_flags & TCP_RST {
+			return;
+		}
+
+		send_rst(pkt);
+		return;
+	}
+
+	// Got a reset
+	if pkt.tcp_flags & TCP_RST {
+		// close the connection
+		return;
+	}
+
+	// TODO: slow-start add-inc-mul-dec retrans-timer fast-retrans listen maxss
+	// TODO: ssh random
+
+	// Handle data
 	kputip(pkt.ip_src);
 	kputc(':');
 	kputd(pkt.tcp_src);
@@ -1985,6 +2143,7 @@ handle_tcp(pkt: *rxinfo) {
 	kputc(':');
 	kputd(pkt.tcp_dest);
 	kputc('\n');
+	xxd(pkt.tcp_opt, pkt.tcp_opt_len);
 	xxd(pkt.tcp_seg, pkt.tcp_seg_len);
 }
 
@@ -2021,15 +2180,17 @@ rx_tcp(pkt: *rxinfo) {
 		+ (pkt.tcp[9]:int << 16)
 		+ (pkt.tcp[10]:int << 8)
 		+ pkt.tcp[11]:int;
-	pkt.tcp_flags = (pkt.tcp[12]:int << 8)
-		+ pkt.tcp[13]:int;
+	pkt.tcp_flags = pkt.tcp[13]:int;
 	pkt.tcp_win = (pkt.tcp[14]:int << 8)
 		+ pkt.tcp[15]:int;
 
-	off = (pkt.tcp_flags >> 12) << 2;
+	off = (pkt.tcp[12]:int >> 4) << 2;
 	if off < 20 || off > pkt.tcp_len {
 		return;
 	}
+
+	pkt.tcp_opt = &pkt.tcp[20];
+	pkt.tcp_opt_len = off - 20;
 
 	pkt.tcp_seg = &pkt.tcp[off];
 	pkt.tcp_seg_len = pkt.tcp_len - off;
