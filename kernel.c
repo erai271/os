@@ -773,12 +773,22 @@ struct tcp_state {
 	sock_ip: int;
 	sock_port: int;
 
+	deadline: int;
+	rto: int;
+
+	recv_nxt: int;
+	recv_len: int;
+	recv_buf: *byte;
+
+	send_fin: int;
+	send_ack: int;
 	send_una: int;
 	send_nxt: int;
 	send_wnd: int;
+	send_len: int;
+	send_buf: *byte;
 
-	recv_nxt: int;
-	recv_wnd: int;
+	fin_seq: int;
 }
 
 struct global {
@@ -2073,6 +2083,8 @@ alloc_tcp(): *tcp_state {
 		if !global.tcp[i] {
 			tcb = alloc():*tcp_state;
 			bzero(tcb:*byte, sizeof(*tcb));
+			tcb.recv_buf = alloc();
+			tcb.send_buf = alloc();
 			global.tcp[i] = tcb;
 			wrflags(flags);
 			return tcb;
@@ -2080,6 +2092,30 @@ alloc_tcp(): *tcp_state {
 
 		i = i + 1;
 	}
+}
+
+tcp_free(tcb: *tcp_state) {
+	var global: *global;
+	var flags: int;
+	var i: int;
+	global = g();
+	flags = rdflags();
+	cli();
+	i = 0;
+	loop {
+		if i == global.tcp_count {
+			break;
+		}
+		if global.tcp[i] == tcb {
+			global.tcp[i] = 0:*tcp_state;
+			break;
+		}
+		i = i + 1;
+	}
+	free(tcb.send_buf);
+	free(tcb.recv_buf);
+	free(tcb:*byte);
+	wrflags(flags);
 }
 
 tcp_listen(port: int, event_func: func(tcb: *tcp_state)) {
@@ -2096,7 +2132,27 @@ tcp_listen(port: int, event_func: func(tcb: *tcp_state)) {
 	tcb.state = TCP_LISTEN;
 }
 
-accept_ssh(listener: *tcp_state) {
+tcp_echo(tcb: *tcp_state) {
+	var buf: *byte;
+	var len: int;
+
+	if tcb.state == TCP_CLOSED {
+		tcp_free(tcb);
+		return;
+	}
+
+	if tcb.state == TCP_CLOSE_WAIT {
+		tcp_close(tcb);
+		return;
+	}
+
+	buf = alloc();
+
+	len = 4096 - tcb.send_len;
+	len = tcp_recv(tcb, buf, len);
+	tcp_send(tcb, buf, len);
+
+	free(buf);
 }
 
 send_rst(pkt: *rxinfo) {
@@ -2138,7 +2194,7 @@ send_ack(tcb: *tcp_state) {
 	tx.ip_dest = tcb.peer_ip;
 	tx.tcp_src = tcb.sock_port;
 	tx.tcp_dest = tcb.peer_port;
-	tx.tcp_win = tcb.recv_wnd;
+	tx.tcp_win = 4096 - tcb.recv_len;
 	tx.tcp_opt = 0:*byte;
 	tx.tcp_opt_len = 0;
 	tx.len = 0;
@@ -2146,6 +2202,65 @@ send_ack(tcb: *tcp_state) {
 	tx.tcp_seq = tcb.send_nxt;
 	tx.tcp_ack = tcb.recv_nxt;
 	tx.tcp_flags = TCP_ACK;
+
+	if tcb.send_len == 0 && tcb.send_fin {
+		tcb.send_nxt = tcb.fin_seq;
+	}
+
+	send_tcp(tx);
+
+	free_tx(tx);
+}
+
+send_psh(tcb: *tcp_state) {
+	var tx: *txinfo;
+	var len: int;
+	tx = alloc_tx();
+
+	tx.ip_src = tcb.sock_ip;
+	tx.ip_dest = tcb.peer_ip;
+	tx.tcp_src = tcb.sock_port;
+	tx.tcp_dest = tcb.peer_port;
+	tx.tcp_win = 4096 - tcb.recv_len;
+	tx.tcp_opt = 0:*byte;
+	tx.tcp_opt_len = 0;
+
+	len = tcb.send_len;
+	if len > tcb.send_wnd {
+		len = tcb.send_wnd;
+	}
+	if len > 1460 {
+		len = 1460;
+	}
+
+	memcpy(tx.buf, tcb.send_buf, len);
+	tx.len = len;
+
+	tx.tcp_seq = tcb.send_una;
+	tx.tcp_ack = tcb.recv_nxt;
+	tx.tcp_flags = TCP_ACK;
+
+	if tcb.state == TCP_SYN_RECV {
+		tx.tcp_flags = tx.tcp_flags | TCP_SYN;
+	}
+
+	if len > 0 {
+		tx.tcp_flags = tx.tcp_flags | TCP_PSH;
+	}
+
+	if len == tcb.send_len && tcb.send_fin {
+		tx.tcp_flags = tx.tcp_flags | TCP_FIN;
+
+		if tcb.state == TCP_ESTAB {
+			tcb.state = TCP_FIN_WAIT_1;
+		} else if tcb.state == TCP_CLOSE_WAIT {
+			tcb.state = TCP_LAST_ACK;
+		}
+
+		tcb.send_nxt = tcb.fin_seq;
+	} else {
+		tcb.send_nxt = (tcb.send_una + len) & ((1 << 32) - 1);
+	}
 
 	send_tcp(tx);
 
@@ -2225,17 +2340,21 @@ handle_syn(tcb: *tcp_state, pkt: *rxinfo) {
 		return;
 	}
 
+	c.event_func = tcb.event_func;
+
 	c.peer_ip = pkt.ip_src;
 	c.peer_port = pkt.tcp_src;
 	c.sock_ip = pkt.ip_dest;
 	c.sock_port = pkt.tcp_dest;
 
+	c.rto = 10;
+
 	c.send_nxt = rand();
+	c.send_ack = c.send_nxt;
 	c.send_una = c.send_nxt;
 	c.send_wnd = pkt.tcp_win;
 
-	c.recv_nxt = pkt.tcp_seq + 1;
-	c.recv_wnd = 512;
+	c.recv_nxt = (pkt.tcp_seq + 1) & ((1 << 32) - 1);
 
 	c.state = TCP_SYN_RECV;
 
@@ -2245,7 +2364,7 @@ handle_syn(tcb: *tcp_state, pkt: *rxinfo) {
 	tx.ip_dest = c.peer_ip;
 	tx.tcp_src = c.sock_port;
 	tx.tcp_dest = c.peer_port;
-	tx.tcp_win = c.recv_wnd;
+	tx.tcp_win = 4096 - c.recv_len;
 	tx.tcp_opt = 0:*byte;
 	tx.tcp_opt_len = 0;
 	tx.len = 0;
@@ -2254,7 +2373,7 @@ handle_syn(tcb: *tcp_state, pkt: *rxinfo) {
 	tx.tcp_seq = c.send_nxt;
 	tx.tcp_ack = c.recv_nxt;
 
-	c.send_nxt = c.send_nxt + 1;
+	c.send_nxt = (c.send_nxt + 1) & ((1 << 32) - 1);
 
 	send_tcp(tx);
 
@@ -2264,13 +2383,13 @@ handle_syn(tcb: *tcp_state, pkt: *rxinfo) {
 handle_seg(tcb: *tcp_state, pkt: *rxinfo) {
 	var offset: int;
 	var wnd: int;
+	var len: int;
 
 	// 1. Check sequence
 	if pkt.tcp_seq != tcb.recv_nxt {
 		if pkt.tcp_flags & TCP_RST {
 			return;
 		}
-		kputs("bad seq\n");
 		send_ack(tcb);
 		return;
 	}
@@ -2283,7 +2402,6 @@ handle_seg(tcb: *tcp_state, pkt: *rxinfo) {
 
 	// 4. Check SYN
 	if pkt.tcp_flags & TCP_SYN {
-		kputs("bad syn\n");
 		send_ack(tcb);
 		return;
 	}
@@ -2297,13 +2415,13 @@ handle_seg(tcb: *tcp_state, pkt: *rxinfo) {
 	offset = (pkt.tcp_ack - tcb.send_una) & ((1 << 31) - 1);
 	wnd = (tcb.send_nxt - tcb.send_una) & ((1 << 31) - 1);
 	if offset > wnd {
-		kputs("bad ack\n");
 		send_ack(tcb);
 		return;
 	}
 
 	if tcb.state == TCP_SYN_RECV {
 		tcb.state = TCP_ESTAB;
+		tcb.send_una = (tcb.send_una + 1) & ((1 << 32) - 1);
 	}
 
 	if tcb.state == TCP_FIN_WAIT_1 && tcb.send_una == tcb.send_nxt {
@@ -2319,17 +2437,32 @@ handle_seg(tcb: *tcp_state, pkt: *rxinfo) {
 		return;
 	}
 
+	len = (pkt.tcp_ack - tcb.send_una) & ((1 << 31) - 1);
+	if len > tcb.send_len {
+		len = tcb.send_len;
+	}
+	tcb.send_len = tcb.send_len - len;
+	memcpy(tcb.send_buf, &tcb.send_buf[len], tcb.send_len);
+
 	tcb.send_una = pkt.tcp_ack;
 
 	// 7. Process data
 	if pkt.tcp_seg_len > 0 {
-		tcb.recv_nxt = tcb.recv_nxt + pkt.tcp_seg_len;
-		xxd(pkt.tcp_seg, pkt.tcp_seg_len);
+		len = 4096 - tcb.recv_len;
+		if len > pkt.tcp_seg_len {
+			len = pkt.tcp_seg_len;
+		}
+
+		memcpy(&tcb.recv_buf[tcb.recv_len], pkt.tcp_seg, len);
+		tcb.recv_nxt = (tcb.recv_nxt + len) & ((1 << 32) - 1);
+		tcb.recv_len = tcb.recv_len + len;
 		send_ack(tcb);
 	}
 
 	// 8. Check FIN
 	if pkt.tcp_flags & TCP_FIN {
+		tcb.recv_nxt = (tcb.recv_nxt + len + 1) & ((1 << 32) - 1);
+
 		if tcb.state == TCP_SYN_RECV || tcb.state == TCP_ESTAB {
 			tcb.state = TCP_CLOSE_WAIT;
 		}
@@ -2348,8 +2481,105 @@ handle_seg(tcb: *tcp_state, pkt: *rxinfo) {
 	}
 
 	if tcb.state == TCP_TIME_WAIT {
-		// reset the timer
+		tcb.deadline = 300000;
 	}
+}
+
+tcp_tick(tcb: *tcp_state) {
+	var global: *global;
+	var len: int;
+	global = g();
+
+	if tcb.state == TCP_TIME_WAIT {
+		kputc('.');
+		return;
+	}
+
+	if tcb.state <= TCP_LISTEN || (!tcb.send_fin && !tcb.send_len) {
+		return;
+	}
+
+	// We got an ack send a new packet
+	if tcb.send_ack != tcb.send_una {
+		tcb.send_ack = tcb.send_una;
+		if tcb.send_len || tcb.send_fin {
+			send_psh(tcb);
+		}
+		tcb.rto = 10;
+		tcb.deadline = tcb.rto;
+		return;
+	}
+
+	// Consider retransmission
+	if tcb.deadline > 0 {
+		tcb.deadline = tcb.deadline - 1;
+		return;
+	}
+
+	tcb.rto = tcb.rto * 2;
+	if tcb.rto > 10000 {
+		tcb.rto = 10000;
+	}
+
+	send_psh(tcb);
+	tcb.deadline = tcb.rto;
+}
+
+tcp_send(tcb: *tcp_state, b: *byte, n: int): int {
+	var cap: int;
+	var flags: int;
+	flags = rdflags();
+	cli();
+
+	if tcb.state != TCP_ESTAB || n < 0 {
+		wrflags(flags);
+		return 0;
+	}
+
+	cap = 4096 - tcb.send_len;
+	if n > cap {
+		n = cap;
+	}
+
+	memcpy(&tcb.send_buf[tcb.send_len], b, n);
+	tcb.send_len = tcb.send_len + n;
+
+	wrflags(flags);
+	return n;
+}
+
+tcp_recv(tcb: *tcp_state, b: *byte, n: int): int {
+	var cap: int;
+	var flags: int;
+	flags = rdflags();
+	cli();
+
+	if (tcb.state != TCP_ESTAB && tcb.recv_len == 0) || n < 0 {
+		wrflags(flags);
+		return 0;
+	}
+
+	if n > tcb.recv_len {
+		n = tcb.recv_len;
+	}
+
+	memcpy(b, tcb.recv_buf, n);
+	tcb.recv_len = tcb.recv_len - n;
+	memcpy(tcb.recv_buf, &tcb.recv_buf[n], tcb.recv_len);
+
+	wrflags(flags);
+	return n;
+}
+
+tcp_close(tcb: *tcp_state) {
+	var flags: int;
+	flags = rdflags();
+	cli();
+
+	tcb.send_fin = 1;
+	tcb.fin_seq = (tcb.send_una + tcb.send_len + 1) & ((1 << 32) - 1);
+
+	wrflags(flags);
 }
 
 handle_tcp(pkt: *rxinfo) {
@@ -2384,6 +2614,7 @@ handle_tcp(pkt: *rxinfo) {
 		send_rst(pkt);
 	} else {
 		handle_seg(tcb, pkt);
+		tcb.event_func(tcb);
 	}
 }
 
@@ -2813,8 +3044,26 @@ isr_ahci() {
 
 tick() {
 	var global: *global;
+	var tcb: *tcp_state;
+	var i: int;
 	global = g();
+
 	global.ms = global.ms + 1;
+
+	i = 0;
+	loop {
+		if i == global.tcp_count {
+			break;
+		}
+
+		tcb = global.tcp[i];
+		if tcb {
+			tcp_tick(tcb);
+			tcb.event_func(tcb);
+		}
+
+		i = i + 1;
+	}
 }
 
 kdie(msg: *byte) {
@@ -3233,7 +3482,7 @@ _kstart(mb: int) {
 	scan_pci(pci, init_realtek);
 	scan_pci(pci, init_ahci);
 
-	tcp_listen(22, accept_ssh);
+	tcp_listen(22, tcp_echo);
 
 	// Wait for interrupts
 	kputs("zzz\n");
