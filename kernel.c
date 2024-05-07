@@ -655,14 +655,16 @@ onesum(h: *byte, n: int, s: int): int {
 
 struct vga {
 	base: *byte;
+	fb: *byte;
 	cx: int;
 	cy: int;
 	x: int;
 	y: int;
 }
 
-vinit(v: *vga, base: *byte) {
+vinit(v: *vga, base: *byte, fb: *byte) {
 	v.base = base;
+	v.fb = fb;
 	v.cx = 80;
 	v.cy = 25;
 	v.x = 0;
@@ -678,6 +680,26 @@ vcursor(v: *vga) {
 	outb(0x3d5, i >> 8);
 }
 
+vblit(v: *vga) {
+	var i: int;
+	var d: *int;
+	var s: *int;
+
+	d = v.base:*int;
+	s = v.fb:*int;
+
+	i = 0;
+	loop {
+		if i == 512 {
+			break;
+		}
+
+		d[i] = s[i];
+
+		i = i + 1;
+	}
+}
+
 vclear(v: *vga) {
 	var i: int;
 	v.x = 0;
@@ -688,27 +710,29 @@ vclear(v: *vga) {
 		if i == v.cx * v.cy {
 			return;
 		}
-		v.base[2 * i] = 0:byte;
-		v.base[2 * i + 1] = 0x0f:byte;
+		v.fb[2 * i] = 0:byte;
+		v.fb[2 * i + 1] = 0x0f:byte;
 		i = i + 1;
 	}
+	vblit(v);
 }
 
 vshift(v: *vga) {
 	var i: int;
-	memcpy(v.base, &v.base[v.cx * 2], (v.cy - 1) * v.cx * 2);
+	memcpy(v.fb, &v.fb[v.cx * 2], (v.cy - 1) * v.cx * 2);
 	i = (v.cy - 1) * v.cx;
 	loop {
 		if i == v.cx * v.cy {
 			break;
 		}
-		v.base[2 * i] = 0:byte;
-		v.base[2 * i + 1] = 0x0f:byte;
+		v.fb[2 * i] = 0:byte;
+		v.fb[2 * i + 1] = 0x0f:byte;
 		i = i + 1;
 	}
 	if v.y > 0 {
 		v.y = v.y - 1;
 	}
+	vblit(v);
 }
 
 vputc(v: *vga, c: int) {
@@ -721,8 +745,8 @@ vputc(v: *vga, c: int) {
 			vshift(v);
 		}
 	} else {
-		v.base[(v.y * v.cx + v.x) * 2] = c:byte;
-		v.base[(v.y * v.cx + v.x) * 2 + 1] = 0x0f:byte;
+		v.fb[(v.y * v.cx + v.x) * 2] = c:byte;
+		v.fb[(v.y * v.cx + v.x) * 2 + 1] = 0x0f:byte;
 		v.x = v.x + 1;
 		if v.x == v.cx {
 			v.x = 0;
@@ -733,6 +757,7 @@ vputc(v: *vga, c: int) {
 		}
 	}
 	vcursor(v);
+	vblit(v);
 }
 
 kputc(c: int) {
@@ -2136,6 +2161,10 @@ tcp_echo(tcb: *tcp_state) {
 	var buf: *byte;
 	var len: int;
 
+	if tcb.state == TCP_LISTEN {
+		return;
+	}
+
 	if tcb.state == TCP_CLOSED {
 		tcp_free(tcb);
 		return;
@@ -3308,14 +3337,16 @@ _kstart(mb: int) {
 
 	global.mmio = -(1 << 31);
 
-	vinit(&global.vga, ptov(0xB8000));
+	brk = ptov(1024 * 1024 * 3):int;
+
+	vinit(&global.vga, ptov(0xB8000), brk:*byte);
+	brk = brk + 4096;
+
 	vclear(&global.vga);
 	//kputs("Starting up\n");
 
 	global.fr = 0:*free_range;
 	global.fp = 0:*free_page;
-
-	brk = ptov(1024 * 1024 * 3):int;
 
 	mbinfo = ptov(mb);
 	mmap = ptov(_r32(&mbinfo[48])): *int;
