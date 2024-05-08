@@ -97,6 +97,32 @@ fdputh(fd: int, n: int) {
 	}
 }
 
+fdputhn(fd: int, x: int, d: int) {
+	loop {
+		if d == 0 {
+			break;
+		}
+		d = d - 4;
+		fdputc(fd, "0123456789abcdef"[(x >> d) & 15]:int);
+	}
+}
+
+fdputh8(fd: int, x: int) {
+	fdputhn(fd, x, 8);
+}
+
+fdputh16(fd: int, x: int) {
+	fdputhn(fd, x, 16);
+}
+
+fdputh32(fd: int, x: int) {
+	fdputhn(fd, x, 32);
+}
+
+fdputh64(fd: int, x: int) {
+	fdputhn(fd, x, 64);
+}
+
 fdputd(fd: int, n: int) {
 	var a: int;
 
@@ -114,4 +140,66 @@ fdputd(fd: int, n: int) {
 	}
 
 	fdputc(fd, '0' + a);
+}
+
+fdxxd(fd: int, data: *byte, len: int) {
+	var i: int;
+	var j: int;
+	loop {
+		if i >= len {
+			break;
+		}
+
+		fdputh32(fd, i);
+
+		fdputc(fd, ':');
+		fdputc(fd, ' ');
+
+		j = 0;
+
+		loop {
+			if j == 16 {
+				break;
+			}
+
+			if i + j < len {
+				fdputh8(fd, data[i + j]: int);
+			} else {
+				fdputc(fd, ' ');
+				fdputc(fd, ' ');
+			}
+
+			if i + j + 1 < len {
+				fdputh8(fd, data[i + j + 1]: int);
+			} else {
+				fdputc(fd, ' ');
+				fdputc(fd, ' ');
+			}
+
+			fdputc(fd, ' ');
+
+			j = j + 2;
+		}
+
+		fdputc(fd, ' ');
+
+		j = 0;
+		loop {
+			if j == 16 || i + j >= len {
+				break;
+			}
+
+			if data[i + j]:int >= 0x20 && data[i + j]:int < 0x80 {
+				fdputc(fd, data[i + j]: int);
+			} else {
+				fdputc(fd, '.');
+			}
+
+			j = j + 1;
+		}
+
+		fdputc(fd, '\n');
+
+		i = i + 16;
+	}
 }
