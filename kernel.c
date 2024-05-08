@@ -827,6 +827,8 @@ struct tcp_state {
 	send_buf: *byte;
 
 	fin_seq: int;
+
+	task: *task;
 }
 
 struct task {
@@ -835,7 +837,8 @@ struct task {
 	name: *byte;
 	stack: *byte;
 	dead: int;
-	f: (func());
+	f: (func(t: *task));
+	a: *void;
 	regs: regs;
 }
 
@@ -2186,10 +2189,6 @@ tcp_echo(tcb: *tcp_state) {
 	var buf: *byte;
 	var len: int;
 
-	if tcb.state == TCP_LISTEN {
-		return;
-	}
-
 	if tcb.state == TCP_CLOSED {
 		tcp_free(tcb);
 		return;
@@ -2207,6 +2206,49 @@ tcp_echo(tcb: *tcp_state) {
 	tcp_send(tcb, buf, len);
 
 	free(buf);
+}
+
+task_ssh(t: *task) {
+	var tcb: *tcp_state;
+	var buf: *byte;
+	var c: byte;
+	var n: int;
+	tcb = t.a:*tcp_state;
+	kputs("accept\n");
+	buf = alloc();
+	loop {
+		yield();
+		if tcb.state == TCP_CLOSED {
+			kputs("closed\n");
+			tcp_free(tcb);
+			break;
+		} else if tcb.state == TCP_CLOSE_WAIT {
+			if tcb.send_fin {
+				continue;
+			}
+			kputs("close_wait\n");
+			tcp_close(tcb);
+			continue;
+		} else if tcb.state < TCP_ESTAB {
+			continue;
+		}
+
+		// echo
+		loop {
+			n = tcp_recv(tcb, buf, 4096);
+			if n == 0 {
+				break;
+			}
+			tcp_send(tcb, buf, n);
+		}
+	}
+	free(buf);
+}
+
+tcp_ssh(tcb: *tcp_state) {
+	if !tcb.task {
+		tcb.task = spawn(task_ssh, "sshd", tcb:*void);
+	}
 }
 
 send_rst(pkt: *rxinfo) {
@@ -2668,7 +2710,9 @@ handle_tcp(pkt: *rxinfo) {
 		send_rst(pkt);
 	} else {
 		handle_seg(tcb, pkt);
-		tcb.event_func(tcb);
+		if tcb.state != TCP_LISTEN {
+			tcb.event_func(tcb);
+		}
 	}
 }
 
@@ -3115,7 +3159,9 @@ tick(r: *regs) {
 		tcb = global.tcp[i];
 		if tcb {
 			tcp_tick(tcb);
-			tcb.event_func(tcb);
+			if tcb.state != TCP_LISTEN {
+				tcb.event_func(tcb);
+			}
 		}
 
 		i = i + 1;
@@ -3407,11 +3453,11 @@ _tstart() {
 	global = g();
 	t = global.curtask;
 	sti();
-	t.f();
+	t.f(t);
 	task_exit();
 }
 
-spawn(f: (func()), name: *byte) {
+spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 	var global: *global;
 	var t: *task;
 	var cur: *task;
@@ -3427,6 +3473,7 @@ spawn(f: (func()), name: *byte) {
 	t.regs.cs = 8;
 	t.regs.ss = 16;
 	t.f = f;
+	t.a = a;
 	flags = rdflags();
 	cli();
 	cur = global.curtask;
@@ -3436,6 +3483,7 @@ spawn(f: (func()), name: *byte) {
 	cur.next = t;
 	next.prev = t;
 	wrflags(flags);
+	return t;
 }
 
 _kstart(mb: int) {
@@ -3650,7 +3698,7 @@ _kstart(mb: int) {
 	scan_pci(pci, init_realtek);
 	scan_pci(pci, init_ahci);
 
-	tcp_listen(22, tcp_echo);
+	tcp_listen(22, tcp_ssh);
 
 	// Wait for interrupts
 	kputs("zzz\n");
