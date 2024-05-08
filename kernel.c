@@ -2203,7 +2203,9 @@ tcp_echo(tcb: *tcp_state) {
 
 	len = 4096 - tcb.send_len;
 	len = tcp_recv(tcb, buf, len);
-	tcp_send(tcb, buf, len);
+	if len >= 0 {
+		tcp_send(tcb, buf, len);
+	}
 
 	free(buf);
 }
@@ -2213,6 +2215,7 @@ task_ssh(t: *task) {
 	var buf: *byte;
 	var c: byte;
 	var n: int;
+	var m: int;
 	tcb = t.a:*tcp_state;
 	kputs("accept\n");
 	buf = alloc();
@@ -2234,12 +2237,14 @@ task_ssh(t: *task) {
 		}
 
 		// echo
+		n = tcp_recv(tcb, buf, 4096);
 		loop {
-			n = tcp_recv(tcb, buf, 4096);
-			if n == 0 {
+			m = tcp_send(tcb, buf, n);
+			if n == 0 || m < 0 {
 				break;
 			}
-			tcp_send(tcb, buf, n);
+			n = n - m;
+			memcpy(buf, &buf[n], n);
 		}
 	}
 	free(buf);
@@ -2629,7 +2634,7 @@ tcp_send(tcb: *tcp_state, b: *byte, n: int): int {
 
 	if tcb.state != TCP_ESTAB || n < 0 {
 		wrflags(flags);
-		return 0;
+		return -1;
 	}
 
 	cap = 4096 - tcb.send_len;
