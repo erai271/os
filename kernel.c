@@ -193,55 +193,64 @@ bzero(s: *byte, size: int) {
 panic(r: *regs) {
 	cli();
 
-	kputs("\n");
+	//     ---------------- ---------------- ---------------- ---------------- ----
+	kputs("rax              rcx              rdx              rbx\n");
 	kputh(r.rax);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.rcx);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.rdx);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.rbx);
-	kputs("\n");
+	kputc('\n');
 
+	//     ---------------- ---------------- ---------------- ---------------- ----
+	kputs("rsi              rdi              r8               r9\n");
 	kputh(r.rsi);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.rdi);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.r8);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.r9);
-	kputs("\n");
+	kputc('\n');
 
+	//     ---------------- ---------------- ---------------- ---------------- ----
+	kputs("r10              r11              r12              r13\n");
 	kputh(r.r10);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.r11);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.r12);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.r13);
-	kputs("\n");
+	kputc('\n');
 
+	//     ---------------- ---------------- ---------------- ---------------- ----
+	kputs("r14              r15              rbp              rsp              ss\n");
 	kputh(r.r14);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.r15);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.rbp);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.rsp);
-	kputs(" ");
+	kputc(' ');
 	kputh16(r.ss);
-	kputs("\n");
+	kputc('\n');
 
+	//     ---------------- ---------------- ---------------- ---------------- ----
+	kputs("rip              rflags           cr2              cr4              cs\n");
 	kputh(r.rip);
-	kputs(" ");
+	kputc(' ');
 	kputh(r.rflags);
-	kputs(" ");
+	kputc(' ');
 	kputh(rdcr2());
-	kputs(" ");
+	kputc(' ');
 	kputh(rdcr4());
-	kputs(" ");
+	kputc(' ');
 	kputh16(r.cs);
-	kputs("\n");
+	kputc('\n');
 
 	loop {
 		hlt();
@@ -263,7 +272,7 @@ _isr(r: *regs) {
 			hlt();
 		}
 	} else if (r.trap == 32) {
-		tick();
+		tick(r);
 		outb(IO_PIC1, 0x20);
 	} else {
 		if (r.trap == 33) {
@@ -738,11 +747,14 @@ vshift(v: *vga) {
 vputc(v: *vga, c: int) {
 	if c == '\r' {
 		v.x = 0;
+		vblit(v);
 	} else if c == '\n' {
 		v.x = 0;
 		v.y = v.y + 1;
 		if v.y == v.cy {
 			vshift(v);
+		} else {
+			vblit(v);
 		}
 	} else {
 		v.fb[(v.y * v.cx + v.x) * 2] = c:byte;
@@ -753,11 +765,12 @@ vputc(v: *vga, c: int) {
 			v.y = v.y + 1;
 			if v.y == v.cy {
 				vshift(v);
+			} else {
+				vblit(v);
 			}
 		}
 	}
 	vcursor(v);
-	vblit(v);
 }
 
 kputc(c: int) {
@@ -816,6 +829,16 @@ struct tcp_state {
 	fin_seq: int;
 }
 
+struct task {
+	next: *task;
+	prev: *task;
+	name: *byte;
+	stack: *byte;
+	dead: int;
+	f: (func());
+	regs: regs;
+}
+
 struct global {
 	ptr: *global;
 	ms: int;
@@ -836,6 +859,8 @@ struct global {
 	tcp: **tcp_state;
 	tcp_count: int;
 	rng: int;
+	curtask: *task;
+	dead: *task;
 }
 
 struct free_page {
@@ -3071,9 +3096,11 @@ isr_ahci() {
 	}
 }
 
-tick() {
+tick(r: *regs) {
 	var global: *global;
 	var tcb: *tcp_state;
+	var cur: *task;
+	var next: *task;
 	var i: int;
 	global = g();
 
@@ -3093,6 +3120,72 @@ tick() {
 
 		i = i + 1;
 	}
+
+	// round robin schedule
+	cur = global.curtask;
+	memcpy((&cur.regs):*byte, r:*byte, sizeof(*r));
+
+	schedule();
+
+	next = global.curtask;
+	memcpy(r:*byte, (&next.regs):*byte, sizeof(*r));
+}
+
+schedule() {
+	var global: *global;
+	var cur: *task;
+	var next: *task;
+	var prev: *task;
+	var dead: *task;
+	global = g();
+
+	cur = global.curtask;
+	next = cur.next;
+	loop {
+		if !next.dead {
+			break;
+		}
+		dead = next;
+		next = dead.next;
+		prev = dead.prev;
+		if dead == cur {
+			continue;
+		}
+		prev.next = next;
+		next.prev = prev;
+		free(dead.stack);
+		free(dead:*byte);
+	}
+	global.curtask = next;
+}
+
+task_exit() {
+	var global: *global;
+	var t: *task;
+	global = g();
+	t = global.curtask;
+	cli();
+	loop {
+		t.dead = 1;
+		yield();
+	}
+}
+
+yield() {
+	var global: *global;
+	var flags: int;
+	var cur: *task;
+	var next: *task;
+	global = g();
+	flags = rdflags();
+	cli();
+
+	cur = global.curtask;
+	schedule();
+	next = global.curtask;
+
+	taskswitch(&cur.regs, &next.regs);
+	wrflags(flags);
 }
 
 kdie(msg: *byte) {
@@ -3308,8 +3401,46 @@ read_rtc() {
 	global.boot_time = epoch_time;
 }
 
+_tstart() {
+	var global: *global;
+	var t: *task;
+	global = g();
+	t = global.curtask;
+	sti();
+	t.f();
+	task_exit();
+}
+
+spawn(f: (func()), name: *byte) {
+	var global: *global;
+	var t: *task;
+	var cur: *task;
+	var next: *task;
+	var flags: int;
+	global = g();
+	t = alloc():*task;
+	bzero(t:*byte, sizeof(*t));
+	t.stack = alloc();
+	t.name = name;
+	t.regs.rsp = (t.stack:int) + 4096;
+	t.regs.rip = _tstart:int;
+	t.regs.cs = 8;
+	t.regs.ss = 16;
+	t.f = f;
+	flags = rdflags();
+	cli();
+	cur = global.curtask;
+	next = cur.next;
+	t.next = next;
+	t.prev = cur;
+	cur.next = t;
+	next.prev = t;
+	wrflags(flags);
+}
+
 _kstart(mb: int) {
 	var global: global;
+	var task: task;
 	var brk: int;
 	var tss: *int;
 	var tss_size: int;
@@ -3328,11 +3459,17 @@ _kstart(mb: int) {
 	var mmap_count: int;
 	var fr: *free_range;
 
+	bzero((&task):*byte, sizeof(task));
+	task.next = &task;
+	task.prev = &task;
+	task.name = "_kstart";
+
 	bzero((&global):*byte, sizeof(global));
 	global.ptr = &global;
 	global.ip = (192 << 24) + (168 << 16) + (1 << 8) + 148;
 	global.ip_gw = (192 << 24) + (168 << 16) + (1 << 8) + 1;
 	global.ip_mask = 20;
+	global.curtask = &task;
 	wrmsr((0xc000 << 16) + 0x0101, global.ptr:int);
 
 	global.mmio = -(1 << 31);
@@ -3518,6 +3655,9 @@ _kstart(mb: int) {
 	// Wait for interrupts
 	kputs("zzz\n");
 	loop {
-		hlt();
+		if global.curtask.next == global.curtask {
+			hlt();
+		}
+		yield();
 	}
 }
