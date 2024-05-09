@@ -1,0 +1,200 @@
+// https://www.rfc-editor.org/rfc/rfc7539
+
+struct _chacha20_state {
+	s0: int;
+	s1: int;
+	s2: int;
+	s3: int;
+	s4: int;
+	s5: int;
+	s6: int;
+	s7: int;
+	s8: int;
+	s9: int;
+	s10: int;
+	s11: int;
+	s12: int;
+	s13: int;
+	s14: int;
+	s15: int;
+}
+
+rol32(x: int, n: int): int {
+	return ((x << n) | (x >> (32 - n))) & (-1 >> 32);
+}
+
+chacha20_qround(a: *int, b: *int, c: *int, d: *int) {
+	*a = (*a + *b) & (-1 >> 32);
+	*d = (*d ^ *a) & (-1 >> 32);
+	*d = rol32(*d, 16);
+
+	*c = (*c + *d) & (-1 >> 32);
+	*b = (*b ^ *c) & (-1 >> 32);
+	*b = rol32(*b, 12);
+
+	*a = (*a + *b) & (-1 >> 32);
+	*d = (*d ^ *a) & (-1 >> 32);
+	*d = rol32(*d, 8);
+
+	*c = (*c + *d) & (-1 >> 32);
+	*b = (*b ^ *c) & (-1 >> 32);
+	*b = rol32(*b, 7);
+}
+
+chacha20_block(block: *byte, key: *byte, counter: int, nonce: *byte) {
+	var _initial: _chacha20_state;
+	var initial: *int;
+	var _s: _chacha20_state;
+	var s: *int;
+	var i: int;
+
+	initial = (&_initial):*int;
+	s = (&_s):*int;
+
+	s[0] = 0x61707865;
+	s[1] = 0x3320646e;
+	s[2] = 0x79622d32;
+	s[3] = 0x6b206574;
+
+	s[4] = key[0]:int
+		| (key[1]:int << 8)
+		| (key[2]:int << 16)
+		| (key[3]:int << 24);
+	s[5] = key[4]:int
+		| (key[5]:int << 8)
+		| (key[6]:int << 16)
+		| (key[7]:int << 24);
+	s[6] = key[8]:int
+		| (key[9]:int << 8)
+		| (key[10]:int << 16)
+		| (key[11]:int << 24);
+	s[7] = key[12]:int
+		| (key[13]:int << 8)
+		| (key[14]:int << 16)
+		| (key[15]:int << 24);
+	s[8] = key[16]:int
+		| (key[17]:int << 8)
+		| (key[18]:int << 16)
+		| (key[19]:int << 24);
+	s[9] = key[20]:int
+		| (key[21]:int << 8)
+		| (key[22]:int << 16)
+		| (key[23]:int << 24);
+	s[10] = key[24]:int
+		| (key[25]:int << 8)
+		| (key[26]:int << 16)
+		| (key[27]:int << 24);
+	s[11] = key[28]:int
+		| (key[29]:int << 8)
+		| (key[30]:int << 16)
+		| (key[31]:int << 24);
+
+	s[12] = counter & (-1 >> 32);
+
+	s[13] = nonce[0]:int
+		| (nonce[1]:int << 8)
+		| (nonce[2]:int << 16)
+		| (nonce[3]:int << 24);
+	s[14] = nonce[4]:int
+		| (nonce[5]:int << 8)
+		| (nonce[6]:int << 16)
+		| (nonce[7]:int << 24);
+	s[15] = nonce[8]:int
+		| (nonce[9]:int << 8)
+		| (nonce[10]:int << 16)
+		| (nonce[11]:int << 24);
+
+	i = 0;
+	loop {
+		if i == 16 {
+			break;
+		}
+		initial[i] = s[i];
+		i = i + 1;
+	}
+
+	i = 0;
+	loop {
+		if i == 10 {
+			break;
+		}
+		chacha20_qround(&s[0], &s[4], &s[8],  &s[12]);
+		chacha20_qround(&s[1], &s[5], &s[9],  &s[13]);
+		chacha20_qround(&s[2], &s[6], &s[10], &s[14]);
+		chacha20_qround(&s[3], &s[7], &s[11], &s[15]);
+		chacha20_qround(&s[0], &s[5], &s[10], &s[15]);
+		chacha20_qround(&s[1], &s[6], &s[11], &s[12]);
+		chacha20_qround(&s[2], &s[7], &s[8],  &s[13]);
+		chacha20_qround(&s[3], &s[4], &s[9],  &s[14]);
+		i = i + 1;
+	}
+
+	i = 0;
+	loop {
+		if i == 16 {
+			break;
+		}
+		s[i] = (s[i] + initial[i]) & (-1 >> 32);
+		i = i + 1;
+	}
+
+	i = 0;
+	loop {
+		if i == 16 {
+			break;
+		}
+		block[i * 4] = s[i]:byte;
+		block[i * 4 + 1] = (s[i] >> 8):byte;
+		block[i * 4 + 2] = (s[i] >> 16):byte;
+		block[i * 4 + 3] = (s[i] >> 24):byte;
+		i = i + 1;
+	}
+}
+
+chacha20_stream(cipher: *byte, plain: *byte, len: int, index: *int, key: *byte, nonce: *byte) {
+	var _block: _chacha20_state;
+	var block: *byte;
+	var i: int;
+	var j: int;
+
+	j = 0;
+	i = index[0] & 63;
+
+	if i {
+		chacha20_block(block, key, index[0] >> 6, nonce);
+
+		loop {
+			if j == len || i == 64 {
+				break;
+			}
+
+			cipher[j] = plain[j] ^ block[i];
+
+			index[0] = index[0] + 1;
+			i = i + 1;
+			j = j + 1;
+		}
+	}
+
+	loop {
+		if j == len {
+			break;
+		}
+
+		chacha20_block(block, key, index[0] >> 6, nonce);
+
+		i = 0;
+		loop {
+			if j == len || i == 64 {
+				break;
+			}
+
+			cipher[j] = plain[j] ^ block[j];
+
+			i = i + 1;
+			j = j + 1;
+		}
+
+		index[0] = index[0] + 64;
+	}
+}
