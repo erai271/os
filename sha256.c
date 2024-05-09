@@ -11,7 +11,7 @@ struct sha256_ctx {
 	h: int;
 }
 
-struct sha256_w {
+struct _sha256_block {
 	w0: int;
 	w1: int;
 	w2: int;
@@ -28,22 +28,6 @@ struct sha256_w {
 	w13: int;
 	w14: int;
 	w15: int;
-	w16: int;
-	w17: int;
-	w18: int;
-	w19: int;
-	w20: int;
-	w21: int;
-	w22: int;
-	w23: int;
-	w24: int;
-	w25: int;
-	w26: int;
-	w27: int;
-	w28: int;
-	w29: int;
-	w30: int;
-	w31: int;
 }
 
 struct _sha256_digest {
@@ -124,7 +108,7 @@ sha256_round(ctx: *sha256_ctx, w: *int, k: int) {
 }
 
 sha256_rounds(ctx: *sha256_ctx, block: *byte) {
-	var _w: sha256_w;
+	var _w: _sha256_block;
 	var w: *int;
 	var r: sha256_ctx;
 	w = &_w.w0;
@@ -396,11 +380,11 @@ sha256(digest: *byte, data: *byte, dlen: int) {
 }
 
 sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
-	var _digest: _sha256_digest;
+	var _digest: _sha256_block;
 	var digest: *byte;
-	var _ipad: sha256_ctx;
+	var _ipad: _sha256_block;
 	var ipad: *byte;
-	var _opad: sha256_ctx;
+	var _opad: _sha256_block;
 	var opad: *byte;
 	var ctx: sha256_ctx;
 	var i: int;
