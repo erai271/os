@@ -203,3 +203,60 @@ fdxxd(fd: int, data: *byte, len: int) {
 		i = i + 16;
 	}
 }
+
+bzero(s: *byte, size: int) {
+	var i: int;
+	i = 0;
+	loop {
+		if i == size {
+			break;
+		}
+		s[i] = 0:byte;
+		i = i + 1;
+	}
+}
+
+memset(dest: *byte, c: int, size: int) {
+	var i: int;
+
+	if size < 0 {
+		return;
+	}
+
+	i = 0;
+	loop {
+		if i == size {
+			break;
+		}
+		dest[i] = c:byte;
+		i = i + 1;
+	}
+}
+
+memcpy(dest: *byte, src: *byte, size: int) {
+	var i: int;
+
+	if size < 0 {
+		return;
+	}
+
+	if src > dest {
+		i = 0;
+		loop {
+			if i == size {
+				break;
+			}
+			dest[i] = src[i];
+			i = i + 1;
+		}
+	} else if src < dest {
+		i = size;
+		loop {
+			if i == 0 {
+				break;
+			}
+			i = i - 1;
+			dest[i] = src[i];
+		}
+	}
+}

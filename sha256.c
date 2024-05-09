@@ -412,7 +412,7 @@ sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	i = 0;
 	loop {
 		if i == 64 {
-			return;
+			break;
 		}
 
 		digest[i] = 0: byte;
@@ -438,7 +438,7 @@ sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	i = 0;
 	loop {
 		if i == 64 {
-			return;
+			break;
 		}
 
 		ipad[i] = digest[i] ^ (0x36:byte);
