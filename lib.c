@@ -260,3 +260,84 @@ memcpy(dest: *byte, src: *byte, size: int) {
 		}
 	}
 }
+
+unhex(dest: *byte, src: *byte): int {
+	var i: int;
+	var dlen: int;
+	var x: int;
+	var y: int;
+
+	i = 0;
+	dlen = 0;
+	loop {
+		x = src[i]:int;
+
+		if x == 0 {
+			break;
+		}
+
+		if x == ' ' || x == '\t' || x == '\r' || x == '\n' {
+			i = i + 1;
+			continue;
+		}
+
+		if x >= '0' && x <= '9' {
+			x = x - '0';
+		} else if x >= 'a' && x <= 'f' {
+			x = x - 'a' + 10;
+		} else if x >= 'A' && x <= 'F' {
+			x = x - 'A' + 10;
+		} else {
+			i = i + 1;
+			continue;
+		}
+
+		y = src[i + 1]:int;
+
+		if y == 0 {
+			break;
+		}
+
+		if y >= '0' && y <= '9' {
+			y = (y - '0');
+		} else if y >= 'a' && y <= 'f' {
+			y = (y - 'a' + 10);
+		} else if y >= 'A' && y <= 'F' {
+			y = (y - 'A' + 10);
+		} else {
+			i = i + 1;
+			continue;
+		}
+
+		dest[dlen] = ((x << 4) | y):byte;
+		dlen = dlen + 1;
+		i = i + 2;
+	}
+
+	return dlen;
+}
+
+reverse(buf: *byte, len: int) {
+	var i: int;
+	var x: byte;
+	i = 0;
+	len = len - 1;
+	loop {
+		if i >= len {
+			break;
+		}
+
+		x = buf[i];
+		buf[i] = buf[len];
+		buf[len] = x;
+
+		i = i + 1;
+		len = len - 1;
+	}
+}
+
+assert(x: int, msg: *byte) {
+	if !x {
+		die(msg);
+	}
+}
