@@ -191,6 +191,9 @@ bzero(s: *byte, size: int) {
 }
 
 panic(r: *regs) {
+	var i: int;
+	var sp: int;
+
 	cli();
 
 	//     ---------------- ---------------- ---------------- ---------------- ----
@@ -252,6 +255,32 @@ panic(r: *regs) {
 	kputh16(r.cs);
 	kputc('\n');
 
+	kputs("backtrace:\n");
+
+	i = 0;
+	sp = r.rbp;
+	loop {
+		kputh(sp);
+		kputc(' ');
+
+		if sp >= 0 {
+			break;
+		}
+
+		sp = sp:*int[0];
+
+		i = i + 1;
+		if i == 8 {
+			break;
+		}
+
+		if i & 3 == 0 {
+			kputc('\n');
+		}
+	}
+
+	kputc('\n');
+
 	loop {
 		hlt();
 	}
@@ -274,7 +303,7 @@ _isr(r: *regs) {
 	} else if (r.trap == 32) {
 		tick(r);
 		outb(IO_PIC1, 0x20);
-	} else {
+	} else if (global.lapic) {
 		if (r.trap == 33) {
 			isr_realtek();
 		} else if (r.trap == 34) {
@@ -3533,7 +3562,7 @@ _kstart(mb: int) {
 	brk = brk + 4096;
 
 	vclear(&global.vga);
-	//kputs("Starting up\n");
+	kputs("Starting up\n");
 
 	global.fr = 0:*free_range;
 	global.fp = 0:*free_page;
@@ -3679,6 +3708,10 @@ _kstart(mb: int) {
 
         // Find ACPI tables
 	xsdt = find_xsdt();
+	if !xsdt {
+		kdie("No xsdt?\n");
+	}
+
         mcfg = find_acpi(xsdt, "MCFG");
 	if !mcfg {
 		kdie("No mcfg?\n");
