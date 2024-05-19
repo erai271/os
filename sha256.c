@@ -36,9 +36,6 @@ struct _sha256_digest {
 	d2: int;
 	d3: int;
 	d4: int;
-	d5: int;
-	d6: int;
-	d7: int;
 }
 
 sha256_init(r: *sha256_ctx) {
