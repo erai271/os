@@ -9,11 +9,27 @@ struct sha512_ctx {
 	f: int;
 	g: int;
 	h: int;
+	len: int;
+	block: _sha512_block;
 }
 
 struct _sha512_block {
-	c0: sha512_ctx;
-	c1: sha512_ctx;
+	c0: int;
+	c1: int;
+	c2: int;
+	c3: int;
+	c4: int;
+	c5: int;
+	c6: int;
+	c7: int;
+	c8: int;
+	c9: int;
+	c10: int;
+	c11: int;
+	c12: int;
+	c13: int;
+	c14: int;
+	c15: int;
 }
 
 struct _sha512_digest {
@@ -29,6 +45,7 @@ sha512_init(ctx: *sha512_ctx) {
 	ctx.f = (0x9b05 << 48) | (0x688c << 32) | (0x2b3e << 16) | 0x6c1f;
 	ctx.g = (0x1f83 << 48) | (0xd9ab << 32) | (0xfb41 << 16) | 0xbd6b;
 	ctx.h = (0x5be0 << 48) | (0xcd19 << 32) | (0x137e << 16) | 0x2179;
+	ctx.len = 0;
 }
 
 ror64(x: int, n: int): int {
@@ -316,4 +333,44 @@ sha512_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	sha512_rounds(&ctx, opad);
 	sha512_finish(&ctx, 1, digest, 64);
 	sha512_digest(mac, &ctx);
+}
+
+sha512_update(ctx: *sha512_ctx, msg: *byte, len: int) {
+	var o: int;
+	var r: int;
+
+	o = ctx.len & 127;
+	if o != 0 {
+		r = 128 - o;
+		if len < r {
+			memcpy(&(&ctx.block):*byte[o], msg, len);
+			ctx.len = ctx.len + len;
+			return;
+		} else {
+			memcpy(&(&ctx.block):*byte[o], msg, r);
+			sha512_rounds(ctx, (&ctx.block):*byte);
+			ctx.len = ctx.len + r;
+			len = len - r;
+			msg = &msg[r];
+		}
+	}
+
+	loop {
+		if len < 128 {
+			memcpy((&ctx.block):*byte, msg, len);
+			ctx.len = ctx.len + len;
+			return;
+		}
+
+		sha512_rounds(ctx, msg);
+
+		ctx.len = ctx.len + 128;
+		len = len - 128;
+		msg = &msg[128];
+	}
+}
+
+sha512_final(digest: *byte, ctx: *sha512_ctx) {
+	sha512_finish(ctx, ctx.len >> 7, (&ctx.block):*byte, ctx.len & 127);
+	sha512_digest(digest, ctx);
 }

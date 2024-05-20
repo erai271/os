@@ -5,31 +5,18 @@ main(argc: int, argv: **byte, envp: **byte) {
 	var b: *byte;
 	var _c: _ed25519_point;
 	var c: *byte;
-	var ret: int;
 
 	a = (&_a):*byte;
 	b = (&_b):*byte;
 	c = (&_c):*byte;
 
-	assert(unhex(a, "e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c") == 32, "unhex");
-	assert(unhex(b, "a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4") == 32, "unhex");
-	assert(x25519(c, a, b), "decode");
-	fdxxd(1, c, 32);
+	assert(unhex(a, "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60") == 32, "unhex");
+	ed25519_sign(c, a, "", 0);
+	fdxxd(1, c, 64);
+	fdputc(1, '\n');
 
-	x25519_base(a);
-	assert(unhex(b, "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a") == 32, "unhex");
-	assert(x25519(c, a, b), "decode");
-	fdxxd(1, c, 32);
-
-	x25519_base(a);
-	assert(unhex(b, "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb") == 32, "unhex");
-	assert(x25519(c, a, b), "decode");
-	fdxxd(1, c, 32);
-
-	x25519_base(a);
-	assert(unhex(b, "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb") == 32, "unhex");
-	assert(x25519(c, a, b), "decode");
-	assert(unhex(b, "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a") == 32, "unhex");
-	assert(x25519(c, c, b), "decode");
-	fdxxd(1, c, 32);
+	assert(unhex(a, "4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb") == 32, "unhex");
+	ed25519_sign(c, a, "r", 1);
+	fdxxd(1, c, 64);
+	fdputc(1, '\n');
 }

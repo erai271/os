@@ -1,4 +1,3 @@
-// https://www.rfc-editor.org/rfc/rfc7748
 // https://www.rfc-editor.org/rfc/rfc8032
 // p = 2**255 - 19
 // = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed
@@ -50,8 +49,42 @@ struct _ed25519_limb {
 }
 
 struct _ed25519_point {
-	x: _ed25519_limb;
-	y: _ed25519_limb;
+	x0: int;
+	x1: int;
+	x2: int;
+	x3: int;
+	x4: int;
+	x5: int;
+	x6: int;
+	x7: int;
+	y0: int;
+	y1: int;
+	y2: int;
+	y3: int;
+	y4: int;
+	y5: int;
+	y6: int;
+	y7: int;
+}
+
+struct _ed25519_mod {
+	x0: int;
+	x1: int;
+	x2: int;
+	x3: int;
+	x4: int;
+	x5: int;
+	x6: int;
+	x7: int;
+	x8: int;
+	x9: int;
+	x10: int;
+	x11: int;
+	x12: int;
+	x13: int;
+	x14: int;
+	x15: int;
+	x16: int;
 }
 
 struct _x25519_block {
@@ -60,6 +93,24 @@ struct _x25519_block {
 	_x2: int;
 	_x3: int;
 	_x4: int;
+}
+
+struct _ed25519_pub {
+	x0: int;
+	x1: int;
+	x2: int;
+	x3: int;
+}
+
+struct _ed25519_sig {
+	x0: int;
+	x1: int;
+	x2: int;
+	x3: int;
+	x4: int;
+	x5: int;
+	x6: int;
+	x7: int;
 }
 
 ed25519_reduce(r: *int) {
@@ -343,8 +394,8 @@ ed25519_pk(r: *int, a: *int, k: *int) {
 	var i: int;
 	var j: int;
 
-	b = &_b.x.x0;
-	c = &_c.x.x0;
+	b = &_b.x0;
+	c = &_c.x0;
 
 	b[0] = a[0] & (-1 >> 32); r[0] = 0;
 	b[1] = a[1] & (-1 >> 32); r[1] = 0;
@@ -474,7 +525,60 @@ ed25519_sqrt(r: *int, x: *int): int {
 }
 
 // x**2 = (1 - y**2) / (d * y**2 - 1) mod p
-ed25519_decode(p: *int, src: *byte) {
+ed25519_decode(p: *int, y: *byte): int {
+	var _xy: _ed25519_point;
+	var xy: *int;
+	var _a: _ed25519_limb;
+	var a: *int;
+	var _b: _ed25519_limb;
+	var b: *int;
+
+	xy = &_xy.x0;
+	a = &_a.x0;
+	b = &_b.x0;
+
+	xy[8] = y[0]:int | (y[1]:int << 8) | (y[2]:int << 16) | (y[3]:int << 24);
+	xy[9] = y[4]:int | (y[5]:int << 8) | (y[6]:int << 16) | (y[7]:int << 24);
+	xy[10] = y[8]:int | (y[9]:int << 8) | (y[10]:int << 16) | (y[11]:int << 24);
+	xy[11] = y[12]:int | (y[13]:int << 8) | (y[14]:int << 16) | (y[15]:int << 24);
+	xy[12] = y[16]:int | (y[17]:int << 8) | (y[18]:int << 16) | (y[19]:int << 24);
+	xy[13] = y[20]:int | (y[21]:int << 8) | (y[22]:int << 16) | (y[23]:int << 24);
+	xy[14] = y[24]:int | (y[25]:int << 8) | (y[26]:int << 16) | (y[27]:int << 24);
+	xy[15] = (y[28]:int | (y[29]:int << 8) | (y[30]:int << 16) | (y[31]:int << 24)) & (-1 >> 33);
+
+	ed25519_mul(a, &xy[8], &xy[8]);
+	ed25519_d(b);
+	ed25519_mul(b, b, a);
+	ed25519_one(xy);
+	ed25519_sub(b, b, xy);
+	ed25519_sub(xy, xy, a);
+	ed25519_inv(b, b);
+	ed25519_mul(xy, xy, b);
+
+	if !ed25519_sqrt(xy, xy) {
+		return 0;
+	}
+
+	ed25519_set_lsb(xy, y[31]:int >> 7);
+
+	p[0] = xy[0];
+	p[1] = xy[1];
+	p[2] = xy[2];
+	p[3] = xy[3];
+	p[4] = xy[4];
+	p[5] = xy[5];
+	p[6] = xy[6];
+	p[7] = xy[7];
+	p[8] = xy[8];
+	p[9] = xy[9];
+	p[10] = xy[10];
+	p[11] = xy[11];
+	p[12] = xy[12];
+	p[13] = xy[13];
+	p[14] = xy[14];
+	p[15] = xy[15];
+
+	return 1;
 }
 
 ed25519_encode(dest: *byte, p: *int) {
@@ -512,29 +616,376 @@ ed25519_encode(dest: *byte, p: *int) {
 	dest[31] = (p[15] >> 24):byte | ((p[0] & 1) << 7):byte;
 }
 
-ed25519_pub(p: *byte, k: *byte) {
+ed25519_pub(pub: *byte, b: *byte) {
+	var _h: _sha512_digest;
+	var h: *byte;
+	var _a: _ed25519_point;
+	var a: *int;
+	var _s: _ed25519_limb;
+	var s: *int;
+
+	h = (&_h):*byte;
+	a = &_a.x0;
+	s = &_s.x0;
+
 	// h || prefix = SHA-512(b)
+	sha512(h, b, 32);
+
 	// s = clamp(h)
+	ed25519_clamp(s, h);
+
 	// A = [s]B
+	ed25519_base(a);
+	ed25519_pk(a, a, s);
+
 	// public key = A
+	ed25519_encode(pub, a);
 }
 
-ed25519_sign(k: *byte) {
+ed25519_sign(sig: *byte, b: *byte, msg: *byte, len: int) {
+	var _h: _sha512_digest;
+	var h: *byte;
+	var _hr: _sha512_digest;
+	var hr: *byte;
+	var _hk: _sha512_digest;
+	var hk: *byte;
+	var ctx: sha512_ctx;
+	var _a: _ed25519_point;
+	var a: *int;
+	var _pub: _ed25519_point;
+	var pub: *byte;
+	var _rb: _ed25519_point;
+	var rb: *int;
+	var _s: _ed25519_limb;
+	var s: *int;
+	var _r: _ed25519_limb;
+	var r: *int;
+	var _k: _ed25519_limb;
+	var k: *int;
+
+	h = (&_h):*byte;
+	hr = (&_hr):*byte;
+	hk = (&_hk):*byte;
+	a = &_a.x0;
+	pub = (&_pub):*byte;
+	rb = &_rb.x0;
+	s = &_s.x0;
+	r = &_r.x0;
+	k = &_k.x0;
+
 	// h || prefix = SHA-512(b)
+	sha512(h, b, 32);
+
 	// s = clamp(h)
+	ed25519_clamp(s, h);
+
 	// A = [s]B
+	ed25519_base(a);
+	ed25519_pk(a, a, s);
+	ed25519_encode(pub, a);
+
 	// r = SHA-512(prefix || M)
+	sha512_init(&ctx);
+	sha512_update(&ctx, &h[32], 32);
+	sha512_update(&ctx, msg, len);
+	sha512_final(hr, &ctx);
+	ed25519_reduce_l(r, hr);
+
 	// R = [r]B
+	ed25519_base(rb);
+	ed25519_pk(rb, rb, r);
+	ed25519_encode(sig, rb);
+
 	// k = SHA-512(R || A || M)
-	// S = r + k * s mod L
-	// signature = R || S
+	sha512_init(&ctx);
+	sha512_update(&ctx, sig, 32);
+	sha512_update(&ctx, pub, 32);
+	sha512_update(&ctx, msg, len);
+	sha512_final(hk, &ctx);
+	ed25519_reduce_l(k, hk);
+
+	// S = k * s + r mod L
+	ed25519_ma_l(s, s, k, r);
+	ed25519_encode_l(&sig[32], s);
 }
 
-ed25519_verify(p: *byte) {
+ed25519_l(l: *int) {
+	l[7] = (0x1000 << 16) | 0x0000;
+	l[6] = (0x0000 << 16) | 0x0000;
+	l[5] = (0x0000 << 16) | 0x0000;
+	l[4] = (0x0000 << 16) | 0x0000;
+	l[3] = (0x14de << 16) | 0xf9de;
+	l[2] = (0xa2f7 << 16) | 0x9cd6;
+	l[1] = (0x5812 << 16) | 0x631a;
+	l[0] = (0x5cf5 << 16) | 0xd3ed;
+}
+
+ed25519_mod1(m: *int, l: *int, q: int) {
+	var c: int;
+	var r: int;
+
+	c = q * l[0]; r = 1 + m[0] + (~c & (-1 >> 32)); c = c >> 32; r = r >> 32;
+	c = c + q * l[1]; r = r + m[1] + (~c & (-1 >> 32)); c = c >> 32; r = r >> 32;
+	c = c + q * l[2]; r = r + m[2] + (~c & (-1 >> 32)); c = c >> 32; r = r >> 32;
+	c = c + q * l[3]; r = r + m[3] + (~c & (-1 >> 32)); c = c >> 32; r = r >> 32;
+	c = c + q * l[4]; r = r + m[4] + (~c & (-1 >> 32)); c = c >> 32; r = r >> 32;
+	c = c + q * l[5]; r = r + m[5] + (~c & (-1 >> 32)); c = c >> 32; r = r >> 32;
+	c = c + q * l[6]; r = r + m[6] + (~c & (-1 >> 32)); c = c >> 32; r = r >> 32;
+	c = c + q * l[7]; r = r + m[7] + (~c & (-1 >> 32)); c = c >> 32; r = r >> 32;
+	r = r + m[8] + (~c & (-1 >> 32)); c = c >> 32; r = r >> 32;
+
+	q = q - (r ^ 1);
+
+	c = q * l[0]; r = 1 + m[0] + (~c & (-1 >> 32)); m[0] = r & (-1 >> 32); c = c >> 32; r = r >> 32;
+	c = c + q * l[1]; r = r + m[1] + (~c & (-1 >> 32)); m[1] = r & (-1 >> 32); c = c >> 32; r = r >> 32;
+	c = c + q * l[2]; r = r + m[2] + (~c & (-1 >> 32)); m[2] = r & (-1 >> 32); c = c >> 32; r = r >> 32;
+	c = c + q * l[3]; r = r + m[3] + (~c & (-1 >> 32)); m[3] = r & (-1 >> 32); c = c >> 32; r = r >> 32;
+	c = c + q * l[4]; r = r + m[4] + (~c & (-1 >> 32)); m[4] = r & (-1 >> 32); c = c >> 32; r = r >> 32;
+	c = c + q * l[5]; r = r + m[5] + (~c & (-1 >> 32)); m[5] = r & (-1 >> 32); c = c >> 32; r = r >> 32;
+	c = c + q * l[6]; r = r + m[6] + (~c & (-1 >> 32)); m[6] = r & (-1 >> 32); c = c >> 32; r = r >> 32;
+	c = c + q * l[7]; r = r + m[7] + (~c & (-1 >> 32)); m[7] = r & (-1 >> 32); c = c >> 32; r = r >> 32;
+	r = r + m[8] + (~c & (-1 >> 32)); m[8] = r & (-1 >> 32); c = c >> 32; r = r >> 32;
+}
+
+// r = x mod L
+ed25519_mod_l(r: *int, x: *int) {
+	var _l: _ed25519_limb;
+	var l: *int;
+	var _m: _ed25519_mod;
+	var m: *int;
+
+	l = &_l.x0;
+	m = &_m.x0;
+
+	ed25519_l(l);
+
+	m[0] = x[0];
+	m[1] = x[1];
+	m[2] = x[2];
+	m[3] = x[3];
+	m[4] = x[4];
+	m[5] = x[5];
+	m[6] = x[6];
+	m[7] = x[7];
+	m[8] = x[8];
+	m[9] = x[9];
+	m[10] = x[10];
+	m[11] = x[11];
+	m[12] = x[12];
+	m[13] = x[13];
+	m[14] = x[14];
+	m[15] = x[15];
+	m[16] = 0;
+
+	ed25519_mod1(&m[8], l, m[15] >> 28);
+	ed25519_mod1(&m[7], l, (m[15] << 4) + (m[14] >> 28));
+	ed25519_mod1(&m[6], l, (m[14] << 4) + (m[13] >> 28));
+	ed25519_mod1(&m[5], l, (m[13] << 4) + (m[12] >> 28));
+	ed25519_mod1(&m[4], l, (m[12] << 4) + (m[11] >> 28));
+	ed25519_mod1(&m[3], l, (m[11] << 4) + (m[10] >> 28));
+	ed25519_mod1(&m[2], l, (m[10] << 4) + (m[9] >> 28));
+	ed25519_mod1(&m[1], l, (m[9] << 4) + (m[8] >> 28));
+	ed25519_mod1(&m[0], l, (m[8] << 4) + (m[7] >> 28));
+
+	r[0] = m[0];
+	r[1] = m[1];
+	r[2] = m[2];
+	r[3] = m[3];
+	r[4] = m[4];
+	r[5] = m[5];
+	r[6] = m[6];
+	r[7] = m[7];
+}
+
+// x = a * b + y mod L
+ed25519_ma_l(x: *int, a: *int, b: *int, y: *int) {
+	var _z: _ed25519_mod;
+	var z: *int;
+	var c: int;
+	var i: int;
+
+	z = (&_z):*int;
+
+	z[0] = 0;
+	z[1] = 0;
+	z[2] = 0;
+	z[3] = 0;
+	z[4] = 0;
+	z[5] = 0;
+	z[6] = 0;
+	z[7] = 0;
+	z[8] = 0;
+	z[9] = 0;
+	z[10] = 0;
+	z[11] = 0;
+	z[12] = 0;
+	z[13] = 0;
+	z[14] = 0;
+	z[15] = 0;
+
+	i = 0;
+	loop {
+		if i == 8 {
+			break;
+		}
+
+		c = z[i + 0] + a[i] * b[0]; z[i + 0] = c & (-1 >> 32); c = c >> 32;
+		c = c + z[i + 1] + a[i] * b[1]; z[i + 1] = c & (-1 >> 32); c = c >> 32;
+		c = c + z[i + 2] + a[i] * b[2]; z[i + 2] = c & (-1 >> 32); c = c >> 32;
+		c = c + z[i + 3] + a[i] * b[3]; z[i + 3] = c & (-1 >> 32); c = c >> 32;
+		c = c + z[i + 4] + a[i] * b[4]; z[i + 4] = c & (-1 >> 32); c = c >> 32;
+		c = c + z[i + 5] + a[i] * b[5]; z[i + 5] = c & (-1 >> 32); c = c >> 32;
+		c = c + z[i + 6] + a[i] * b[6]; z[i + 6] = c & (-1 >> 32); c = c >> 32;
+		c = c + z[i + 7] + a[i] * b[7]; z[i + 7] = c & (-1 >> 32); c = c >> 32;
+		c = c + z[i + 8]; z[i + 8] = c & (-1 >> 32);
+
+		i = i + 1;
+	}
+
+	ed25519_mod_l(z, z);
+
+	c = z[0] + y[0]; z[0] = c; c = c >> 32;
+	c = z[1] + y[1]; z[1] = c; c = c >> 32;
+	c = z[2] + y[2]; z[2] = c; c = c >> 32;
+	c = z[3] + y[3]; z[3] = c; c = c >> 32;
+	c = z[4] + y[4]; z[4] = c; c = c >> 32;
+	c = z[5] + y[5]; z[5] = c; c = c >> 32;
+	c = z[6] + y[6]; z[6] = c; c = c >> 32;
+	c = z[7] + y[7]; z[7] = c; c = c >> 32;
+	z[8] = 0;
+	z[9] = 0;
+	z[10] = 0;
+	z[11] = 0;
+	z[12] = 0;
+	z[13] = 0;
+	z[14] = 0;
+	z[15] = 0;
+
+	ed25519_mod_l(x, z);
+}
+
+// x = a_512 mod L
+ed25519_reduce_l(x: *int, a: *byte) {
+	var _z: _ed25519_point;
+	var z: *int;
+
+	z = (&_z):*int;
+
+	z[0] = a[0]:int | (a[1]:int << 8) | (a[2]:int << 16) | (a[3]:int << 24);
+	z[1] = a[4]:int | (a[5]:int << 8) | (a[6]:int << 16) | (a[7]:int << 24);
+	z[2] = a[8]:int | (a[9]:int << 8) | (a[10]:int << 16) | (a[11]:int << 24);
+	z[3] = a[12]:int | (a[13]:int << 8) | (a[14]:int << 16) | (a[15]:int << 24);
+	z[4] = a[16]:int | (a[17]:int << 8) | (a[18]:int << 16) | (a[19]:int << 24);
+	z[5] = a[20]:int | (a[21]:int << 8) | (a[22]:int << 16) | (a[23]:int << 24);
+	z[6] = a[24]:int | (a[25]:int << 8) | (a[26]:int << 16) | (a[27]:int << 24);
+	z[7] = a[28]:int | (a[29]:int << 8) | (a[30]:int << 16) | (a[31]:int << 24);
+	z[8] = a[32]:int | (a[33]:int << 8) | (a[34]:int << 16) | (a[35]:int << 24);
+	z[9] = a[36]:int | (a[37]:int << 8) | (a[38]:int << 16) | (a[39]:int << 24);
+	z[10] = a[40]:int | (a[41]:int << 8) | (a[42]:int << 16) | (a[43]:int << 24);
+	z[11] = a[44]:int | (a[45]:int << 8) | (a[46]:int << 16) | (a[47]:int << 24);
+	z[12] = a[48]:int | (a[49]:int << 8) | (a[50]:int << 16) | (a[51]:int << 24);
+	z[13] = a[52]:int | (a[53]:int << 8) | (a[54]:int << 16) | (a[55]:int << 24);
+	z[14] = a[56]:int | (a[57]:int << 8) | (a[58]:int << 16) | (a[59]:int << 24);
+	z[15] = a[60]:int | (a[61]:int << 8) | (a[62]:int << 16) | (a[63]:int << 24);
+
+	ed25519_mod_l(x, z);
+}
+
+ed25519_encode_l(dest: *byte, p: *int) {
+	dest[0] = p[0]:byte;
+	dest[1] = (p[0] >> 8):byte;
+	dest[2] = (p[0] >> 16):byte;
+	dest[3] = (p[0] >> 24):byte;
+	dest[4] = p[1]:byte;
+	dest[5] = (p[1] >> 8):byte;
+	dest[6] = (p[1] >> 16):byte;
+	dest[7] = (p[1] >> 24):byte;
+	dest[8] = p[2]:byte;
+	dest[9] = (p[2] >> 8):byte;
+	dest[10] = (p[2] >> 16):byte;
+	dest[11] = (p[2] >> 24):byte;
+	dest[12] = p[3]:byte;
+	dest[13] = (p[3] >> 8):byte;
+	dest[14] = (p[3] >> 16):byte;
+	dest[15] = (p[3] >> 24):byte;
+	dest[16] = p[4]:byte;
+	dest[17] = (p[4] >> 8):byte;
+	dest[18] = (p[4] >> 16):byte;
+	dest[19] = (p[4] >> 24):byte;
+	dest[20] = p[5]:byte;
+	dest[21] = (p[5] >> 8):byte;
+	dest[22] = (p[5] >> 16):byte;
+	dest[23] = (p[5] >> 24):byte;
+	dest[24] = p[6]:byte;
+	dest[25] = (p[6] >> 8):byte;
+	dest[26] = (p[6] >> 16):byte;
+	dest[27] = (p[6] >> 24):byte;
+	dest[28] = p[7]:byte;
+	dest[29] = (p[7] >> 8):byte;
+	dest[30] = (p[7] >> 16):byte;
+	dest[31] = (p[7] >> 24):byte;
+}
+
+ed25519_eq(a: *int, b: *int): int {
+	var x: int;
+	x = a[0] ^ b[0];
+	x = x | (a[1] ^ b[1]);
+	x = x | (a[2] ^ b[2]);
+	x = x | (a[3] ^ b[3]);
+	x = x | (a[4] ^ b[4]);
+	x = x | (a[5] ^ b[5]);
+	x = x | (a[6] ^ b[6]);
+	x = x | (a[7] ^ b[7]);
+	x = x | (a[8] ^ b[8]);
+	x = x | (a[9] ^ b[9]);
+	x = x | (a[10] ^ b[10]);
+	x = x | (a[11] ^ b[11]);
+	x = x | (a[12] ^ b[12]);
+	x = x | (a[13] ^ b[13]);
+	x = x | (a[14] ^ b[14]);
+	x = x | (a[15] ^ b[15]);
+	x = (x >> 32) | x;
+	x = (x >> 16) | x;
+	x = (x >> 8) | x;
+	x = (x >> 4) | x;
+	x = (x >> 2) | x;
+	x = (x >> 1) | x;
+	return (x & 1) ^ 1;
+}
+
+ed25519_verify(sig: *byte, pub: *byte, msg: *byte, len: int): int {
+	var ctx: sha512_ctx;
+	var a: *int;
+	var b: *int;
+	var r: *int;
+	var s: *int;
+	var k: *int;
+	var hk: *byte;
+
 	// A = public key
-	// R || S = signature
+	ed25519_decode(a, pub);
+
+	// sig = R || S
+	ed25519_decode(r, sig);
+	ed25519_reduce_l(s, &sig[32]);
+
 	// k' = SHA-512(R || A || M)
-	// [S]B = R + [k']A
+	sha512_init(&ctx);
+	sha512_update(&ctx, sig, 32);
+	sha512_update(&ctx, pub, 32);
+	sha512_update(&ctx, msg, len);
+	sha512_final(hk, &ctx);
+	ed25519_reduce_l(k, hk);
+
+	// RHS = R + [k']A
+	ed25519_pk(a, a, k);
+	ed25519_pa(a, a, r);
+
+	// LHS = [S]B
+	ed25519_base(b);
+	ed25519_pk(b, b, s);
+
+	return ed25519_eq(a, b);
 }
 
 ed25519_bi(d: *int) {
@@ -690,8 +1141,8 @@ x25519(uk: *byte, u: *byte, k: *byte): int {
 	var xy: *int;
 	var kc: *int;
 
-	uv = &_uv.x.x0;
-	xy = &_xy.x.x0;
+	uv = &_uv.x0;
+	xy = &_xy.x0;
 	kc = &_kc.x0;
 
 	if !x25519_decode(uv, u) {
@@ -770,7 +1221,7 @@ ed25519_check(xy: *int): int {
 	return ed25519_zerop(a);
 }
 
-ed25519_set_sign(xy: *int, sign: int) {
+ed25519_set_lsb(xy: *int, lsb: int) {
 	var _a: _ed25519_limb;
 	var a: *int;
 
@@ -779,7 +1230,7 @@ ed25519_set_sign(xy: *int, sign: int) {
 	ed25519_zero(a);
 	ed25519_sub(a, a, &xy[8]);
 
-	ed25519_selectl(&xy[8], &xy[8], a, ((xy[15] >> 30) ^ sign) & 1);
+	ed25519_selectl(&xy[8], &xy[8], a, (xy[0] ^ lsb) & 1);
 }
 
 ed25519_clamp(k: *int, b: *byte) {
