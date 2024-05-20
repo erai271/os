@@ -1243,14 +1243,3 @@ ed25519_clamp(k: *int, b: *byte) {
 	k[6] = b[24]:int | (b[25]:int << 8) | (b[26]:int << 16) | (b[27]:int << 24);
 	k[7] = ((b[28]:int | (b[29]:int << 8) | (b[30]:int << 16) | (b[31]:int << 24)) & (-1 >> 33)) | (1 << 30);
 }
-
-ed25519_fdputl(fd: int, x: *int) {
-	fdputh32(fd, x[7]);
-	fdputh32(fd, x[6]);
-	fdputh32(fd, x[5]);
-	fdputh32(fd, x[4]);
-	fdputh32(fd, x[3]);
-	fdputh32(fd, x[2]);
-	fdputh32(fd, x[1]);
-	fdputh32(fd, x[0]);
-}
