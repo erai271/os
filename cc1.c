@@ -1895,6 +1895,15 @@ main(argc: int, argv: **byte, envp: **byte) {
 		emit_ret(c.as);
 	}
 
+	d = find(c, "_rdrand", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_modr(c.as, OP_RDRAND, R_RAX);
+		as_opr(c.as, OP_PUSHR, R_RAX);
+		emit_ret(c.as);
+	}
+
 	d = find(c, "taskswitch", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
