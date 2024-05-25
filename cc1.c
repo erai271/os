@@ -1283,6 +1283,112 @@ next_decl(c: *compiler, d: *decl): *decl {
 	}
 }
 
+emit_ssr(c: *compiler) {
+	var d: *decl;
+	var v: *decl;
+
+	v = find(c, "global", "_save", 0);
+	if (!v || !v.member_defined) {
+		cdie(c, "no _save");
+	}
+
+	as_emit(c.as, OP_GS);
+	as_modra(c.as, OP_STORE, R_RSP, v.member_offset);
+
+	v = find(c, "global", "curtask", 0);
+	if (!v || !v.member_defined) {
+		cdie(c, "no global.curtask");
+	}
+
+	as_emit(c.as, OP_GS);
+	as_modra(c.as, OP_LOAD, R_RSP, v.member_offset);
+
+	v = find(c, "task", "stack", 0);
+	if (!v || !v.member_defined) {
+		cdie(c, "no task.stack");
+	}
+
+	as_modrm(c.as, OP_LOAD, R_RSP, R_RSP, 0, 0, v.member_offset);
+	as_modri(c.as, OP_ADDI, R_RSP, 4096 - 176);
+
+	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
+	as_modrm(c.as, OP_STORE, R_RDX, R_RSP, 0, 0, 16);
+	as_modrm(c.as, OP_STORE, R_RBX, R_RSP, 0, 0, 24);
+	as_modrm(c.as, OP_STORE, R_RBP, R_RSP, 0, 0, 40);
+	as_modrm(c.as, OP_STORE, R_RSI, R_RSP, 0, 0, 48);
+	as_modrm(c.as, OP_STORE, R_RDI, R_RSP, 0, 0, 56);
+	as_modrm(c.as, OP_STORE, R_R8, R_RSP, 0, 0, 64);
+	as_modrm(c.as, OP_STORE, R_R9, R_RSP, 0, 0, 72);
+	as_modrm(c.as, OP_STORE, R_R10, R_RSP, 0, 0, 80);
+	as_modrm(c.as, OP_STORE, R_R12, R_RSP, 0, 0, 96);
+	as_modrm(c.as, OP_STORE, R_R13, R_RSP, 0, 0, 104);
+	as_modrm(c.as, OP_STORE, R_R14, R_RSP, 0, 0, 112);
+	as_modrm(c.as, OP_STORE, R_R15, R_RSP, 0, 0, 120);
+	as_modrm(c.as, OP_STORE, R_RCX, R_RSP, 0, 0, 128);
+	as_modrm(c.as, OP_STORE, R_R11, R_RSP, 0, 0, 136);
+
+	as_modrr(c.as, OP_XORRM, R_RAX, R_RAX);
+	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 8);
+	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 88);
+	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 160);
+	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 168);
+
+	as_modri(c.as, OP_MOVI, R_RAX, 43);
+	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 144);
+	as_modri(c.as, OP_MOVI, R_RAX, 35);
+	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 152);
+
+	v = find(c, "global", "_save", 0);
+	if (!v || !v.member_defined) {
+		cdie(c, "no _save");
+	}
+
+	as_emit(c.as, OP_GS);
+	as_modra(c.as, OP_LOAD, R_RAX, v.member_offset);
+	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 32);
+	as_modrr(c.as, OP_MOVE, R_RAX, R_RSP);
+
+	as_modrr(c.as, OP_XORRM, R_RBP, R_RBP);
+	as_opr(c.as, OP_PUSHR, R_RBP);
+	as_opr(c.as, OP_PUSHR, R_RBP);
+	as_modrr(c.as, OP_MOVE, R_RBP, R_RSP);
+
+	as_opr(c.as, OP_PUSHR, R_RAX);
+
+	as_op(c.as, OP_STI);
+
+	d = find(c, "_ssr", 0:*byte, 1);
+	if (d.func_defined && d.func_label.fixed) {
+		as_jmp(c.as, OP_CALL, d.func_label);
+	}
+
+	as_op(c.as, OP_CLI);
+
+	as_modri(c.as, OP_ADDI, R_RSP, 3 * 8);
+
+	as_modrm(c.as, OP_LOAD, R_RAX, R_RSP, 0, 0, 0);
+	as_modrm(c.as, OP_LOAD, R_RDX, R_RSP, 0, 0, 16);
+	as_modrm(c.as, OP_LOAD, R_RBX, R_RSP, 0, 0, 24);
+	as_modrm(c.as, OP_LOAD, R_RBP, R_RSP, 0, 0, 40);
+	as_modrm(c.as, OP_LOAD, R_RSI, R_RSP, 0, 0, 48);
+	as_modrm(c.as, OP_LOAD, R_RDI, R_RSP, 0, 0, 56);
+	as_modrm(c.as, OP_LOAD, R_R8, R_RSP, 0, 0, 64);
+	as_modrm(c.as, OP_LOAD, R_R9, R_RSP, 0, 0, 72);
+	as_modrm(c.as, OP_LOAD, R_R10, R_RSP, 0, 0, 80);
+	as_modrm(c.as, OP_LOAD, R_R12, R_RSP, 0, 0, 96);
+	as_modrm(c.as, OP_LOAD, R_R13, R_RSP, 0, 0, 104);
+	as_modrm(c.as, OP_LOAD, R_R14, R_RSP, 0, 0, 112);
+	as_modrm(c.as, OP_LOAD, R_R15, R_RSP, 0, 0, 120);
+
+	as_modrm(c.as, OP_LOAD, R_RCX, R_RSP, 0, 0, 128);
+	as_modrm(c.as, OP_LOAD, R_R11, R_RSP, 0, 0, 136);
+
+	as_modrm(c.as, OP_LOAD, R_RSP, R_RSP, 0, 0, 32);
+
+	as_rex(c.as, OP_SYSRET, 0, 0, 0);
+	as_op(c.as, OP_SYSRET);
+}
+
 emit_isr(c: *compiler) {
 	var d: *decl;
 	var out: *label;
@@ -1825,6 +1931,12 @@ main(argc: int, argv: **byte, envp: **byte) {
 		as_modm(c.as, OP_INVLPGM, R_RAX, 0, 0, 0);
 		as_opr(c.as, OP_PUSHR, R_RAX);
 		emit_ret(c.as);
+	}
+
+	d = find(c, "_ssr0", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_ssr(c);
 	}
 
 	d = find(c, "_isr0", 0:*byte, 1);

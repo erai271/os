@@ -130,6 +130,7 @@ enum {
 	OP_MOVABS = 0xb8,
 
 	OP_SYSCALL = 0x0f05,
+	OP_SYSRET = 0x0f07,
 
 	OP_LEA = 0x8d,
 	OP_LOAD = 0x8b,
@@ -387,7 +388,7 @@ emit_kstart(c: *assembler) {
 
 	// pt3 -> 1g
 	as_modri(c, OP_SUBI, R_RSP, 0x1000);
-	as_modri(c, OP_MOVI, R_RAX, 0x83);
+	as_modri(c, OP_MOVI, R_RAX, 0x87);
 	as_modri(c, OP_MOVI, R_RDX, 0);
 	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
 	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
@@ -397,7 +398,7 @@ emit_kstart(c: *assembler) {
 	// pt4 -> pt3
 	as_modrr(c, OP_MOVE, R_RAX, R_RSP);
 	as_modri(c, OP_SUBI, R_RSP, 0x1000);
-	as_modri(c, OP_ORI, R_RAX, 3);
+	as_modri(c, OP_ORI, R_RAX, 7);
 	as_modri(c, OP_MOVI, R_RDX, 0);
 	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
 	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
@@ -1127,6 +1128,18 @@ as_modrr(a: *assembler, op: int, r: int, b: int) {
 // modrm /op
 as_modr(a: *assembler, op: int, b: int) {
 	as_modrr(a, op & 0xffff, op >> 16, b);
+}
+
+// modrm + disp
+as_modra(a: *assembler, op: int, r: int, d: int) {
+	as_rex(a, op, r, 0, 0);
+	as_op(a, op);
+	as_emit(a, ((r << 3) & 0x38) + R_RSP);
+	as_emit(a, (R_RSP << 3) + R_RBP);
+	as_emit(a, d);
+	as_emit(a, d >> 8);
+	as_emit(a, d >> 16);
+	as_emit(a, d >> 24);
 }
 
 // modrm + sib + disp

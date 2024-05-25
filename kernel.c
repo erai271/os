@@ -1,5 +1,7 @@
 ud2();
 
+syscall(n: int, a1: int, a2: int, a3: int, a4: int, a5: int, a6: int): int;
+
 cpuid(a: *int, c: *int, d: *int, b: *int);
 
 inb(a: int): int;
@@ -40,6 +42,7 @@ wbinvld(x: int);
 invlpg(x: int);
 
 _isr0();
+_ssr0();
 
 _rgs(x: int): int;
 
@@ -556,7 +559,7 @@ map_pci(pa: int): *byte {
 	pt4 = ptov(pt4p):*int;
 	v2 = ((va: int) >> 30) & 511;
 	pt3 = ptov(pt4[511] & -4096):*int;
-	flags = 0x93;
+	flags = 0x97;
 	pt3[v2] = (pa & -(1 << 30)) | flags;
 	pt3[v2 + 1] = ((pa + (1 << 30)) & -(1 << 30)) | flags;
 	wrcr3(pt4p);
@@ -865,6 +868,7 @@ struct task {
 	prev: *task;
 	name: *byte;
 	stack: *byte;
+	ustack: *byte;
 	dead: int;
 	f: (func(t: *task));
 	a: *void;
@@ -893,6 +897,7 @@ struct global {
 	rng: int;
 	curtask: *task;
 	dead: *task;
+	_save: int;
 }
 
 struct free_page {
@@ -1133,7 +1138,7 @@ direct_map(brk: *int) {
 		pt3p = (pt3:int) & ((1 << 31) - 1);
 
 		i = (va >> 39) & 511;
-		pt4[i] = pt3p | 0x003;
+		pt4[i] = pt3p | 0x007;
 
 		loop {
 			if pa == map_size || n == 0 {
@@ -1141,7 +1146,7 @@ direct_map(brk: *int) {
 			}
 
 			i = (va >> 30) & 511;
-			pt3[i] = pa | 0x083;
+			pt3[i] = pa | 0x087;
 
 			va = va + page_size;
 			pa = pa + page_size;
@@ -3234,6 +3239,7 @@ schedule() {
 		prev.next = next;
 		next.prev = prev;
 		free(dead.stack);
+		free(dead.ustack);
 		free(dead:*byte);
 	}
 	global.curtask = next;
@@ -3501,6 +3507,7 @@ spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 	t = alloc():*task;
 	bzero(t:*byte, sizeof(*t));
 	t.stack = alloc();
+	t.ustack = alloc();
 	t.name = name;
 	t.regs.rsp = (t.stack:int) + 4096;
 	t.regs.rip = _tstart:int;
@@ -3518,6 +3525,38 @@ spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 	next.prev = t;
 	wrflags(flags);
 	return t;
+}
+
+_ssr(r: *regs) {
+	if r.rax == 60 {
+		kputs("exit\n");
+		task_exit();
+	} else {
+		r.rax = -1;
+	}
+}
+
+user() {
+	syscall(1, 2, 3, 4, 5, 6, 7);
+}
+
+_ustart() {
+	user();
+	loop {
+		syscall(60, 0, 0, 0, 0, 0, 0);
+	}
+}
+
+task_user(t: *task) {
+	var r: regs;
+	bzero((&r):*byte, sizeof(r));
+	r.rflags = 0x200;
+	r.rip = _ustart:int;
+	r.cs = 40 | 3;
+	r.rsp = t.ustack:int + 4096;
+	r.ss = 32 | 3;
+	cli();
+	taskswitch(&t.regs, &r);
 }
 
 _kstart(mb: int) {
@@ -3631,7 +3670,7 @@ _kstart(mb: int) {
 	fill_idt(idt);
 
 	gdt = brk: *int;
-	gdt_size = 8 * 7;
+	gdt_size = 8 * 9;
 
 	// Null segment
 	gdt[0] = 0;
@@ -3640,19 +3679,32 @@ _kstart(mb: int) {
 	// Kernel data segment
 	gdt[2] = 0x00009200 << 32;
 	// User code segment
-	gdt[3] = 0x0020f800 << 32;
+	gdt[3] = 0x0020fa00 << 32;
 	// User data segment
 	gdt[4] = 0x0000f200 << 32;
+	// User code segment
+	gdt[5] = 0x0020fa00 << 32;
+	// User data segment
+	gdt[6] = 0x0000f200 << 32;
 	// Task segment
-	gdt_tss(&gdt[5], tss: int, tss_size, 0x89, 0);
+	gdt_tss(&gdt[7], tss: int, tss_size, 0x89, 0);
 
 	// Load gdt idt tss and segments
 	lgdt(gdt, gdt_size);
 	lseg(8, 16);
 	wrmsr((0xc000 << 16) + 0x0101, global.ptr:int);
 	lldt(0);
-	ltr(5 * 8);
+	ltr(7 * 8);
 	lidt(idt, idt_size);
+
+	// STAR
+	wrmsr((0xc000 << 16) + 0x0081, ((24 + 3) << 48) | (8 << 32));
+	// LSTAR
+	wrmsr((0xc000 << 16) + 0x0082, (_ssr0): int);
+	// FMASK
+	wrmsr((0xc000 << 16) + 0x0084, -1);
+	// EFER
+	wrmsr((0xc000 << 16) + 0x0080, rdmsr((0xc000 << 16) + 0x0080) | 1);
 
 	// interrupt stack
 	brk = (brk + 4095) & -4096;
@@ -3737,6 +3789,8 @@ _kstart(mb: int) {
 	scan_pci(pci, init_ahci);
 
 	tcp_listen(22, tcp_ssh);
+
+	spawn(task_user, "init", 0:*void);
 
 	// Wait for interrupts
 	kputs("zzz\n");
