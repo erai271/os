@@ -3528,16 +3528,58 @@ spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 }
 
 _ssr(r: *regs) {
-	if r.rax == 60 {
+	if r.rax == 0 {
+		kputs("read\n");
+		r.rax = -1;
+	} else if r.rax == 1 {
+		kputs("write\n");
+		r.rax = -1;
+	} else if r.rax == 2 {
+		kputs("open\n");
+		r.rax = -1;
+	} else if r.rax == 3 {
+		kputs("close\n");
+		r.rax = -1;
+	} else if r.rax == 9 {
+		kputs("mmap\n");
+		r.rax = -1;
+	} else if r.rax == 33 {
+		kputs("dup2\n");
+		r.rax = -1;
+	} else if r.rax == 41 {
+		kputs("socket\n");
+		r.rax = -1;
+	} else if r.rax == 43 {
+		kputs("accept\n");
+		r.rax = -1;
+	} else if r.rax == 49 {
+		kputs("bind\n");
+		r.rax = -1;
+	} else if r.rax == 50 {
+		kputs("listen\n");
+		r.rax = -1;
+	} else if r.rax == 57 {
+		kputs("fork\n");
+		r.rax = -1;
+	} else if r.rax == 59 {
+		kputs("exec\n");
+		r.rax = -1;
+	} else if r.rax == 60 {
 		kputs("exit\n");
 		task_exit();
+	} else if r.rax == 61 {
+		kputs("wait\n");
+		r.rax = -1;
+	} else if r.rax == 87 {
+		kputs("unlink\n");
+		r.rax = -1;
 	} else {
 		r.rax = -1;
 	}
 }
 
 user() {
-	syscall(1, 2, 3, 4, 5, 6, 7);
+	syscall(1, 1, "Hello, world!\n":int, 14, 0, 0, 0);
 }
 
 _ustart() {
