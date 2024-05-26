@@ -98,7 +98,6 @@
 //<-
 //SSH_MSG_USERAUTH_PK_OK
 
-
 _rdrand(): int;
 main(argc: int, argv: **byte, envp: **byte) {
 	exit(_rdrand());

@@ -195,7 +195,7 @@ open_output(c: *assembler, filename: *byte) {
 
 	unlink(filename);
 
-	fd = open(filename, 64 + 1, (7 << 6) + (7 << 3) +7);
+	fd = open(filename, O_CREAT | O_WRONLY, (7 << 6) + (7 << 3) +7);
 	if (fd < 0) {
 		die("failed to open output");
 	}

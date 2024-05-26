@@ -1,2 +1,213 @@
+struct stat {
+	dev: int;
+	ino: int;
+	nlink: int;
+	uid_mode: int;
+	gid: int;
+	rdev: int;
+	size: int;
+	blksize: int;
+	blocks: int;
+	atime: int;
+	atime_nsec: int;
+	mtime: int;
+	mtime_nsec: int;
+	ctime: int;
+	ctime_nsec: int;
+	pad0: int;
+	pad1: int;
+	pad2: int;
+}
+
 main(argc: int, argv: **byte, envp: **byte) {
+	var opts: int;
+	var i: int;
+	var a: alloc;
+	var fd: int;
+	var name: *byte;
+	var stdin: *file;
+	var stdout: *file;
+	var stat: stat;
+	var buf: *byte;
+	var len: int;
+	var n: int;
+	var m: int;
+	var k: int;
+	var ret: int;
+
+	setup_alloc(&a);
+
+	i = 1;
+	loop {
+		if i >= argc {
+			break;
+		}
+
+		if !strcmp(argv[i], "-o") {
+			opts = opts | 1;
+		} else {
+			die("invalid argument");
+		}
+
+		i = i + 1;
+	}
+
+	stdin = fopen(0, &a);
+	stdout = fopen(1, &a);
+
+	name = alloc(&a, 4096);
+	buf = alloc(&a, 4096);
+
+	loop {
+		if stdin.eof {
+			break;
+		}
+
+		len = fgets(stdin, name, 4096);
+		if len == 0 {
+			continue;
+		}
+
+		if len == 4096 {
+			fflush(stdout);
+			fdputs(2, "name truncated: ");
+			fdputs(2, name);
+			fdputs(2, "\n");
+			exit(1);
+		}
+
+		fd = open(name, 0, 0);
+		if fd < 0 {
+			fflush(stdout);
+			fdputs(2, "failed to open: ");
+			fdputs(2, name);
+			fdputs(2, "\n");
+			exit(1);
+		}
+
+		if fstat(fd, (&stat):*byte) < 0 {
+			fflush(stdout);
+			fdputs(2, "stat failed: ");
+			fdputs(2, name);
+			fdputs(2, "\n");
+			exit(1);
+		}
+
+		// header
+		fputs(stdout, "070701");
+		fputh(stdout, stat.ino);
+		fputh(stdout, stat.uid_mode & (-1 >> 32));
+		fputh(stdout, 0);
+		fputh(stdout, 0);
+		fputh(stdout, stat.nlink);
+		fputh(stdout, stat.mtime);
+		fputh(stdout, stat.size);
+		fputh(stdout, stat.dev >> 8);
+		fputh(stdout, stat.dev & 255);
+		fputh(stdout, stat.rdev >> 8);
+		fputh(stdout, (stat.rdev) & 255);
+		fputh(stdout, len + 1);
+		fputh(stdout, 0);
+
+		fputs(stdout, name);
+		fputc(stdout, 0);
+
+		// align to four bytes
+		falign(stdout, len + 3);
+		fflush(stdout);
+
+		// copy data
+		n = 0;
+		loop {
+			if n == stat.size {
+				break;
+			}
+
+			k = read(fd, buf, 4096);
+			if k <= 0 {
+				die("failed to read");
+			}
+
+			if n + k > stat.size {
+				k = stat.size - n;
+			}
+
+			m = 0;
+			loop {
+				if m == k {
+					break;
+				}
+
+				ret = write(1, &buf[m], k - m);
+				if ret < 0 {
+					die("failed to write");
+				}
+
+				m = m + ret;
+			}
+
+			n = n + k;
+		}
+
+		// align to four bytes
+		falign(stdout, stat.size);
+		fflush(stdout);
+
+		close(fd);
+	}
+
+	// trailer
+	fputs(stdout, "070701");
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 0);
+	fputh(stdout, 11);
+	fputh(stdout, 0);
+	fputs(stdout, "TRAILER!!!");
+	fputc(stdout, 0);
+	falign(stdout, 13);
+
+	fflush(stdout);
+}
+
+fputh(f: *file, x: int) {
+	var i: int;
+
+	if x > (-1 >> 32) {
+		fflush(f);
+		die("too large");
+	}
+
+	i = 32;
+	loop {
+		if i == 0 {
+			break;
+		}
+
+		i = i - 4;
+
+		fputc(f, "0123456789abcdef"[(x >> i) & 15]:int);
+	}
+}
+
+falign(f: *file, n: int) {
+	var len: int;
+	len = (4 - (n & 3)) & 3;
+	loop {
+		if len == 0 {
+			break;
+		}
+
+		fputc(f, 0);
+
+		len = len - 1;
+	}
 }

@@ -1,8 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 clear
-cmd="${1:-./pxe.sh}"
-shift
-"${cmd}" "$@"
-date
+./pxe.sh
+echo status $?
 : < ~/.post
-exec "$0" "$@"
+exec "$0"

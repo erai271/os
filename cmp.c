@@ -1,2 +1,56 @@
 main(argc: int, argv: **byte, envp: **byte) {
+	var a: int;
+	var b: int;
+	var alloc: alloc;
+	var fa: *file;
+	var fb: *file;
+	var c: int;
+	var i: int;
+
+	setup_alloc(&alloc);
+
+	if argc != 3 {
+		die("usage: cmp file1 file2");
+	}
+
+	a = open(argv[1], 0, 0);
+	if a < 0 {
+		fdputs(1, "failed to open: ");
+		fdputs(1, argv[1]);
+		fdputs(1, "\n");
+		exit(2);
+	}
+
+	b = open(argv[2], 0, 0);
+	if b < 0 {
+		fdputs(1, "failed to open: ");
+		fdputs(1, argv[2]);
+		fdputs(1, "\n");
+		exit(2);
+	}
+
+	fa = fopen(a, &alloc);
+	fb = fopen(b, &alloc);
+
+	i = 0;
+	loop {
+		c = fgetc(fa);
+
+		if c != fgetc(fb) {
+			fdputs(1, argv[1]);
+			fdputc(1, ' ');
+			fdputs(1, argv[2]);
+			fdputc(1, ' ');
+			fdputs(1, "differ: byte ");
+			fdputd(1, i);
+			fdputc(1, '\n');
+			exit(1);
+		}
+
+		if c == -1 {
+			break;
+		}
+
+		i = i + 1;
+	}
 }

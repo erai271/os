@@ -1,2 +1,41 @@
 main(argc: int, argv: **byte, envp: **byte) {
+	var fd: int;
+	var i: int;
+	var n: int;
+	var len: int;
+	var a: alloc;
+	var buf: *byte;
+
+	setup_alloc(&a);
+
+	fd = open(".", O_DIRECTORY, 0);
+	if fd < 0 {
+		exit(1);
+	}
+
+	buf = alloc(&a, 4096);
+
+	loop {
+		n = getdirents(fd, buf, 4096);
+		if n == 0 {
+			break;
+		}
+
+		if n < 0 {
+			die("getdirents failed");
+		}
+
+		loop {
+			if i + 20 >= n {
+				break;
+			}
+
+			fdputs(1, &buf[i + 19]);
+			fdputc(1, ' ');
+
+			i = i + ((&buf[i + 16]):*int[0] & 0xffff);
+		}
+	}
+
+	fdputc(1, '\n');
 }

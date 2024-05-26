@@ -114,3 +114,42 @@ fgetc(f: *file): int {
 
 	return ch;
 }
+
+fgets(f: *file, buf: *byte, len: int): int {
+	var i: int;
+	var c: int;
+
+	if len == 1 {
+		buf[0] = 0:byte;
+		return 0;
+	}
+
+	i = 0;
+	loop {
+		if i + 1 == len {
+			buf[i] = 0:byte;
+			return i;
+		}
+
+		c = fgetc(f);
+		if c == -1 || c == '\n' {
+			buf[i] = 0:byte;
+			return i;
+		}
+
+		buf[i] = c:byte;
+		i = i + 1;
+	}
+}
+
+fputs(f: *file, s: *byte) {
+	var i: int;
+	i = 0;
+	loop {
+		if !s[i] {
+			break;
+		}
+		fputc(f, s[i]:int);
+		i = i + 1;
+	}
+}
