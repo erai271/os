@@ -25,16 +25,42 @@ cmp cc1 cc2 || echo mismatch
 ./cc1 ${LIBS} vi.c -o vi || exit 1
 
 {
-	./echo echo
-	./echo cmp
-	./echo rm
-	./echo ls
-	./echo cpio
-	./echo sh
-	./echo vi
-	./echo sshd
-	./echo init
-	./echo cc1
+	echo pxe.asm
+	echo chacha20.c
+	echo poly1305.c
+	echo sha256.c
+	echo sha512.c
+	echo ed25519.c
+	echo bootstrap.sh
+	echo bufio.c
+	echo lib.c
+	echo alloc.c
+	echo syscall.c
+	echo cc1.c
+	echo type.c
+	echo parse1.c
+	echo lex1.c
+	echo as.c
+	echo genlex.c
+	echo kernel.c
+	echo echo.c
+	echo echo
+	echo cmp.c
+	echo cmp
+	echo rm.c
+	echo rm
+	echo ls.c
+	echo ls
+	echo cpio.c
+	echo cpio
+	echo sh.c
+	echo sh
+	echo vi.c
+	echo vi
+	echo sshd.c
+	echo sshd
+	echo init
+	echo cc1
 } | ./cpio -o > initramfs || exit 1
 
 ./cc1 kernel.c -o kernel || exit 1
