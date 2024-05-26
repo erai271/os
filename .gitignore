@@ -9,3 +9,14 @@ gencc
 lex3.c
 parse3.c
 pxe
+cmp
+cpio
+echo
+find
+ls
+rm
+sh
+sshd
+vi
+as
+initramfs
