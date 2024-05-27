@@ -37,6 +37,19 @@ strcmp(a: *byte, b: *byte): int {
 	}
 }
 
+fdgetc(fd: int): int {
+	var b: byte;
+	var ret: int;
+	ret = read(fd, &b, 1);
+	if (ret == 1) {
+		return b:int;
+	} else if (ret == 0) {
+		return -1;
+	} else {
+		exit(3);
+	}
+}
+
 fdputc(fd: int, ch: int) {
 	var b: byte;
 	var ret: int;
@@ -340,4 +353,48 @@ assert(x: int, msg: *byte) {
 	if !x {
 		die(msg);
 	}
+}
+
+readall(fd: int, len: *int, a: *alloc): *byte {
+	var buf: *byte;
+	var tmp: *byte;
+	var cap: int;
+	var newcap: int;
+	var ret: int;
+	var n: int;
+
+	cap = 0;
+	n = 0;
+
+	loop {
+		if n == cap {
+			if cap == 0 {
+				newcap = 4096;
+			} else {
+				newcap = cap * 2;
+			}
+
+			tmp = alloc(a, newcap);
+			memcpy(tmp, buf, n);
+			free(a, buf);
+			buf = tmp;
+			cap = newcap;
+		}
+
+		ret = read(fd, &buf[n], cap - n);
+
+		if ret < 0 {
+			die("readall failed");
+		}
+
+		if ret == 0 {
+			break;
+		}
+
+		n = n + ret;
+	}
+
+	*len = n;
+
+	return buf;
 }

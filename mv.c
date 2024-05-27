@@ -1,0 +1,9 @@
+main(argc: int, argv: **byte, envp: **byte) {
+	if argc != 3 {
+		die("usage: mv [src] [dest]");
+	}
+
+	if rename(argv[1], argv[2]) != 0 {
+		die("mv failed");
+	}
+}

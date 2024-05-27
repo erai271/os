@@ -86,6 +86,14 @@ wait(pid: int, status: *int, flags: int): int {
 	return syscall(61, pid, status:int, flags, 0, 0, 0);
 }
 
+rename(oldname: *byte, newname: *byte): int {
+	return syscall(82, oldname: int, newname: int, 0, 0, 0, 0);
+}
+
+mkdir(name: *byte): int {
+	return syscall(83, name: int, 0, 0, 0, 0, 0);
+}
+
 unlink(name: *byte): int {
 	return syscall(87, name: int, 0, 0, 0, 0, 0);
 }

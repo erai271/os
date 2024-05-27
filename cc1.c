@@ -424,6 +424,36 @@ hoist_locals(c: *compiler, d: *decl, n: *node, offset: int): int {
 	return offset;
 }
 
+compile_include(c: *compiler, n: *node) {
+	var filename: *byte;
+	var fd: int;
+	var blob: *byte;
+	var len: int;
+
+	if n.b.a.kind != N_STR {
+		die("non literal include");
+	}
+
+	filename = n.b.a.s;
+
+	fd = open(filename, O_RDONLY, 0);
+	if fd < 0 {
+		die("failed to open include");
+	}
+
+	blob = readall(fd, &len, c.a);
+
+	close(fd);
+
+	as_opr(c.as, OP_POPR, R_RAX);
+	as_opr(c.as, OP_POPR, R_RDI);
+	as_opri64(c.as, OP_MOVABS, R_RAX, len);
+	as_modrm(c.as, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
+	emit_blob(c.as, blob, len);
+
+	free(c.a, blob);
+}
+
 // Translate an expression
 compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 	var no: *label;
@@ -497,6 +527,13 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 				n.a.t = v.var_type;
 				emit_load(c.as, n.a.t);
 				emit_call(c.as, count_args(c, n.a.t.arg));
+			} else if !strcmp(n.a.s, "_include") {
+				v = find(c, n.a.s, 0:*byte, 0);
+				if (!v || !v.func_defined) {
+					cdie(c, "no such function");
+				}
+				n.a.t = v.func_type;
+				compile_include(c, n);
 			} else {
 				v = find(c, n.a.s, 0:*byte, 0);
 				if (!v || !v.func_defined) {
@@ -1575,6 +1612,15 @@ main(argc: int, argv: **byte, envp: **byte) {
 		fixup_label(c.as, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		emit_syscall(c.as);
+		emit_ret(c.as);
+	}
+
+	d = find(c, "_include", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_preamble(c.as, 0, 0);
+		as_op(c.as, OP_UD2);
+		as_opr(c.as, OP_PUSHR, R_RAX);
 		emit_ret(c.as);
 	}
 

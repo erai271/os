@@ -20,3 +20,5 @@ sshd
 vi
 as
 initramfs
+mv
+mkdir

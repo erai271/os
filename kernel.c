@@ -44,6 +44,8 @@ invlpg(x: int);
 _isr0();
 _ssr0();
 
+_include(name: *byte, len: *int): *byte;
+
 _rgs(x: int): int;
 
 struct regs {
@@ -3587,6 +3589,10 @@ _ustart() {
 	loop {
 		syscall(60, 0, 0, 0, 0, 0, 0);
 	}
+}
+
+initramfs(len: *int): *byte {
+	return _include("initramfs", len);
 }
 
 task_user(t: *task) {

@@ -6,8 +6,8 @@ main(argc: int, argv: **byte, envp: **byte) {
 			return;
 		}
 
-		if unlink(argv[i]) != 0 {
-			die("rm failed");
+		if mkdir(argv[i]) != 0 {
+			die("mkdir failed");
 		}
 
 		i = i + 1;

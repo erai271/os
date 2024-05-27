@@ -323,6 +323,41 @@ emit_num(c: *assembler, x: int) {
 	as_opr(c, OP_PUSHR, R_RDX);
 }
 
+emit_blob(c: *assembler, s: *byte, n: int) {
+	var a: *label;
+	var b: *label;
+	var i: int;
+
+	a = mklabel(c);
+	b = mklabel(c);
+
+	as_jmp(c, OP_JMP, b);
+
+	fixup_label(c, a);
+
+	i = 0;
+	loop {
+		if i == n {
+			break;
+		}
+		as_emit(c, s[i]:int);
+		i = i + 1;
+	}
+	as_emit(c, 0);
+
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+	as_op(c, OP_NOP);
+
+	fixup_label(c, b);
+	emit_ptr(c, a);
+}
+
 emit_str(c: *assembler, s: *byte) {
 	var a: *label;
 	var b: *label;
