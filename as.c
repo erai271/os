@@ -416,7 +416,7 @@ emit_kstart(c: *assembler) {
 	as_jmp(c, OP_JCC + CC_NE, hang);
 
 	// Setup an early stack
-	as_modri(c, OP_MOVI, R_RSP, 0x00200000);  // FIXME bss
+	as_modri(c, OP_MOVI, R_RSP, 0x00300000);  // FIXME bss
 
 	// Align stack to page
 	as_modri(c, OP_ANDI, R_RSP, -0x1000);

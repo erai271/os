@@ -3542,8 +3542,14 @@ _ssr(r: *regs) {
 	} else if r.rax == 3 {
 		kputs("close\n");
 		r.rax = -1;
+	} else if r.rax == 5 {
+		kputs("fstat\n");
+		r.rax = -1;
 	} else if r.rax == 9 {
 		kputs("mmap\n");
+		r.rax = -1;
+	} else if r.rax == 22 {
+		kputs("pipe\n");
 		r.rax = -1;
 	} else if r.rax == 33 {
 		kputs("dup2\n");
@@ -3572,8 +3578,17 @@ _ssr(r: *regs) {
 	} else if r.rax == 61 {
 		kputs("wait\n");
 		r.rax = -1;
+	} else if r.rax == 82 {
+		kputs("rename\n");
+		r.rax = -1;
+	} else if r.rax == 87 {
+		kputs("mkdir\n");
+		r.rax = -1;
 	} else if r.rax == 87 {
 		kputs("unlink\n");
+		r.rax = -1;
+	} else if r.rax == 217 {
+		kputs("getdirents\n");
 		r.rax = -1;
 	} else {
 		r.rax = -1;
