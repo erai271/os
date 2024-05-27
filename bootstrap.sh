@@ -11,4 +11,4 @@ gcc -Wall -Wextra -Wno-unused -pedantic -std=c99 ./cc0.c -o cc0
 
 cmp cc1 cc2 || echo mismatch
 
-sh ./build.sh
+sh -e ./build.sh

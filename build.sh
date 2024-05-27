@@ -6,8 +6,8 @@ GENLEX="genlex.c"
 BOOT="pxe.asm"
 SSHD="chacha20.c poly1305.c sha256.c sha512.c ed25519.c sshd.c"
 KERNEL="kernel.c"
-SHELL="echo.c cmp.c rm.c ls.c mv.c mkdir.c cpio.c vi.c sh.c"
-BIN="echo cmp rm ls mv mkdir cpio sh vi sshd init cc1 cc2"
+SHELL="echo.c cmp.c rm.c ls.c cat.c xxd.c mv.c mkdir.c cpio.c vi.c sh.c"
+BIN="echo cmp rm ls cat xxd mv mkdir cpio sh vi sshd init cc1 cc2 build.sh cc3.l"
 ALL="${LIBS} ${CC} ${GENLEX} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
 
 ./cc1 ${LIBS} ${CC} -o cc2
@@ -21,6 +21,8 @@ ALL="${LIBS} ${CC} ${GENLEX} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
 ./cc2 ${LIBS} mv.c -o mv
 ./cc2 ${LIBS} mkdir.c -o mkdir
 ./cc2 ${LIBS} ls.c -o ls
+./cc2 ${LIBS} cat.c -o cat
+./cc2 ${LIBS} xxd.c -o xxd
 ./cc2 ${LIBS} cpio.c -o cpio
 ./cc2 ${LIBS} sh.c -o sh
 ./cc2 ${LIBS} sshd.c -o sshd

@@ -155,6 +155,80 @@ fdputd(fd: int, n: int) {
 	fdputc(fd, '0' + a);
 }
 
+xxd_line(line: *byte, offset: int, data: *byte, len: int) {
+	var i: int;
+	var j: int;
+	var d: *byte;
+	d = "0123456789abcdef";
+
+	i = 0;
+
+	line[i] = d[(offset >> 28) & 15];
+	line[i + 1] = d[(offset >> 24) & 15];
+	line[i + 2] = d[(offset >> 20) & 15];
+	line[i + 3] = d[(offset >> 16) & 15];
+	line[i + 4] = d[(offset >> 12) & 15];
+	line[i + 5] = d[(offset >> 8) & 15];
+	line[i + 6] = d[(offset >> 4) & 15];
+	line[i + 7] = d[offset & 15];
+	line[i + 8] = ':':byte;
+	line[i + 9] = ' ':byte;
+
+	i = i + 10;
+
+	j = 0;
+	loop {
+		if j == 16 {
+			break;
+		}
+
+		if j < len {
+			line[i] = d[(data[j]:int >> 4) & 15];
+			line[i + 1] = d[data[j]:int & 15];
+		} else {
+			line[i] = ' ':byte;
+			line[i + 1] = ' ':byte;
+		}
+
+		if j + 1 < len {
+			line[i + 2] = d[(data[j]:int >> 4) & 15];
+			line[i + 3] = d[data[j]:int & 15];
+		} else {
+			line[i + 2] = ' ':byte;
+			line[i + 3] = ' ':byte;
+		}
+
+		line[i + 4] = ' ':byte;
+
+		j = j + 2;
+		i = i + 5;
+	}
+
+	line[i] = ' ':byte;
+	i = i + 1;
+
+	j = 0;
+	loop {
+		if j == 16 || j >= len {
+			break;
+		}
+
+		if data[j]:int >= 0x20 && data[j]:int < 0x80 {
+			line[i] = data[j];
+		} else {
+			line[i] = '.':byte;
+		}
+
+		j = j + 1;
+		i = i + 1;
+	}
+
+	line[i] = '\n':byte;
+	i = i + 1;
+
+	line[i] = 0:byte;
+}
+
 fdxxd(fd: int, data: *byte, len: int) {
 	var i: int;
 	var j: int;
