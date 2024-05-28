@@ -1392,8 +1392,6 @@ emit_ssr(c: *compiler) {
 
 	as_opr(c.as, OP_PUSHR, R_RAX);
 
-	as_op(c.as, OP_STI);
-
 	d = find(c, "_ssr", 0:*byte, 1);
 	if (d.func_defined && d.func_label.fixed) {
 		as_jmp(c.as, OP_CALL, d.func_label);

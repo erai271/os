@@ -45,6 +45,7 @@ _isr0();
 _ssr0();
 
 _include(name: *byte, len: *int): *byte;
+_rdrand(): int;
 
 _rgs(x: int): int;
 
@@ -868,7 +869,9 @@ struct tcp_state {
 struct task {
 	next: *task;
 	prev: *task;
+	cwd: *vfile;
 	name: *byte;
+	files: **vfile;
 	stack: *byte;
 	ustack: *byte;
 	dead: int;
@@ -896,10 +899,11 @@ struct global {
 	arp_count: int;
 	tcp: **tcp_state;
 	tcp_count: int;
-	rng: int;
 	curtask: *task;
 	dead: *task;
 	_save: int;
+	root: *vfile;
+	next_ino: int;
 }
 
 struct free_page {
@@ -918,12 +922,7 @@ g(): *global {
 }
 
 rand(): int {
-	var global: *global;
-	var ret: int;
-	global = g();
-	ret = global.rng;
-	global.rng = ret * 5 + 1;
-	return ret;
+	return _rdrand();
 }
 
 memset(dest: *byte, c: int, size: int) {
@@ -3218,6 +3217,25 @@ tick(r: *regs) {
 	memcpy(r:*byte, (&next.regs):*byte, sizeof(*r));
 }
 
+free_task(t: *task) {
+	var i: int;
+	i = 0;
+	loop {
+		if i == 512 {
+			break;
+		}
+		if t.files[i] {
+			vclose(t.files[i]);
+			t.files[i] = 0:*vfile;
+		}
+		i = i + 1;
+	}
+	vclose(t.cwd);
+	free(t.stack);
+	free(t.ustack);
+	free(t:*byte);
+}
+
 schedule() {
 	var global: *global;
 	var cur: *task;
@@ -3240,9 +3258,7 @@ schedule() {
 		}
 		prev.next = next;
 		next.prev = prev;
-		free(dead.stack);
-		free(dead.ustack);
-		free(dead:*byte);
+		free_task(dead);
 	}
 	global.curtask = next;
 }
@@ -3508,8 +3524,12 @@ spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 	global = g();
 	t = alloc():*task;
 	bzero(t:*byte, sizeof(*t));
+	t.files = alloc(): **vfile;
+	bzero(t.files:*byte, 4096);
 	t.stack = alloc();
+	bzero(t.stack, 4096);
 	t.ustack = alloc();
+	bzero(t.ustack, 4096);
 	t.name = name;
 	t.regs.rsp = (t.stack:int) + 4096;
 	t.regs.rip = _tstart:int;
@@ -3520,6 +3540,7 @@ spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 	flags = rdflags();
 	cli();
 	cur = global.curtask;
+	t.cwd = vdup(cur.cwd);
 	next = cur.next;
 	t.next = next;
 	t.prev = cur;
@@ -3527,6 +3548,517 @@ spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 	next.prev = t;
 	wrflags(flags);
 	return t;
+}
+
+enum {
+	O_RDONLY = 0,
+	O_WRONLY = 1,
+	O_RDWR = 2,
+	O_CREAT = 64,
+	O_DIRECTORY = 0x1000,
+}
+
+struct vpage {
+	parent: *vpage;
+	left: *vpage;
+	right: *vpage;
+	offset: int;
+	page: *byte;
+}
+
+struct vent {
+	next: *vent;
+	name: *byte;
+	node: *vnode;
+}
+
+struct vnode {
+	refcount: int;
+	ino: int;
+	nlink: int;
+	size: int;
+	pages: *vpage;
+	ents: *vent;
+}
+
+struct vfile {
+	refcount: int;
+	mode: int;
+	node: *vnode;
+	offset: int;
+}
+
+enum {
+	S_IFMT  = 0xf000,
+	S_IFDIR = 0x4000,
+	S_IFREG = 0x8000,
+}
+
+strlen(s: *byte): int {
+	var i: int;
+	i = 0;
+	loop {
+		if !s[i] {
+			return i;
+		}
+		i = i + 1;
+	}
+}
+
+strndup(s: *byte, n: int): *byte {
+	var r: *byte;
+	if n >= 4096 {
+		kdie("str too large");
+	}
+	r = alloc();
+	memcpy(r, s, n);
+	r[n] = 0:byte;
+	return r;
+}
+
+mkvnode(): *vnode {
+	var v: *vnode;
+	var global: *global;
+	global = g();
+	v = alloc():*vnode;
+	v.refcount = 1;
+	global.next_ino = global.next_ino + 1;
+	v.nlink = 0;
+	v.ino = global.next_ino;
+	v.size = 0;
+	v.pages = 0:*vpage;
+	v.ents = 0:*vent;
+	return v;
+}
+
+mkfile(v: *vnode, mode: int): *vfile {
+	var f: *vfile;
+	if !v {
+		v = mkvnode();
+	}
+	f = alloc():*vfile;
+	f.refcount = 1;
+	f.mode = mode;
+	f.offset = 0;
+	f.node = v;
+	return f;
+}
+
+mkroot(): *vfile {
+	var f: *vfile;
+	f = mkfile(0:*vnode, S_IFDIR);
+	f.node.nlink = 1;
+	vlink(f, ".", 1, f);
+	return f;
+}
+
+efind(d: *vfile, name: *byte, nlen: int): *vent {
+	var e: *vent;
+	e = d.node.ents;
+	loop {
+		if !e {
+			break;
+		}
+		if strlen(e.name) == nlen && !memcmp(e.name, name, nlen) {
+			break;
+		}
+		e = e.next;
+	}
+	return e;
+}
+
+vlink(d: *vfile, name: *byte, nlen: int, f: *vfile) {
+	var e: *vent;
+	e = efind(d, name, nlen);
+	if e {
+		vrelease(e.node);
+		e.node.nlink = e.node.nlink - 1;
+		e.node = vnodedup(f.node);
+	} else {
+		e = alloc():*vent;
+		e.name = strndup(name, nlen);
+		e.node = vnodedup(f.node);
+		f.node.nlink = f.node.nlink + 1;
+		e.next = d.node.ents;
+		d.node.ents = e;
+	}
+	if nlen != 2 || memcmp(name, "..", 2) {
+		vlink(f, "..", 2, d);
+	}
+}
+
+vlookup(d: *vfile, name: *byte, nlen: int, flags: int, mode: int): *vfile {
+	var f: *vfile;
+	var e: *vent;
+
+	if !d {
+		return 0:*vfile;
+	}
+
+	e = efind(d, name, nlen);
+	if e {
+		if flags & O_DIRECTORY {
+			f = mkfile(e.node, S_IFDIR);
+		} else {
+			f = mkfile(e.node, S_IFREG);
+		}
+	} else {
+		f = 0:*vfile;
+	}
+
+	if flags & O_CREAT && !f {
+		if flags & O_DIRECTORY {
+			f = mkfile(0:*vnode, S_IFDIR);
+			vlink(f, ".", 1, f);
+		} else {
+			f = mkfile(0:*vnode, S_IFREG);
+		}
+		vlink(d, name, nlen, f);
+	}
+
+	if !f {
+		return f;
+	}
+
+	if flags & O_DIRECTORY {
+		if f.mode != S_IFDIR {
+			vclose(f);
+			return 0: *vfile;
+		}
+	} else {
+		if f.mode != S_IFREG {
+			vclose(f);
+			return 0: *vfile;
+		}
+	}
+
+	return f;
+}
+
+vopen(name: *byte, flags: int, mode: int): *vfile {
+	var d: *vfile;
+	var f: *vfile;
+	var i: int;
+	var j: int;
+	var n: int;
+	var global: *global;
+
+	global = g();
+
+	if name[0] == '/':byte {
+		d = vdup(global.root);
+	} else {
+		d = vdup(global.curtask.cwd);
+	}
+
+	i = 0;
+	n = 0;
+	loop {
+		if !name[i] {
+			break;
+		}
+		if name[i] != '/':byte {
+			n = i + 1;
+		}
+		i = i + 1;
+	}
+
+	i = 0;
+	j = 0;
+	loop {
+		if j == n {
+			break;
+		} else if name[j] == '/':byte {
+			f = vlookup(d, &name[i], j - i, O_DIRECTORY, 0);
+			vclose(d);
+			d = f;
+			i = j + 1;
+			j = j + 1;
+		} else {
+			j = j + 1;
+		}
+	}
+
+	f = vlookup(d, &name[i], j - i, flags, mode);
+	vclose(d);
+
+	return f;
+}
+
+vrelease_page(p: *vpage) {
+	var q: *vpage;
+
+	loop {
+		if !p {
+			break;
+		}
+
+		if p.left {
+			p = p.left;
+			continue;
+		}
+
+		if p.right {
+			p = p.right;
+			continue;
+		}
+
+		q = p.parent;
+		if q {
+			if q.left == p {
+				q.left = 0:*vpage;
+			} else {
+				q.right = 0:*vpage;
+			}
+		}
+
+		p.parent = 0:*vpage;
+
+		free(p.page);
+		free(p:*byte);
+
+		p = q;
+	}
+}
+
+vrelease(v: *vnode): int {
+	var e: *vent;
+	var n: *vent;
+	v.refcount = v.refcount - 1;
+	if v.refcount != 0 {
+		return 0;
+	}
+	e = v.ents;
+	loop {
+		if !e {
+			break;
+		}
+		n = e.next;
+		vrelease(e.node);
+		free(e.name);
+		free(e:*byte);
+		e = n;
+	}
+	vrelease_page(v.pages);
+	free(v:*byte);
+	return 0;
+}
+
+vclose(f: *vfile): int {
+	var n: *vnode;
+
+	if !f {
+		return 0;
+	}
+
+	f.refcount = f.refcount - 1;
+	if f.refcount != 0 {
+		return 0;
+	}
+
+	n = f.node;
+
+	free(f:*byte);
+
+	return vrelease(n);
+}
+
+vwrite_page(v: *vnode, o: int, b: *byte, n: int): int {
+	var key: int;
+	var p: *vpage;
+	var q: *vpage;
+
+	if o + n > v.size {
+		v.size = o + n;
+	}
+
+	key = o & -4096;
+	o = o & 4095;
+
+	if n > 4096 - o {
+		n = 4096 - o;
+	}
+
+	p = v.pages;
+	if !p {
+		q = alloc(): *vpage;
+		q.parent = 0:*vpage;
+		q.left = 0:*vpage;
+		q.right = 0:*vpage;
+		q.offset = key;
+		q.page = alloc();
+		bzero(q.page, 4096);
+		v.pages = q;
+		p = q;
+	}
+
+	loop {
+		if key < p.offset {
+			if !p.left {
+				q = alloc(): *vpage;
+				q.parent = p;
+				q.left = 0:*vpage;
+				q.right = 0:*vpage;
+				q.offset = key;
+				q.page = alloc();
+				bzero(q.page, 4096);
+				p.left = q;
+				p = q;
+			} else {
+				p = p.left;
+			}
+		} else if key > p.offset {
+			if ! p.right {
+				q = alloc(): *vpage;
+				q.parent = p;
+				q.left = 0:*vpage;
+				q.right = 0:*vpage;
+				q.offset = key;
+				q.page = alloc();
+				bzero(q.page, 4096);
+				p.right = q;
+				p = q;
+			} else {
+				p = p.right;
+			}
+		} else {
+			break;
+		}
+	}
+
+	memcpy(&p.page[o], b, n);
+	return n;
+}
+
+vread_page(v: *vnode, o: int, b: *byte, n: int): int {
+	var key: int;
+	var p: *vpage;
+
+	if o > v.size {
+		return 0;
+	}
+
+	if v.size - o < n {
+		n = v.size - o;
+	}
+
+	key = o & -4096;
+	o = o & 4095;
+
+	if n > 4096 - o {
+		n = 4096 - o;
+	}
+
+	p = v.pages;
+	if !p {
+		return 0;
+	}
+
+	loop {
+		if !p {
+			break;
+		} else if key < p.offset {
+			p = p.left;
+		} else if key > p.offset {
+			p = p.right;
+		} else {
+			break;
+		}
+	}
+
+	if !p {
+		bzero(b, n);
+	} else {
+		memcpy(b, &p.page[o], n);
+	}
+
+	return n;
+}
+
+vwrite(f: *vfile, b: *byte, n: int): int {
+	var o: int;
+	var m: int;
+	var len: int;
+	var ret: int;
+
+	o = f.offset;
+	m = 0;
+	loop {
+		if n == 0 {
+			break;
+		}
+
+		len = 4096 - (o & 4095);
+		if len > n {
+			len = n;
+		}
+
+		len = vwrite_page(f.node, o, b, len);
+		if len == 0 {
+			break;
+		}
+
+		o = o + len;
+		n = n - len;
+		m = m + len;
+		b = &b[len];
+	}
+
+	f.offset = o;
+
+	if m == 0 {
+		return -1;
+	}
+
+	return m;
+}
+
+vread(f: *vfile, b: *byte, n: int): int {
+	var o: int;
+	var m: int;
+	var len: int;
+	var ret: int;
+
+	o = f.offset;
+	m = 0;
+	loop {
+		if n == 0 {
+			break;
+		}
+
+		len = 4096 - (o & 4095);
+		if len > n {
+			len = n;
+		}
+
+		len = vread_page(f.node, o, b, len);
+		if len == 0 {
+			break;
+		}
+
+		o = o + len;
+		n = n - len;
+		m = m + len;
+		b = &b[len];
+	}
+
+	f.offset = o;
+
+	return m;
+}
+
+vdup(f: *vfile): *vfile {
+	f.refcount = f.refcount + 1;
+	return f;
+}
+
+vnodedup(v: *vnode): *vnode {
+	v.refcount = v.refcount + 1;
+	return v;
+}
+
+vmkdir(name: *byte): *vfile {
+	return vopen(name, O_DIRECTORY | O_CREAT, 0);
 }
 
 _ssr(r: *regs) {
@@ -3596,7 +4128,6 @@ _ssr(r: *regs) {
 }
 
 user() {
-	syscall(1, 1, "Hello, world!\n":int, 14, 0, 0, 0);
 }
 
 _ustart() {
@@ -3610,16 +4141,190 @@ initramfs(len: *int): *byte {
 	return _include("initramfs", len);
 }
 
-task_user(t: *task) {
+parse_hex32(i: int, r: *byte, n: int, x: *int): int {
+	var j: int;
+	var z: int;
+
+	if i + 8 > n {
+		return -1;
+	}
+
+	z = 0;
+	j = 32;
+	loop {
+		if j == 0 {
+			break;
+		}
+
+		j = j - 4;
+
+		if r[i] >= '0':byte && r[i] <= '9':byte {
+			z = z | ((r[i]:int - '0') << j);
+		} else if r[i] >= 'a':byte && r[i] <= 'f':byte {
+			z = z | ((r[i]:int - 'a' + 10) << j);
+		} else if r[i] >= 'A':byte && r[i] <= 'F':byte {
+			z = z | ((r[i]:int - 'A' + 10) << j);
+		} else {
+			return -1;
+		}
+
+		i = i + 1;
+	}
+
+	*x = z;
+	return i;
+}
+
+parse_initramfs_file(i: int, r: *byte, n: int): int {
+	var ino: int;
+	var mode: int;
+	var uid: int;
+	var gid: int;
+	var nlink: int;
+	var mtime: int;
+	var size: int;
+	var dev_major: int;
+	var dev_minor: int;
+	var rdev_major: int;
+	var rdev_minor: int;
+	var namelen: int;
+	var reserved: int;
+	var name: *byte;
+	var data: *byte;
+
+	if memcmp(&r[i], "070701", 6) != 0 {
+		return -1;
+	}
+
+	i = i + 6;
+
+	i = parse_hex32(i, r, n, &ino);
+	i = parse_hex32(i, r, n, &mode);
+	i = parse_hex32(i, r, n, &uid);
+	i = parse_hex32(i, r, n, &gid);
+	i = parse_hex32(i, r, n, &nlink);
+	i = parse_hex32(i, r, n, &mtime);
+	i = parse_hex32(i, r, n, &size);
+	i = parse_hex32(i, r, n, &dev_major);
+	i = parse_hex32(i, r, n, &dev_minor);
+	i = parse_hex32(i, r, n, &rdev_major);
+	i = parse_hex32(i, r, n, &rdev_minor);
+	i = parse_hex32(i, r, n, &namelen);
+	i = parse_hex32(i, r, n, &reserved);
+
+	if i < 0 {
+		return -1;
+	}
+
+	name = &r[i];
+	i = i + namelen;
+
+	if namelen < 1 || i > n {
+		return -1;
+	}
+
+	i = (i + 3) & -4;
+	if i > n {
+		return -1;
+	}
+
+	if name[namelen - 1] {
+		return -1;
+	}
+
+	data = &r[i];
+	i = i + size;
+
+	i = (i + 3) & -4;
+	if i > n {
+		return -1;
+	}
+
+	if namelen == 11 && !memcmp(name, "TRAILER!!!", 11) {
+		return i;
+	}
+
+	initramfs_create(name, data, size, mode);
+
+	return i;
+}
+
+parse_initramfs() {
+	var r: *byte;
+	var len: int;
+	var i: int;
+	var global: *global;
+
+	global = g();
+	global.root = mkroot();
+	global.curtask.cwd = vdup(global.root);
+
+	r = initramfs(&len);
+
+	i = 0;
+	loop {
+		if i == len || i < 0 {
+			break;
+		}
+		i = parse_initramfs_file(i, r, len);
+	}
+}
+
+initramfs_create(name: *byte, data: *byte, size: int, mode: int) {
+	var type: int;
+	var n: int;
+	var ret: int;
+	var f: *vfile;
+	type = mode & S_IFMT;
+	if type == S_IFDIR {
+		// directory
+		vclose(vmkdir(name));
+	} else if type == S_IFREG {
+		// regular file
+		f = vopen(name, O_CREAT, mode & 0xfff);
+		if f {
+			n = 0;
+			loop {
+				if n == size {
+					break;
+				}
+				ret = vwrite(f, &data[n], size - n);
+				if ret < 0 {
+					kdie("write failed");
+				}
+				n = n + ret;
+			}
+			vclose(f);
+		} else {
+			kdie("create failed");
+		}
+	}
+}
+
+userswitch(entry: int, stack: int) {
 	var r: regs;
+	var discard: regs;
 	bzero((&r):*byte, sizeof(r));
 	r.rflags = 0x200;
-	r.rip = _ustart:int;
+	r.rip = entry;
 	r.cs = 40 | 3;
-	r.rsp = t.ustack:int + 4096;
+	r.rsp = stack;
 	r.ss = 32 | 3;
-	cli();
-	taskswitch(&t.regs, &r);
+	taskswitch(&discard, &r);
+}
+
+task_init(t: *task) {
+	var f: *vfile;
+	var buf: *byte;
+	var n: int;
+	f = vopen("init", O_RDONLY, 0);
+	if !f {
+		kdie("no init");
+	}
+	buf = alloc();
+	n = vread(f, buf, 4096);
+	xxd(buf, n);
+	vclose(f);
 }
 
 _kstart(mb: int) {
@@ -3818,7 +4523,6 @@ _kstart(mb: int) {
 	bzero(global.tcp: *byte, 4096);
 
 	read_rtc();
-	global.rng = global.boot_time;
 	sti();
 
         // Find ACPI tables
@@ -3853,7 +4557,9 @@ _kstart(mb: int) {
 
 	tcp_listen(22, tcp_ssh);
 
-	spawn(task_user, "init", 0:*void);
+	parse_initramfs();
+
+	spawn(task_init, "init", 0:*void);
 
 	// Wait for interrupts
 	kputs("zzz\n");

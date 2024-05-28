@@ -5,8 +5,6 @@ enum {
 	O_WRONLY = 1,
 	O_RDWR = 2,
 	O_CREAT = 64,
-	O_TRUNC = 0x200,
-	O_APPEND = 0x400,
 	O_DIRECTORY = 0x1000,
 }
 

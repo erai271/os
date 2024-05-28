@@ -191,8 +191,8 @@ xxd_line(line: *byte, offset: int, data: *byte, len: int) {
 		}
 
 		if j + 1 < len {
-			line[i + 2] = d[(data[j]:int >> 4) & 15];
-			line[i + 3] = d[data[j]:int & 15];
+			line[i + 2] = d[(data[j + 1]:int >> 4) & 15];
+			line[i + 3] = d[data[j + 1]:int & 15];
 		} else {
 			line[i + 2] = ' ':byte;
 			line[i + 3] = ' ':byte;
