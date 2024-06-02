@@ -558,14 +558,14 @@ map_pci(pa: int): *byte {
 	global = g();
 	global.mmio = global.mmio - (1 << 31);
 	va = global.mmio;
-	pt4p = rdcr3();
+	pt4p = global.kpt;
 	pt4 = ptov(pt4p):*int;
 	v2 = ((va: int) >> 30) & 511;
 	pt3 = ptov(pt4[511] & -4096):*int;
-	flags = 0x97;
+	flags = 0x93;
 	pt3[v2] = (pa & -(1 << 30)) | flags;
 	pt3[v2 + 1] = ((pa + (1 << 30)) & -(1 << 30)) | flags;
-	wrcr3(pt4p);
+	invlpt();
 	return (va + (pa & ((1 << 30) - 1))):*byte;
 }
 
@@ -873,11 +873,11 @@ struct task {
 	name: *byte;
 	files: **vfile;
 	stack: *byte;
-	ustack: *byte;
 	dead: int;
 	f: (func(t: *task));
 	a: *void;
 	regs: regs;
+	pt: int;
 }
 
 struct global {
@@ -886,6 +886,7 @@ struct global {
 	vga: vga;
 	fr: *free_range;
 	fp: *free_page;
+	kpt: int;
 	lapicp: int;
 	lapic: *byte;
 	mmio: int;
@@ -1115,6 +1116,9 @@ direct_map(brk: *int) {
 	var map_size: int;
 	var i: int;
 	var n: int;
+	var global: *global;
+
+	global = g();
 
 	map_size = 1 << 46;
 	page_size = 1 << 30;
@@ -1122,7 +1126,7 @@ direct_map(brk: *int) {
 	va = -1 << 47;
 	pa = 0;
 
-	pt4p = rdcr3();
+	pt4p = global.kpt;
 	pt4 = ptov(pt4p):*int;
 
 	brk[0] = (brk[0] + 4095) & -4096;
@@ -1139,7 +1143,7 @@ direct_map(brk: *int) {
 		pt3p = (pt3:int) & ((1 << 31) - 1);
 
 		i = (va >> 39) & 511;
-		pt4[i] = pt3p | 0x007;
+		pt4[i] = pt3p | 0x003;
 
 		loop {
 			if pa == map_size || n == 0 {
@@ -1147,7 +1151,7 @@ direct_map(brk: *int) {
 			}
 
 			i = (va >> 30) & 511;
-			pt3[i] = pa | 0x087;
+			pt3[i] = pa | 0x083;
 
 			va = va + page_size;
 			pa = pa + page_size;
@@ -1155,7 +1159,32 @@ direct_map(brk: *int) {
 		}
 	}
 
-	wrcr3(pt4p);
+	invlpt();
+}
+
+invlpt() {
+	var global: *global;
+	var t: *task;
+	var tpt: *int;
+	var kpt: *int;
+	var i: int;
+	global = g();
+	t = global.curtask;
+	if t.pt == global.kpt {
+		wrcr3(global.kpt);
+		return;
+	}
+	tpt = ptov(t.pt):*int;
+	kpt = ptov(global.kpt):*int;
+	i = 256;
+	loop {
+		if i == 512 {
+			break;
+		}
+		tpt[i] = kpt[i];
+		i = i + 1;
+	}
+	wrcr3(t.pt);
 }
 
 setup_ring(ring: int, own: int) {
@@ -3217,6 +3246,10 @@ tick(r: *regs) {
 	memcpy(r:*byte, (&next.regs):*byte, sizeof(*r));
 }
 
+freept(pt: int) {
+	free(ptov(pt));
+}
+
 free_task(t: *task) {
 	var i: int;
 	i = 0;
@@ -3231,8 +3264,8 @@ free_task(t: *task) {
 		i = i + 1;
 	}
 	vclose(t.cwd);
+	freept(t.pt);
 	free(t.stack);
-	free(t.ustack);
 	free(t:*byte);
 }
 
@@ -3261,6 +3294,7 @@ schedule() {
 		free_task(dead);
 	}
 	global.curtask = next;
+	invlpt();
 }
 
 task_exit() {
@@ -3528,8 +3562,6 @@ spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 	bzero(t.files:*byte, 4096);
 	t.stack = alloc();
 	bzero(t.stack, 4096);
-	t.ustack = alloc();
-	bzero(t.ustack, 4096);
 	t.name = name;
 	t.regs.rsp = (t.stack:int) + 4096;
 	t.regs.rip = _tstart:int;
@@ -3537,6 +3569,8 @@ spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 	t.regs.ss = 16;
 	t.f = f;
 	t.a = a;
+	t.pt = alloc_page();
+	bzero(ptov(t.pt), 4096);
 	flags = rdflags();
 	cli();
 	cur = global.curtask;
@@ -3614,6 +3648,10 @@ strndup(s: *byte, n: int): *byte {
 	memcpy(r, s, n);
 	r[n] = 0:byte;
 	return r;
+}
+
+strdup(s: *byte): *byte {
+	return strndup(s, strlen(s));
 }
 
 mkvnode(): *vnode {
@@ -3769,6 +3807,11 @@ vopen(name: *byte, flags: int, mode: int): *vfile {
 		if j == n {
 			break;
 		} else if name[j] == '/':byte {
+			if i == j {
+				i = i + 1;
+				j = j + 1;
+				continue;
+			}
 			f = vlookup(d, &name[i], j - i, O_DIRECTORY, 0);
 			vclose(d);
 			d = f;
@@ -3861,6 +3904,22 @@ vclose(f: *vfile): int {
 	free(f:*byte);
 
 	return vrelease(n);
+}
+
+vseek(f: *vfile, o: int, w: int): int {
+	if w == 0 {
+		f.offset = o;
+	} else if w == 1 {
+		f.offset = f.offset + o;
+	} else if w == 2 {
+		f.offset = f.node.size + o;
+	} else {
+		return -1;
+	}
+	if f.offset < 0 {
+		f.offset = 0;
+	}
+	return f.offset;
 }
 
 vwrite_page(v: *vnode, o: int, b: *byte, n: int): int {
@@ -4066,8 +4125,8 @@ _ssr(r: *regs) {
 		kputs("read\n");
 		r.rax = -1;
 	} else if r.rax == 1 {
-		kputs("write\n");
-		r.rax = -1;
+		xxd(r.rsi:*byte, r.rdx);
+		r.rax = r.rdx;
 	} else if r.rax == 2 {
 		kputs("open\n");
 		r.rax = -1;
@@ -4105,7 +4164,9 @@ _ssr(r: *regs) {
 		kputs("exec\n");
 		r.rax = -1;
 	} else if r.rax == 60 {
-		kputs("exit\n");
+		kputs("exit(");
+		kputd(r.rdi);
+		kputs(")\n");
 		task_exit();
 	} else if r.rax == 61 {
 		kputs("wait\n");
@@ -4124,16 +4185,6 @@ _ssr(r: *regs) {
 		r.rax = -1;
 	} else {
 		r.rax = -1;
-	}
-}
-
-user() {
-}
-
-_ustart() {
-	user();
-	loop {
-		syscall(60, 0, 0, 0, 0, 0, 0);
 	}
 }
 
@@ -4310,21 +4361,514 @@ userswitch(entry: int, stack: int) {
 	r.cs = 40 | 3;
 	r.rsp = stack;
 	r.ss = 32 | 3;
+	invlpt();
 	taskswitch(&discard, &r);
 }
 
-task_init(t: *task) {
-	var f: *vfile;
-	var buf: *byte;
-	var n: int;
-	f = vopen("init", O_RDONLY, 0);
-	if !f {
-		kdie("no init");
+map_user(vaddr: int): *byte {
+	var global: *global;
+	var task: *task;
+	var pt: *int;
+	var i: int;
+
+	if (vaddr >> 47) != 0 || (vaddr & 4095) != 0 {
+		return 0: *byte;
 	}
-	buf = alloc();
-	n = vread(f, buf, 4096);
-	xxd(buf, n);
+
+	global = g();
+	task = global.curtask;
+
+	pt = ptov(task.pt):*int;
+
+	i = (vaddr >> 39) & 255;
+	if !pt[i] {
+		pt[i] = alloc_page() | 7;
+		bzero(ptov(pt[i] & -4096), 4096);
+	}
+	pt = ptov(pt[i] & -4096):*int;
+
+	i = (vaddr >> 30) & 511;
+	if !pt[i] {
+		pt[i] = alloc_page() | 7;
+		bzero(ptov(pt[i] & -4096), 4096);
+	}
+	pt = ptov(pt[i] & -4096):*int;
+
+	i = (vaddr >> 21) & 511;
+	if !pt[i] {
+		pt[i] = alloc_page() | 7;
+		bzero(ptov(pt[i] & -4096), 4096);
+	}
+	pt = ptov(pt[i] & -4096):*int;
+
+	i = (vaddr >> 12) & 511;
+	if !pt[i] {
+		pt[i] = alloc_page() | 7;
+		bzero(ptov(pt[i] & -4096), 4096);
+		return ptov(pt[i] & -4096);
+	}
+
+	return 0:*byte;
+}
+
+vload(f: *vfile, offset: int, vaddr: int, filesz: int, memsz: int): int {
+	var t: *task;
+	var i: int;
+	var o: int;
+	var sz: int;
+	var m: *byte;
+
+	if filesz != 0 && (offset & 4095) != (vaddr & 4095) {
+		return -1;
+	}
+
+	if filesz > memsz {
+		return -1;
+	}
+
+	if offset < 0 || vaddr < 0 {
+		return -1;
+	}
+
+	if vaddr < 4096 {
+		return -1;
+	}
+
+	if filesz > 0 {
+		if vseek(f, offset, 0) != offset {
+			return -1;
+		}
+	}
+
+	i = 0;
+	loop {
+		if i >= memsz {
+			break;
+		}
+		o = (vaddr + i) & 4065;
+		sz = 4096 - o;
+		m = map_user((vaddr + i) & -4096);
+		if !m {
+			return -1;
+		}
+		if i < filesz {
+			if sz > filesz - i {
+				if vread(f, &m[o], filesz - i) != filesz - i {
+					return -1;
+				}
+			} else {
+				if vread(f, &m[o], sz) != sz {
+					return -1;
+				}
+			}
+		}
+		i = i + sz;
+	}
+
+	return 0;
+}
+
+map_stack(argc: int, argv: **byte, envc: int, envv: **byte):int {
+	var m: *int;
+	var i: int;
+	var sp: int;
+	var n: int;
+	var len: int;
+
+	sp = 0x7fffe000;
+	m = map_user(sp): *int;
+
+	if !m {
+		return 0;
+	}
+
+	m[0] = argc;
+	m[argc] = 0;
+	m[argc + envc + 1] = 0;
+
+	n = argc * 8 + envc * 8 + 24;
+
+	// copy args
+	i = 0;
+	loop {
+		if i == argc {
+			break;
+		}
+
+		len = strlen(argv[i]);
+		if len >= 4096 - n {
+			return 0;
+		}
+
+		memcpy(&(m:*byte)[n], argv[i], len + 1);
+
+		m[i + 1] = sp + n;
+
+		i = i + 1;
+		n = n + len + 1;
+	}
+
+	// copy env
+	i = 0;
+	loop {
+		if i == envc {
+			break;
+		}
+
+		len = strlen(envv[i]);
+		if len >= 4096 - n {
+			return 0;
+		}
+
+		memcpy(&(m:*byte)[n], envv[i], len + 1);
+
+		m[argc + i + 1] = sp + n;
+
+		i = i + 1;
+		n = n + len + 1;
+	}
+
+	// Allocate a user stack
+	i = 1;
+	loop {
+		if i == 16 {
+			break;
+		}
+		if !map_user(0x7fffe000 - 4096 * i) {
+			return 0;
+		}
+		i = i + 1;
+	}
+
+	return sp;
+}
+
+vexec(prog: *byte, argv: **byte, envp: **byte): int {
+	var f: *vfile;
+	var head: *byte;
+	var args: **byte;
+	var envs: **byte;
+	var nargs: int;
+	var nenv: int;
+	var n: int;
+	var i: int;
+	var entry: int;
+	var phoff: int;
+	var phnum: int;
+	var size: int;
+	var p_type: int;
+	var p_offset: int;
+	var p_vaddr: int;
+	var p_filesz: int;
+	var p_memsz: int;
+	var pt: int;
+	var global: *global;
+	var t: *task;
+	var stack: int;
+
+	global = g();
+	t = global.curtask;
+
+	pt = t.pt;
+	t.pt = alloc_page();
+	bzero(ptov(t.pt), 4096);
+
+	head = alloc();
+	args = alloc():**byte;
+	envs = alloc():**byte;
+	nargs = 0;
+	nenv = 0;
+	f = 0:*vfile;
+
+	// Copy args
+	if argv {
+		loop {
+			if nargs == 512 {
+				goto fail;
+			}
+			if !argv[nargs] {
+				break;
+			}
+			args[nargs] = strdup(argv[nargs]);
+			nargs = nargs + 1;
+		}
+	}
+
+	// Copy environment
+	if envp {
+		loop {
+			if nenv == 512 {
+				goto fail;
+			}
+			if !envp[nenv] {
+				break;
+			}
+			envs[nenv] = strdup(envp[nenv]);
+			nenv = nenv + 1;
+		}
+	}
+
+	// Find interpreter
+	loop {
+		f = vopen(prog, O_RDONLY, 0);
+		if !f {
+			goto fail;
+		}
+
+		n = vread(f, head, 4096);
+		if n >= 2 && head[0] == '#':byte && head[1] == '!':byte {
+			nargs = nargs + 1;
+			i = nargs;
+			loop {
+				if i == 0 {
+					break;
+				}
+				i = i - 1;
+				args[i] = args[i - 1];
+			}
+
+			i = 2;
+			loop {
+				if i == n {
+					goto fail;
+				}
+				if head[i] == '\n':byte {
+					break;
+				}
+				i = i + 1;
+			}
+
+			args[0] = strndup(&head[2], i - 2);
+			if nargs > 1 {
+				free(args[1]);
+			} else {
+				nargs = 2;
+			}
+			args[1] = strdup(prog);
+			prog = args[0];
+			vclose(f);
+			f = 0: *vfile;
+			continue;
+		}
+
+		break;
+	}
+
+	size = f.node.size;
+
+	// Load elf
+	if n < 0x40 {
+		goto fail;
+	}
+
+	// magic
+	if !(head[0]:int == 0x7f && head[1]:int == 0x45 && head[2]:int == 0x4c && head[3]:int == 0x46) {
+		goto fail;
+	}
+
+	// 64 bit
+	if head[4]:int != 2 {
+		goto fail;
+	}
+
+	// little endian
+	if head[5]:int != 1 {
+		goto fail;
+	}
+
+	// version
+	if head[6]:int != 1 {
+		goto fail;
+	}
+
+	// executable
+	if head[17]:int != 0 || head[16]:int != 2 {
+		goto fail;
+	}
+
+	// machine
+	if head[19]:int != 0 || head[18]:int != 0x3e {
+		goto fail;
+	}
+
+	// version
+	if !(head[23]:int == 0 && head[22]:int == 0 && head[21]:int == 0 && head[20]:int == 1) {
+		goto fail;
+	}
+
+	// ehsize
+	if !(head[0x35]:int == 0 && head[0x34]:int == 0x40) {
+		goto fail;
+	}
+
+	// phentsize
+	if !(head[0x37]:int == 0 && head[0x36]:int == 0x38) {
+		goto fail;
+	}
+
+	// entry point
+	entry = head[24]:int
+		| (head[25]:int << 8)
+		| (head[26]:int << 16)
+		| (head[27]:int << 24)
+		| (head[28]:int << 32)
+		| (head[29]:int << 40)
+		| (head[30]:int << 48)
+		| (head[31]:int << 56);
+	if entry < 0 {
+		goto fail;
+	}
+
+	phoff = head[32]:int
+		| (head[33]:int << 8)
+		| (head[34]:int << 16)
+		| (head[35]:int << 24)
+		| (head[36]:int << 32)
+		| (head[37]:int << 40)
+		| (head[38]:int << 48)
+		| (head[39]:int << 56);
+
+	phnum = head[0x38]:int
+		| (head[0x39]:int << 8);
+	if phnum > 64 {
+		goto fail;
+	}
+
+	if phoff > size || 56 * phnum > size - phoff {
+		goto fail;
+	}
+
+	if vseek(f, phoff, 0) != phoff {
+		goto fail;
+	}
+
+	n = vread(f, head, 56 * phnum);
+	if n != 56 * phnum {
+		goto fail;
+	}
+
+	i = 0;
+	loop {
+		if i == phnum {
+			break;
+		}
+
+		p_type = head[i * 56 + 0]:int
+			| (head[i * 56 + 1]:int << 8)
+			| (head[i * 56 + 2]:int << 16)
+			| (head[i * 56 + 3]:int << 24);
+		p_offset = head[i * 56 + 8]:int
+			| (head[i * 56 + 9]:int << 8)
+			| (head[i * 56 + 10]:int << 16)
+			| (head[i * 56 + 11]:int << 24)
+			| (head[i * 56 + 12]:int << 32)
+			| (head[i * 56 + 13]:int << 40)
+			| (head[i * 56 + 14]:int << 48)
+			| (head[i * 56 + 15]:int << 56);
+		p_vaddr = head[i * 56 + 16]:int
+			| (head[i * 56 + 17]:int << 8)
+			| (head[i * 56 + 18]:int << 16)
+			| (head[i * 56 + 19]:int << 24)
+			| (head[i * 56 + 20]:int << 32)
+			| (head[i * 56 + 21]:int << 40)
+			| (head[i * 56 + 22]:int << 48)
+			| (head[i * 56 + 23]:int << 56);
+		p_filesz = head[i * 56 + 32]:int
+			| (head[i * 56 + 33]:int << 8)
+			| (head[i * 56 + 34]:int << 16)
+			| (head[i * 56 + 35]:int << 24)
+			| (head[i * 56 + 36]:int << 32)
+			| (head[i * 56 + 37]:int << 40)
+			| (head[i * 56 + 38]:int << 48)
+			| (head[i * 56 + 39]:int << 56);
+		p_memsz = head[i * 56 + 40]:int
+			| (head[i * 56 + 41]:int << 8)
+			| (head[i * 56 + 42]:int << 16)
+			| (head[i * 56 + 43]:int << 24)
+			| (head[i * 56 + 44]:int << 32)
+			| (head[i * 56 + 45]:int << 40)
+			| (head[i * 56 + 46]:int << 48)
+			| (head[i * 56 + 47]:int << 56);
+
+		if p_type == 1 {
+			if vload(f, p_offset, p_vaddr, p_filesz, p_memsz) != 0 {
+				goto fail;
+			}
+		}
+
+		i = i + 1;
+	}
+
+	// allocate a stack
+	stack = map_stack(nargs, args, nenv, envs);
+	if !stack {
+		goto fail;
+	}
+
 	vclose(f);
+	i = 0;
+	loop {
+		if i == nargs {
+			break;
+		}
+		if args[i] {
+			free(args[i]);
+		}
+		i = i + 1;
+	}
+	i = 0;
+	loop {
+		if i == nenv {
+			break;
+		}
+		if envs[i] {
+			free(envs[i]);
+		}
+		i = i + 1;
+	}
+	free(head);
+	free(args:*byte);
+	free(envs:*byte);
+	freept(pt);
+	userswitch(entry, stack);
+	kdie("unreachable");
+
+:fail;
+	if f {
+		vclose(f);
+	}
+	i = 0;
+	loop {
+		if i == nargs {
+			break;
+		}
+		if args[i] {
+			free(args[i]);
+		}
+		i = i + 1;
+	}
+	i = 0;
+	loop {
+		if i == nenv {
+			break;
+		}
+		if envs[i] {
+			free(envs[i]);
+		}
+		i = i + 1;
+	}
+	free(head);
+	free(args:*byte);
+	free(envs:*byte);
+	freept(t.pt);
+	t.pt = pt;
+	return -1;
+}
+
+task_init(t: *task) {
+	if vexec("/init", 0:**byte, 0:**byte) != 0 {
+		kdie("failed to exec init");
+	}
 }
 
 _kstart(mb: int) {
@@ -4352,6 +4896,7 @@ _kstart(mb: int) {
 	task.next = &task;
 	task.prev = &task;
 	task.name = "_kstart";
+	task.pt = rdcr3();
 
 	bzero((&global):*byte, sizeof(global));
 	global.ptr = &global;
@@ -4373,6 +4918,7 @@ _kstart(mb: int) {
 
 	global.fr = 0:*free_range;
 	global.fp = 0:*free_page;
+	global.kpt = rdcr3();
 
 	mbinfo = ptov(mb);
 	mmap = ptov(_r32(&mbinfo[48])): *int;

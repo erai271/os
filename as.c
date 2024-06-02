@@ -423,7 +423,7 @@ emit_kstart(c: *assembler) {
 
 	// pt3 -> 1g
 	as_modri(c, OP_SUBI, R_RSP, 0x1000);
-	as_modri(c, OP_MOVI, R_RAX, 0x87);
+	as_modri(c, OP_MOVI, R_RAX, 0x83);
 	as_modri(c, OP_MOVI, R_RDX, 0);
 	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
 	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
@@ -433,7 +433,7 @@ emit_kstart(c: *assembler) {
 	// pt4 -> pt3
 	as_modrr(c, OP_MOVE, R_RAX, R_RSP);
 	as_modri(c, OP_SUBI, R_RSP, 0x1000);
-	as_modri(c, OP_ORI, R_RAX, 7);
+	as_modri(c, OP_ORI, R_RAX, 3);
 	as_modri(c, OP_MOVI, R_RDX, 0);
 	as_modrm(c, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
 	as_modrm(c, OP_STORE, R_RDX, R_RSP, 0, 0, 4);
