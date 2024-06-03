@@ -95,6 +95,13 @@ struct _x25519_block {
 	_x4: int;
 }
 
+struct _ed25519_priv {
+	x0: int;
+	x1: int;
+	x2: int;
+	x3: int;
+}
+
 struct _ed25519_pub {
 	x0: int;
 	x1: int;
