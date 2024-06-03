@@ -9,6 +9,8 @@ struct sha256_ctx {
 	f: int;
 	g: int;
 	h: int;
+	len: int;
+	block: _sha256_block;
 }
 
 struct _sha256_block {
@@ -47,6 +49,7 @@ sha256_init(r: *sha256_ctx) {
 	r.f = (0x9b05 << 16) | 0x688c;
 	r.g = (0x1f83 << 16) | 0xd9ab;
 	r.h = (0x5be0 << 16) | 0xcd19;
+	r.len = 0;
 }
 
 ror32(x: int, n: int): int {
@@ -437,4 +440,44 @@ sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	sha256_rounds(&ctx, opad);
 	sha256_finish(&ctx, 1, digest, 32);
 	sha256_digest(mac, &ctx);
+}
+
+sha256_update(ctx: *sha256_ctx, msg: *byte, len: int) {
+	var o: int;
+	var r: int;
+
+	o = ctx.len & 63;
+	if o != 0 {
+		r = 64 - o;
+		if len < r {
+			memcpy(&(&ctx.block):*byte[o], msg, len);
+			ctx.len = ctx.len + len;
+			return;
+		} else {
+			memcpy(&(&ctx.block):*byte[o], msg, r);
+			sha256_rounds(ctx, (&ctx.block):*byte);
+			ctx.len = ctx.len + r;
+			len = len - r;
+			msg = &msg[r];
+		}
+	}
+
+	loop {
+		if len < 64 {
+			memcpy((&ctx.block):*byte, msg, len);
+			ctx.len = ctx.len + len;
+			return;
+		}
+
+		sha256_rounds(ctx, msg);
+
+		ctx.len = ctx.len + 64;
+		len = len - 64;
+		msg = &msg[64];
+	}
+}
+
+sha256_final(digest: *byte, ctx: *sha256_ctx) {
+	sha256_finish(ctx, ctx.len >> 6, (&ctx.block):*byte, ctx.len & 63);
+	sha256_digest(digest, ctx);
 }
