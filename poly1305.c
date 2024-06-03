@@ -21,7 +21,7 @@ poly1305_reduce(a: *int) {
 	c = (c + a[1]) >> 32;
 	c = (c + a[2]) >> 32;
 	c = (c + a[3]) >> 32;
-	c = (c + a[4] + (~3 & (-1 >> 32))) >> 32;
+	c = (c + a[4] + (-4 & (-1 >> 32))) >> 32;
 
 	k = -c >> 32;
 
@@ -29,7 +29,7 @@ poly1305_reduce(a: *int) {
 	c = c + a[1]; a[1] = c & (-1 >> 32); c = c >> 32;
 	c = c + a[2]; a[2] = c & (-1 >> 32); c = c >> 32;
 	c = c + a[3]; a[3] = c & (-1 >> 32); c = c >> 32;
-	c = c + a[4] + (~3 & k); a[4] = c & (-1 >> 32); c = c >> 32;
+	c = c + a[4] + (-4 & (-1 >> 32) & k); a[4] = c & (-1 >> 32); c = c >> 32;
 }
 
 poly1305_load(dest: *int, src: *byte, n: int) {
@@ -48,7 +48,6 @@ poly1305_load(dest: *int, src: *byte, n: int) {
 }
 
 poly1305_digest(dest: *byte, src: *int) {
-	poly1305_reduce(src);
 	dest[0] = src[0]:byte;
 	dest[1] = (src[0] >> 8):byte;
 	dest[2] = (src[0] >> 16):byte;
@@ -223,13 +222,17 @@ poly1305(mac: *byte, key: *byte, msg: *byte, len: int) {
 		}
 
 		poly1305_add(a, s);
+		poly1305_reduce(a);
 
 		poly1305_mul(a, r);
+		poly1305_reduce(a);
 
 		i = i + 16;
 	}
 
 	poly1305_load(s, &key[16], 4);
+	s[4] = 0;
+
 	poly1305_add(a, s);
 
 	poly1305_digest(mac, a);

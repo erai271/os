@@ -531,7 +531,7 @@ ed25519_sqrt(r: *int, x: *int): int {
 	return i;
 }
 
-// x**2 = (1 - y**2) / (d * y**2 - 1) mod p
+// x**2 = (y**2 - 1) / (1 + d * y**2) mod p
 ed25519_decode(p: *int, y: *byte): int {
 	var _xy: _ed25519_point;
 	var xy: *int;
@@ -557,8 +557,8 @@ ed25519_decode(p: *int, y: *byte): int {
 	ed25519_d(b);
 	ed25519_mul(b, b, a);
 	ed25519_one(xy);
-	ed25519_sub(b, b, xy);
-	ed25519_sub(xy, xy, a);
+	ed25519_add(b, b, xy);
+	ed25519_sub(xy, a, xy);
 	ed25519_inv(b, b);
 	ed25519_mul(xy, xy, b);
 
@@ -962,19 +962,42 @@ ed25519_eq(a: *int, b: *int): int {
 
 ed25519_verify(sig: *byte, pub: *byte, msg: *byte, len: int): int {
 	var ctx: sha512_ctx;
+	var _a: _ed25519_point;
 	var a: *int;
+	var _b: _ed25519_point;
 	var b: *int;
+	var _r: _ed25519_point;
 	var r: *int;
+	var _s: _ed25519_point;
 	var s: *int;
+	var _k: _ed25519_point;
 	var k: *int;
+	var _hk: _sha512_digest;
 	var hk: *byte;
+	var _sk: _sha512_digest;
+	var sk: *byte;
+
+	a = (&_a):*int;
+	b = (&_b):*int;
+	r = (&_r):*int;
+	s = (&_s):*int;
+	k = (&_k):*int;
+	hk = (&_hk):*byte;
+	sk = (&_sk):*byte;
 
 	// A = public key
-	ed25519_decode(a, pub);
+	if !ed25519_decode(a, pub){
+		return 0;
+	}
 
 	// sig = R || S
-	ed25519_decode(r, sig);
-	ed25519_reduce_l(s, &sig[32]);
+	if !ed25519_decode(r, sig) {
+		return 0;
+	}
+
+	bzero(sk, 64);
+	memcpy(sk, &sig[32], 32);
+	ed25519_reduce_l(s, sk);
 
 	// k' = SHA-512(R || A || M)
 	sha512_init(&ctx);
@@ -1235,9 +1258,9 @@ ed25519_set_lsb(xy: *int, lsb: int) {
 	a = &_a.x0;
 
 	ed25519_zero(a);
-	ed25519_sub(a, a, &xy[8]);
+	ed25519_sub(a, a, xy);
 
-	ed25519_selectl(&xy[8], &xy[8], a, (xy[0] ^ lsb) & 1);
+	ed25519_selectl(xy, xy, a, (xy[0] ^ lsb) & 1);
 }
 
 ed25519_clamp(k: *int, b: *byte) {

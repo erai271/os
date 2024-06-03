@@ -157,12 +157,17 @@ chacha20_stream(cipher: *byte, plain: *byte, len: int, index: *int, key: *byte, 
 	var i: int;
 	var j: int;
 
-	j = 0;
-	i = index[0] & 63;
+	block = (&_block):*byte;
 
-	if i {
+	j = 0;
+	loop {
+		if j == len {
+			break;
+		}
+
 		chacha20_block(block, key, index[0] >> 6, nonce);
 
+		i = index[0] & 63;
 		loop {
 			if j == len || i == 64 {
 				break;
@@ -174,27 +179,5 @@ chacha20_stream(cipher: *byte, plain: *byte, len: int, index: *int, key: *byte, 
 			i = i + 1;
 			j = j + 1;
 		}
-	}
-
-	loop {
-		if j == len {
-			break;
-		}
-
-		chacha20_block(block, key, index[0] >> 6, nonce);
-
-		i = 0;
-		loop {
-			if j == len || i == 64 {
-				break;
-			}
-
-			cipher[j] = plain[j] ^ block[j];
-
-			i = i + 1;
-			j = j + 1;
-		}
-
-		index[0] = index[0] + 64;
 	}
 }
