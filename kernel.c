@@ -89,77 +89,10 @@ _w32(p: *byte, x: int): int;
 _r16(p: *byte): int;
 _w16(p: *byte, x: int): int;
 
-// FIXME a very dumb and lossy but simple serial debug
-
 enum {
-	IO_COM0 = 0x3f8,
 	IO_PIC1 = 0x20,
 	IO_PIC2 = 0xa0,
 	IO_PIT = 0x40,
-}
-
-setup_serial() {
-	outb(IO_COM0 + 1, 0x00);
-	outb(IO_COM0 + 3, 0x80);
-	outb(IO_COM0 + 0, 0x03);
-	outb(IO_COM0 + 1, 0x00);
-	outb(IO_COM0 + 3, 0x03);
-	outb(IO_COM0 + 2, 0xc7);
-	outb(IO_COM0 + 4, 0x0f);
-
-	outb(IO_COM0, 0x1b);
-	outb(IO_COM0, '[');
-	outb(IO_COM0, 'H');
-
-	outb(IO_COM0, 0x1b);
-	outb(IO_COM0, '[');
-	outb(IO_COM0, 'J');
-}
-
-sputc(c: int) {
-	outb(IO_COM0, c);
-}
-
-sputs(s: *byte) {
-	var i: int;
-	i = 0;
-	loop {
-		if !s[i] {
-			break;
-		}
-		sputc(s[i]:int);
-		i = i + 1;
-	}
-}
-
-sputd(x: int) {
-	var d: int;
-	if x < 0 {
-		d = -(x % -10);
-		x = x / -10;
-		sputc('-');
-		if x {
-			sputd(x);
-		}
-		sputc('0' + d);
-	} else {
-		d = x % 10;
-		x = x / 10;
-		if x {
-			sputd(x);
-		}
-		sputc('0' + d);
-	}
-}
-
-sputh(x: int) {
-	var d: int;
-	d = x & 15;
-	x = x >> 4;
-	if x {
-		sputh(x);
-	}
-	sputc("0123456789abcdef"[d]:int);
 }
 
 gdt_tss(s: *int, base: int, size: int, access: int, flags: int) {
@@ -4866,6 +4799,9 @@ vexec(prog: *byte, argv: **byte, envp: **byte): int {
 }
 
 task_init(t: *task) {
+	// open("/dev/null") => 0
+	// open("/dev/tty") => 1
+	// dup(1) => 2
 	if vexec("/init", 0:**byte, 0:**byte) != 0 {
 		kdie("failed to exec init");
 	}
