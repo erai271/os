@@ -6,6 +6,9 @@ enum {
 	O_RDWR = 2,
 	O_CREAT = 64,
 	O_DIRECTORY = 0x1000,
+
+	AF_INET = 2,
+	SOCK_STREAM = 1,
 }
 
 _start(argc: int, argv: **byte, envp: **byte) {
@@ -56,8 +59,8 @@ socket(pf: int, ty: int, pc: int): int {
 	return syscall(41, pf, ty, pc, 0, 0, 0);
 }
 
-accept(fd: int): int {
-	return syscall(43, fd, 0, 0, 0, 0, 0);
+accept(fd: int, addr: *byte, len: *int): int {
+	return syscall(43, fd, addr:int, len:int, 0, 0, 0);
 }
 
 bind(fd: int, addr: *byte, len: int): int {
