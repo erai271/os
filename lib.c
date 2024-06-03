@@ -15,6 +15,28 @@ strlen(s: *byte): int {
 	}
 }
 
+memcmp(a: *byte, b: *byte, n: int): int {
+	var i: int;
+
+	i = 0;
+
+	loop {
+		if i == n {
+			return 0;
+		}
+
+		if (a[i] > b[i]) {
+			return 1;
+		}
+
+		if (a[i] < b[i]) {
+			return -1;
+		}
+
+		i = i + 1;
+	}
+}
+
 strcmp(a: *byte, b: *byte): int {
 	var i: int;
 
