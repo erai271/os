@@ -1,6 +1,7 @@
 #!/sh
 
 LIBS="bufio.c lib.c alloc.c syscall.c"
+CRYPTO="ed25519.c sha512.c sha256.c chacha20.c poly1305.c"
 CC="cc1.c type.c parse1.c lex1.c as.c"
 GENLEX="genlex.c"
 BOOT="pxe.asm"
@@ -25,7 +26,7 @@ ALL="${LIBS} ${CC} ${GENLEX} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
 ./cc2 ${LIBS} xxd.c -o xxd
 ./cc2 ${LIBS} cpio.c -o cpio
 ./cc2 ${LIBS} sh.c -o sh
-./cc2 ${LIBS} sshd.c -o sshd
+./cc2 ${LIBS} ${CRYPTO} sshd.c -o sshd
 ./cc2 ${LIBS} vi.c -o vi
 
 for name in ${ALL}; do echo ${name}; done | ./cpio -o > initramfs
