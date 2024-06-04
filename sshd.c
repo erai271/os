@@ -267,6 +267,7 @@ write_frame(ctx: *sshd_ctx) {
 }
 
 enum {
+	SSH_MSG_DISCONNECT = 0x01,
 	SSH_MSG_SERVICE_REQUEST = 0x05,
 	SSH_MSG_SERVICE_ACCEPT = 0x06,
 	SSH_MSG_KEXINIT = 0x14,
@@ -277,6 +278,66 @@ enum {
 	SSH_MSG_USERAUTH_FAILURE = 0x33,
 	SSH_MSG_USERAUTH_SUCCESS = 0x34,
 	SSH_MSG_USERAUTH_PK_OK = 0x3c,
+	SSH_MSG_CHANNEL_OPEN = 0x5a,
+	SSH_MSG_CHANNEL_OPEN_CONFIRMATION = 0x5b,
+	SSH_MSG_CHANNEL_OPEN_FAILURE = 0x5c,
+	SSH_MSG_CHANNEL_WINDOW_ADJUST = 0x5d,
+	SSH_MSG_CHANNEL_DATA = 0x5e,
+	SSH_MSG_CHANNEL_EXTENDED_DATA = 0x5f,
+	SSH_MSG_CHANNEL_EOF = 0x60,
+	SSH_MSG_CHANNEL_CLOSE = 0x61,
+	SSH_MSG_CHANNEL_REQUEST = 0x62,
+	SSH_MSG_CHANNEL_SUCCESS = 0x63,
+	SSH_MSG_CHANNEL_FAILURE = 0x64,
+}
+
+enum {
+	SSH_CR_UNKNOWN,
+	SSH_CR_PTY,
+	SSH_CR_SHELL,
+	SSH_CR_EXEC,
+	SSH_CR_WINCH,
+	SSH_CR_SIGNAL,
+	SSH_CR_EXIT,
+	SSH_CR_EXIT_SIGNAL,
+}
+
+struct ssh_cr_pty {
+	term: ssh_str;
+	cx: int;
+	cy: int;
+	px: int;
+	py: int;
+	modes: ssh_str;
+}
+
+struct ssh_cr_shell {
+}
+
+struct ssh_cr_exec {
+	command: ssh_str;
+}
+
+struct ssh_cr_winch {
+	cx: int;
+	cy: int;
+	px: int;
+	py: int;
+}
+
+struct ssh_cr_signal {
+	name: ssh_str;
+}
+
+struct ssh_cr_exit {
+	status: int;
+}
+
+struct ssh_cr_exit_signal {
+	name: ssh_str;
+	core_dumpped: int;
+	message: ssh_str;
+	lang: ssh_str;
 }
 
 doversion(ctx: *sshd_ctx) {
@@ -305,6 +366,36 @@ doversion(ctx: *sshd_ctx) {
 struct ssh_str {
 	len: int;
 	s: *byte;
+}
+
+struct ssh_disconnect {
+	reason: int;
+	description: ssh_str;
+	lang: ssh_str;
+}
+
+decode_disconnect(p: *ssh_disconnect, ctx: *sshd_ctx) {
+	var tag: int;
+	decode_u8(&tag, ctx);
+	if tag != SSH_MSG_DISCONNECT {
+		die("not a ssh_disconnect");
+	}
+	decode_u32(&p.reason, ctx);
+	decode_str(&p.description, ctx);
+	decode_str(&p.lang, ctx);
+	if ctx.index != ctx.framelen {
+		die("trailing data");
+	}
+}
+
+encode_disconnect(p: *ssh_disconnect, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_DISCONNECT;
+	encode_u32(&p.reason, ctx);
+	encode_str(&p.description, ctx);
+	encode_str(&p.lang, ctx);
+	finish_frame(ctx);
 }
 
 struct ssh_kexinit {
@@ -710,6 +801,306 @@ ssh_mpint_sha256_update(ctx: *sha256_ctx, b: *byte, n: int) {
 	}
 }
 
+struct ssh_channel_open {
+	channel_type: ssh_str;
+	channel: int;
+	initial_window_size: int;
+	max_packet_size: int;
+}
+
+decode_channel_open(p: *ssh_channel_open, ctx: *sshd_ctx) {
+	var tag: int;
+	decode_u8(&tag, ctx);
+	if tag != SSH_MSG_CHANNEL_OPEN {
+		die("not a channel_open");
+	}
+
+	decode_str(&p.channel_type, ctx);
+	decode_u32(&p.channel, ctx);
+	decode_u32(&p.initial_window_size, ctx);
+	decode_u32(&p.max_packet_size, ctx);
+
+	if ctx.index != ctx.framelen {
+		die("trailing data");
+	}
+}
+
+struct ssh_channel_open_confirmation {
+	channel: int;
+	sender_channel: int;
+	initial_window_size: int;
+	maximum_packet_size: int;
+}
+
+encode_channel_open_confirmation(p: *ssh_channel_open_confirmation, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_OPEN_CONFIRMATION;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	encode_u32(&p.sender_channel, ctx);
+	encode_u32(&p.initial_window_size, ctx);
+	encode_u32(&p.maximum_packet_size, ctx);
+	finish_frame(ctx);
+	if ctx.index != ctx.framelen {
+		die("trailing data");
+	}
+}
+
+struct ssh_channel_open_failure {
+	channel: int;
+	reason: int;
+	description: ssh_str;
+	lang: ssh_str;
+}
+
+encode_channel_open_failure(p: *ssh_channel_open_failure, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_OPEN_FAILURE;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	encode_u32(&p.reason, ctx);
+	encode_str(&p.description, ctx);
+	encode_str(&p.lang, ctx);
+	finish_frame(ctx);
+}
+
+struct ssh_channel_window_adjust {
+	channel: int;
+	window: int;
+}
+
+decode_channel_window_adjust(p: *ssh_channel_window_adjust, ctx: *sshd_ctx) {
+	var tag: int;
+	decode_u8(&tag, ctx);
+	if tag != SSH_MSG_CHANNEL_WINDOW_ADJUST {
+		die("not a channel_window_adjust");
+	}
+	decode_u32(&p.channel, ctx);
+	decode_u32(&p.window, ctx);
+	if ctx.index != ctx.framelen {
+		die("trailing data");
+	}
+}
+
+encode_channel_window_adjust(p: *ssh_channel_window_adjust, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_WINDOW_ADJUST;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	encode_u32(&p.window, ctx);
+	finish_frame(ctx);
+}
+
+struct ssh_channel_data {
+	channel: int;
+	data: ssh_str;
+}
+
+decode_channel_data(p: *ssh_channel_data, ctx: *sshd_ctx) {
+	var tag: int;
+	decode_u8(&tag, ctx);
+	if tag != SSH_MSG_CHANNEL_DATA {
+		die("not a channel_data");
+	}
+	decode_u32(&p.channel, ctx);
+	decode_str(&p.data, ctx);
+	if ctx.index != ctx.framelen {
+		die("trailing data");
+	}
+}
+
+encode_channel_data(p: *ssh_channel_data, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_DATA;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	encode_str(&p.data, ctx);
+	finish_frame(ctx);
+}
+
+struct ssh_channel_extended_data {
+	channel: int;
+	code: int;
+	data: ssh_str;
+}
+
+encode_channel_extended_data(p: *ssh_channel_extended_data, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_EXTENDED_DATA;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	encode_u32(&p.code, ctx);
+	encode_str(&p.data, ctx);
+	finish_frame(ctx);
+}
+
+struct ssh_channel_eof {
+	channel: int;
+}
+
+decode_channel_eof(p: *ssh_channel_eof, ctx: *sshd_ctx) {
+	var tag: int;
+	decode_u8(&tag, ctx);
+	if tag != SSH_MSG_CHANNEL_EOF {
+		die("not a channel_eof");
+	}
+	decode_u32(&p.channel, ctx);
+	if ctx.index != ctx.framelen {
+		die("trailing data");
+	}
+}
+
+encode_channel_eof(p: *ssh_channel_eof, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_EOF;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	finish_frame(ctx);
+}
+
+struct ssh_channel_close {
+	channel: int;
+}
+
+decode_channel_close(p: *ssh_channel_close, ctx: *sshd_ctx) {
+	var tag: int;
+	decode_u8(&tag, ctx);
+	if tag != SSH_MSG_CHANNEL_CLOSE {
+		die("not a channel_close");
+	}
+	decode_u32(&p.channel, ctx);
+	if ctx.index != ctx.framelen {
+		die("trailing data");
+	}
+}
+
+encode_channel_close(p: *ssh_channel_close, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_CLOSE;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	finish_frame(ctx);
+}
+
+struct ssh_channel_request {
+	channel: int;
+	request: ssh_str;
+	want_reply: int;
+	kind: int;
+	unknown: ssh_str;
+	pty: ssh_cr_pty;
+	shell: ssh_cr_shell;
+	exec: ssh_cr_exec;
+	winch: ssh_cr_winch;
+	signal: ssh_cr_signal;
+	exit: ssh_cr_exit;
+	exit_signal: ssh_cr_exit_signal;
+}
+
+decode_channel_request(p: *ssh_channel_request, ctx: *sshd_ctx) {
+	var tag: int;
+	bzero(p:*byte, sizeof(*p));
+	decode_u8(&tag, ctx);
+	if tag != SSH_MSG_CHANNEL_REQUEST {
+		die("not a channel_request");
+	}
+	decode_u32(&p.channel, ctx);
+	decode_str(&p.request, ctx);
+	decode_bool(&p.want_reply, ctx);
+	if ssh_streq(&p.request, "pty-req") {
+		p.kind = SSH_CR_PTY;
+		decode_str(&p.pty.term, ctx);
+		decode_u32(&p.pty.cx, ctx);
+		decode_u32(&p.pty.cy, ctx);
+		decode_u32(&p.pty.px, ctx);
+		decode_u32(&p.pty.py, ctx);
+		decode_str(&p.pty.modes, ctx);
+	} else if ssh_streq(&p.request, "shell") {
+		p.kind = SSH_CR_SHELL;
+	} else if ssh_streq(&p.request, "exec") {
+		p.kind = SSH_CR_EXEC;
+		decode_str(&p.exec.command, ctx);
+	} else if ssh_streq(&p.request, "window-change") {
+		p.kind = SSH_CR_WINCH;
+		decode_u32(&p.winch.cx, ctx);
+		decode_u32(&p.winch.cy, ctx);
+		decode_u32(&p.winch.px, ctx);
+		decode_u32(&p.winch.py, ctx);
+	} else if ssh_streq(&p.request, "signal") {
+		p.kind = SSH_CR_SIGNAL;
+		decode_str(&p.signal.name, ctx);
+	} else {
+		p.kind = SSH_CR_UNKNOWN;
+		p.unknown.s = &ctx.frame[ctx.index];
+		p.unknown.len = ctx.framelen - ctx.index;
+		ctx.index = ctx.framelen;
+	}
+	if ctx.index != ctx.framelen {
+		die("trailing data");
+	}
+}
+
+encode_channel_request(p: *ssh_channel_request, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_REQUEST;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	if p.kind == SSH_CR_EXIT {
+		set_str(&p.request, "exit");
+		encode_str(&p.request, ctx);
+		p.want_reply = 0;
+		encode_bool(&p.want_reply, ctx);
+		encode_u32(&p.exit.status, ctx);
+	} else if p.kind == SSH_CR_EXIT_SIGNAL {
+		set_str(&p.request, "exit-signal");
+		encode_str(&p.request, ctx);
+		p.want_reply = 0;
+		encode_bool(&p.want_reply, ctx);
+		encode_str(&p.exit_signal.name, ctx);
+		encode_bool(&p.exit_signal.core_dumpped, ctx);
+		encode_str(&p.exit_signal.message, ctx);
+		encode_str(&p.exit_signal.lang, ctx);
+	} else {
+		encode_str(&p.request, ctx);
+		encode_bool(&p.want_reply, ctx);
+	}
+	finish_frame(ctx);
+}
+
+struct ssh_channel_success {
+	channel: int;
+}
+
+encode_channel_success(p: *ssh_channel_success, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_SUCCESS;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	finish_frame(ctx);
+}
+
+struct ssh_channel_failure {
+	channel: int;
+}
+
+encode_channel_failure(p: *ssh_channel_failure, ctx: *sshd_ctx) {
+	var tag: int;
+	clear_frame(ctx);
+	tag = SSH_MSG_CHANNEL_FAILURE;
+	encode_u8(&tag, ctx);
+	encode_u32(&p.channel, ctx);
+	finish_frame(ctx);
+}
+
 dokex(ctx: *sshd_ctx) {
 	var cookie: _ssh_cookie;
 	var ckex: ssh_kexinit;
@@ -725,7 +1116,6 @@ dokex(ctx: *sshd_ctx) {
 	var sig: _ed25519_sig;
 
 	// <- SSH_MSG_KEXINIT
-	read_frame(ctx);
 	decode_kexinit(&ckex, ctx);
 	memcpy(ctx.ckex, ctx.frame, ctx.framelen);
 	ctx.ckexlen = ctx.framelen;
@@ -860,7 +1250,6 @@ doauth(ctx: *sshd_ctx) {
 	var s: ssh_str;
 
 	// <- SSH_MSG_SERVICE_REQUEST
-	read_frame(ctx);
 	decode_service_request(&csr, ctx);
 	if !ssh_streq(&csr.name, "ssh-userauth") {
 		die("not ssh-userauth");
@@ -946,11 +1335,231 @@ doauth(ctx: *sshd_ctx) {
 	write_frame(ctx);
 }
 
+dosession(ctx: *sshd_ctx) {
+	var cco: ssh_channel_open;
+	var scc: ssh_channel_open_confirmation;
+	var ccr: ssh_channel_request;
+	var scs: ssh_channel_success;
+	var scf: ssh_channel_failure;
+
+	decode_channel_open(&cco, ctx);
+	if  !ssh_streq(&cco.channel_type, "session") || cco.channel != 0 {
+		die("not session");
+	}
+
+	scc.channel = 0;
+	scc.sender_channel = 0;
+	scc.initial_window_size = 16 * 1024;
+	scc.maximum_packet_size = 16 * 1024;
+
+	encode_channel_open_confirmation(&scc, ctx);
+	write_frame(ctx);
+}
+
+dodisconnect(ctx: *sshd_ctx) {
+	var d: ssh_disconnect;
+	decode_disconnect(&d, ctx);
+	exit(0);
+}
+
+dowindow(ctx: *sshd_ctx) {
+	var cwa: ssh_channel_window_adjust;
+	decode_channel_window_adjust(&cwa, ctx);
+	// increase window
+}
+
+dodata(ctx: *sshd_ctx) {
+	var cd: ssh_channel_data;
+	decode_channel_data(&cd, ctx);
+	// buffer data
+	// send window
+}
+
+doeof(ctx: *sshd_ctx) {
+	var ce: ssh_channel_eof;
+	decode_channel_eof(&ce, ctx);
+}
+
+doclose(ctx: *sshd_ctx) {
+	var cc: ssh_channel_close;
+	decode_channel_close(&cc, ctx);
+	exit(0);
+}
+
+struct _argv4 {
+	arg0: *byte;
+	arg1: *byte;
+	arg2: *byte;
+	arg3: *byte;
+}
+
+ssh_spawn(ctx: *sshd_ctx, argv: **byte) {
+	var pid: int;
+	var stdin_read: int;
+	var stdin_write: int;
+	var stdout_read: int;
+	var stdout_write: int;
+	var stderr_read: int;
+	var stderr_write: int;
+
+	if ctx.has_child {
+		die("already spawned");
+	}
+
+	if pipe(&stdin_read, &stdin_write) != 0 {
+		die("stdin pipe failed");
+	}
+
+	if pipe(&stdout_read, &stdout_write) != 0 {
+		die("stdout pipe failed");
+	}
+
+	if pipe(&stderr_read, &stderr_write) != 0 {
+		die("stderr pipe failed");
+	}
+
+	pid = fork();
+	if pid < 0 {
+		die("fork failed");
+	}
+
+	if pid == 0 {
+		close(ctx.fd);
+
+		close(stdin_write);
+		close(stdout_read);
+		close(stderr_read);
+
+		dup2(stdin_read, 0);
+		dup2(stdout_write, 1);
+		dup2(stderr_write, 2);
+
+		close(stdin_read);
+		close(stdout_write);
+		close(stderr_write);
+
+		exec(argv[0], argv, 0:**byte);
+
+		exit(255);
+	}
+
+	close(stdin_read);
+	close(stdout_write);
+	close(stderr_write);
+
+	ctx.has_child = 1;
+	ctx.child_pid = pid;
+	ctx.child_stdin = stdin_write;
+	ctx.child_stdout = stdout_read;
+	ctx.child_stderr = stderr_read;
+}
+
+dopty(cr: *ssh_cr_pty, ctx: *sshd_ctx) {
+	// allocate pty
+}
+
+doshell(cr: *ssh_cr_shell, ctx: *sshd_ctx) {
+	var argv: _argv4;
+	argv.arg0 = "/bin/sh";
+	argv.arg1 = 0:*byte;
+	ssh_spawn(ctx, &argv.arg0);
+}
+
+doexec(cr: *ssh_cr_exec, ctx: *sshd_ctx) {
+	var argv: _argv4;
+	var cmd: *byte;
+	cmd = alloc(ctx.a, cr.command.len + 1);
+	memcpy(cmd, cr.command.s, cr.command.len);
+	cmd[cr.command.len] = 0:byte;
+	argv.arg0 = "/bin/sh";
+	argv.arg1 = "-c";
+	argv.arg2 = cmd;
+	argv.arg3 = 0:*byte;
+	ssh_spawn(ctx, &argv.arg0);
+	free(ctx.a, cmd);
+}
+
+dowinch(cr: *ssh_cr_winch, ctx: *sshd_ctx) {
+	// window change
+}
+
+dosignal(cr: *ssh_cr_signal, ctx: *sshd_ctx) {
+	// signal
+}
+
+dorequest(ctx: *sshd_ctx) {
+	var cr: ssh_channel_request;
+	var ss: ssh_channel_success;
+	var sf: ssh_channel_failure;
+	decode_channel_request(&cr, ctx);
+
+	if cr.kind == SSH_CR_PTY {
+		dopty(&cr.pty, ctx);
+	} else if cr.kind == SSH_CR_SHELL {
+		doshell(&cr.shell, ctx);
+	} else if cr.kind == SSH_CR_EXEC {
+		doexec(&cr.exec, ctx);
+	} else if cr.kind == SSH_CR_WINCH {
+		dowinch(&cr.winch, ctx);
+	} else if cr.kind == SSH_CR_SIGNAL {
+		dosignal(&cr.signal, ctx);
+	} else {
+		die("unknown request");
+		if cr.want_reply {
+			sf.channel = 0;
+			encode_channel_failure(&sf, ctx);
+			write_frame(ctx);
+			return;
+		}
+	}
+
+	if cr.want_reply {
+		ss.channel = 0;
+		encode_channel_success(&ss, ctx);
+		write_frame(ctx);
+	}
+}
+
+client_loop(ctx: *sshd_ctx) {
+	var tag: int;
+
+	loop {
+		read_frame(ctx);
+
+		tag = ctx.frame[0]:int;
+		if tag == SSH_MSG_DISCONNECT {
+			dodisconnect(ctx);
+		} else if tag == SSH_MSG_KEXINIT {
+			dokex(ctx);
+		} else if tag == SSH_MSG_CHANNEL_WINDOW_ADJUST {
+			dowindow(ctx);
+		} else if tag == SSH_MSG_CHANNEL_DATA {
+			dodata(ctx);
+		} else if tag == SSH_MSG_CHANNEL_EOF {
+			doeof(ctx);
+		} else if tag == SSH_MSG_CHANNEL_CLOSE {
+			doclose(ctx);
+		} else if tag == SSH_MSG_CHANNEL_REQUEST {
+			dorequest(ctx);
+		} else {
+			die("invalid packet");
+		}
+	}
+}
+
 cmain(ctx: *sshd_ctx) {
 	doversion(ctx);
+
+	read_frame(ctx);
 	dokex(ctx);
+
+	read_frame(ctx);
 	doauth(ctx);
-	die("shell not implemented");
+
+	read_frame(ctx);
+	dosession(ctx);
+
+	client_loop(ctx);
 }
 
 struct sockaddr {
@@ -994,6 +1603,11 @@ struct sshd_ctx {
 	en_server_to_client: int;
 	seq_client_to_server: int;
 	seq_server_to_client: int;
+	has_child: int;
+	child_pid: int;
+	child_stdin: int;
+	child_stdout: int;
+	child_stderr: int;
 }
 
 format_key(d: **byte, dlen: *int, k: *byte, ctx: *sshd_ctx) {
@@ -1043,7 +1657,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 		die("failed to open socket");
 	}
 
-	port = 4321;
+	port = 2020;
 	sa.fpa = AF_INET | ((port & 0xff) << 24) | (((port >> 8) & 0xff) << 16);
 	sa.pad = 0;
 	if bind(fd, (&sa):*byte, sizeof(sa)) != 0 {

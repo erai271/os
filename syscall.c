@@ -9,6 +9,9 @@ enum {
 
 	AF_INET = 2,
 	SOCK_STREAM = 1,
+
+	POLLIN = 1,
+	POLLOUT = 4,
 }
 
 _start(argc: int, argv: **byte, envp: **byte) {
@@ -36,17 +39,21 @@ fstat(fd: int, buf: *byte): int {
 	return syscall(5, fd, buf:int, 0, 0, 0, 0);
 }
 
+poll(pfd: *byte, nfd: int, timeout: int): int {
+	return syscall(7, pfd:int, nfd, timeout, 0, 0, 0);
+}
+
 mmap(addr: int, len: int, prot: int, flags: int, fd: int, off: int): int {
 	return syscall(9, addr, len, prot, flags, fd, off);
 }
 
-pipe(fd: *int): int {
+pipe(rfd: *int, wfd: *int): int {
 	var buf: int;
 	var ret: int;
 	ret = syscall(22, (&buf):int, 0, 0, 0, 0, 0);
 	if ret == 0 {
-		fd[0] = buf & (-1 >> 32);
-		fd[1] = buf >> 32;
+		*rfd = buf & (-1 >> 32);
+		*wfd = buf >> 32;
 	}
 	return ret;
 }
