@@ -12,8 +12,12 @@ enum {
 	AF_INET = 2,
 	SOCK_STREAM = 1,
 
-	POLLIN = 1,
-	POLLOUT = 4,
+	POLLIN = 0x01,
+	POLLPRI = 0x02,
+	POLLOUT = 0x04,
+	POLLERR = 0x08,
+	POLLHUP = 0x10,
+	POLLNVAL = 0x20,
 
 	WNOHANG = 1,
 

@@ -1540,36 +1540,124 @@ struct pfd4 {
 	p3: int;
 }
 
-reset_pfd(pfd: *int, ctx: *sshd_ctx) {
-	pfd[0] = ctx.fd | (POLLIN << 32);
-	pfd[1] = ctx.child_stdin | (POLLOUT << 32);
-	pfd[2] = ctx.child_stdout | (POLLIN << 32);
-	pfd[3] = ctx.child_stderr | (POLLIN << 32);
+reset_pfd(pfd: *int, ctx: *sshd_ctx): int {
+	var n: int;
+
+	n = 0;
+
+	pfd[n] = ctx.fd | (POLLIN << 32);
+	n = n + 1;
+
+	if ctx.child_stdin >= 0 {
+		pfd[n] = ctx.child_stdin | (POLLOUT << 32);
+		n = n + 1;
+	}
+
+	if ctx.child_stdout >= 0 {
+		pfd[n] = ctx.child_stdout | (POLLIN << 32);
+		n = n + 1;
+	}
+
+	if ctx.child_stderr >= 0 {
+		pfd[n] = ctx.child_stderr | (POLLIN << 32);
+		n = n + 1;
+	}
+
+	return n;
+}
+
+poll_client(revents: int, ctx: *sshd_ctx) {
+	var tag: int;
+
+	read_frame(ctx);
+
+	tag = ctx.frame[0]:int;
+	if tag == SSH_MSG_DISCONNECT {
+		dodisconnect(ctx);
+	} else if tag == SSH_MSG_KEXINIT {
+		dokex(ctx);
+	} else if tag == SSH_MSG_CHANNEL_WINDOW_ADJUST {
+		dowindow(ctx);
+	} else if tag == SSH_MSG_CHANNEL_DATA {
+		dodata(ctx);
+	} else if tag == SSH_MSG_CHANNEL_EOF {
+		doeof(ctx);
+	} else if tag == SSH_MSG_CHANNEL_CLOSE {
+		doclose(ctx);
+	} else if tag == SSH_MSG_CHANNEL_REQUEST {
+		dorequest(ctx);
+	} else {
+		die("invalid packet");
+	}
+}
+
+poll_stdin(ctx: *sshd_ctx) {
+	if revents & POLLERR {
+		close(ctx.child_stdin);
+		ctx.child_stdin = -1;
+	}
+}
+
+poll_stdout(ctx: *sshd_ctx) {
+	var a: byte;
+	if read(ctx.child_stdout, &a, 1) == 0 {
+		close(ctx.child_stdout);
+		ctx.child_stdout = -1;
+	}
+}
+
+poll_stderr(ctx: *sshd_ctx) {
+	if read(ctx.child_stderr, &a, 1) == 0 {
+		close(ctx.child_stderr);
+		ctx.child_stderr = -1;
+	}
 }
 
 client_loop(ctx: *sshd_ctx) {
-	var tag: int;
+	var _p: pfd4;
+	var p: *int;
+	var n: int;
+	var i: int;
+	var fd: int;
+	var revents: int;
+
+	p = &_p.p0;
 
 	loop {
-		read_frame(ctx);
+		n = reset_pfd(p, ctx);
+		if poll(p, n, -1) == -EINTR {
+			continue;
+		}
 
-		tag = ctx.frame[0]:int;
-		if tag == SSH_MSG_DISCONNECT {
-			dodisconnect(ctx);
-		} else if tag == SSH_MSG_KEXINIT {
-			dokex(ctx);
-		} else if tag == SSH_MSG_CHANNEL_WINDOW_ADJUST {
-			dowindow(ctx);
-		} else if tag == SSH_MSG_CHANNEL_DATA {
-			dodata(ctx);
-		} else if tag == SSH_MSG_CHANNEL_EOF {
-			doeof(ctx);
-		} else if tag == SSH_MSG_CHANNEL_CLOSE {
-			doclose(ctx);
-		} else if tag == SSH_MSG_CHANNEL_REQUEST {
-			dorequest(ctx);
-		} else {
-			die("invalid packet");
+		i = 0;
+		loop {
+			if i == n {
+				break;
+			}
+
+			fd = p[i] & (-1 >> 32);
+			revents = p[i] >> 48;
+			i = i + 1;
+
+			if !revents {
+				continue;
+			}
+
+			if fd == ctx.fd {
+				poll_client(revents, ctx);
+			}
+
+			if fd == ctx.child_stdin {
+				poll_stdin(revents, ctx);
+			}
+
+			if fd == ctx.child_stdout {
+				poll_stdout(revents, ctx);
+			}
+
+			if fd == ctx.child_stderr {
+				poll_stderr(revents, ctx);
+			}
 		}
 	}
 }
@@ -1690,6 +1778,10 @@ main(argc: int, argv: **byte, envp: **byte) {
 	}
 
 	ed25519_pub((&ctx.pub):*byte, (&ctx.priv):*byte);
+
+	ctx.child_stdin = -1;
+	ctx.child_stdout = -1;
+	ctx.child_stderr = -1;
 
 	ctx.a = &a;
 	ctx.bufsz = 64 * 1024;
