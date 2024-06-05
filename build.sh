@@ -7,8 +7,8 @@ GENLEX="genlex.c"
 BOOT="pxe.asm"
 SSHD="chacha20.c poly1305.c sha256.c sha512.c ed25519.c sshd.c"
 KERNEL="kernel.c"
-SHELL="echo.c cmp.c rm.c ls.c cat.c xxd.c mv.c mkdir.c cpio.c vi.c sh.c"
-BIN="echo cmp rm ls cat xxd mv mkdir cpio sh vi sshd init cc1 cc2 build.sh cc3.l"
+SHELL="echo.c cmp.c rm.c ls.c cat.c xxd.c mv.c mkdir.c cpio.c sh.c"
+BIN="echo cmp rm ls cat xxd mv mkdir cpio sh sshd init cc1 cc2 build.sh cc3.l"
 ALL="${LIBS} ${CC} ${GENLEX} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
 
 ./cc1 ${LIBS} ${CC} -o cc2
@@ -27,7 +27,6 @@ ALL="${LIBS} ${CC} ${GENLEX} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
 ./cc2 ${LIBS} cpio.c -o cpio
 ./cc2 ${LIBS} sh.c -o sh
 ./cc2 ${LIBS} ${CRYPTO} sshd.c -o sshd
-./cc2 ${LIBS} vi.c -o vi
 
 for name in ${ALL}; do echo ${name}; done | ./cpio -o > initramfs
 
