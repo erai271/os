@@ -1613,6 +1613,12 @@ main(argc: int, argv: **byte, envp: **byte) {
 		emit_ret(c.as);
 	}
 
+	d = find(c, "_restorer", 0:*byte, 1);
+	if (d.func_defined && !d.func_label.fixed) {
+		fixup_label(c.as, d.func_label);
+		emit_restorer(c.as);
+	}
+
 	d = find(c, "_include", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);

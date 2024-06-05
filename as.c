@@ -307,6 +307,11 @@ fixup_label(c: *assembler, l: *label) {
 	}
 }
 
+emit_restorer(c: *assembler) {
+	as_modri(c, OP_MOVI, R_RAX, 15);
+	as_op(c, OP_SYSCALL);
+}
+
 emit_ptr(c: *assembler, l: *label) {
 	reserve(c, 16);
 	as_modrm(c, OP_LEA, R_RAX, R_RIP, 0, 0, 128);

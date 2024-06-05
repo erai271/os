@@ -7,11 +7,23 @@ enum {
 	O_CREAT = 64,
 	O_DIRECTORY = 0x1000,
 
+	EINTR = 4,
+
 	AF_INET = 2,
 	SOCK_STREAM = 1,
 
 	POLLIN = 1,
 	POLLOUT = 4,
+
+	WNOHANG = 1,
+
+	SIG_DFL = 0,
+	SIG_IGN = 1,
+
+	SIGINT = 2,
+	SIGALRM = 14,
+	SIGCHLD = 17,
+	SIGWINCH = 28,
 }
 
 _start(argc: int, argv: **byte, envp: **byte) {
@@ -39,12 +51,23 @@ fstat(fd: int, buf: *byte): int {
 	return syscall(5, fd, buf:int, 0, 0, 0, 0);
 }
 
-poll(pfd: *byte, nfd: int, timeout: int): int {
+poll(pfd: *int, nfd: int, timeout: int): int {
 	return syscall(7, pfd:int, nfd, timeout, 0, 0, 0);
 }
 
 mmap(addr: int, len: int, prot: int, flags: int, fd: int, off: int): int {
 	return syscall(9, addr, len, prot, flags, fd, off);
+}
+
+struct sigaction {
+	handler: int;
+	flags: int;
+	restorer: int;
+	mask: int;
+}
+
+sigaction(sig: int, act: *sigaction, oact: *sigaction): int {
+	return syscall(13, sig, act:int, oact:int, 8, 0, 0);
 }
 
 pipe(rfd: *int, wfd: *int): int {
@@ -91,7 +114,14 @@ exit(n: int) {
 }
 
 wait(pid: int, status: *int, flags: int): int {
-	return syscall(61, pid, status:int, flags, 0, 0, 0);
+	var s: int;
+	var ret: int;
+	s = 0;
+	ret = syscall(61, pid, s:int, flags, 0, 0, 0);
+	if status {
+		*status = s & (-1 >> 32);
+	}
+	return ret;
 }
 
 rename(oldname: *byte, newname: *byte): int {

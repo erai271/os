@@ -1,27 +1,33 @@
 read_line(fd: int, buf: *byte, max: int): int {
 	var len: int;
-	var c: int;
+	var ret: int;
+	var c: byte;
 	len = 0;
 	loop {
 		if len == max {
 			return 0;
 		}
 
-		c = fdgetc(fd);
-		if c == '\n' {
+		ret = read(fd, &c, 1);
+
+		if ret == -EINTR {
+			continue;
+		}
+
+		if ret == 0 {
+			return 0;
+		}
+
+		if c == '\n':byte {
 			buf[len] = 0:byte;
 			return len;
 		}
 
-		if c == -1 {
-			return 0;
-		}
-
-		if c == '\r' {
+		if c == '\r':byte {
 			continue;
 		}
 
-		buf[len] = c:byte;
+		buf[len] = c;
 		len = len + 1;
 	}
 }
@@ -34,6 +40,9 @@ writeall(fd: int, buf: *byte, n: int): int {
 		}
 
 		ret = write(fd, buf, n);
+		if ret == -EINTR {
+			continue;
+		}
 		if ret < 0 {
 			return ret;
 		}
@@ -51,6 +60,10 @@ read_fill(fd: int, buf: *byte, n: int): int {
 		}
 
 		ret = read(fd, buf, n);
+		if ret == -EINTR {
+			continue;
+		}
+
 		if ret <= 0 {
 			return -1;
 		}
@@ -1265,7 +1278,7 @@ doauth(ctx: *sshd_ctx) {
 		// <- SSH_MSG_USERAUTH_REQUEST
 		read_frame(ctx);
 		decode_userauth_request(&cua, ctx);
-		if !ssh_streq(&cua.service, "ssh-connection") || !ssh_streq(&cua.user, "erai") {
+		if !ssh_streq(&cua.service, "ssh-connection") || !ssh_streq(&cua.user, ctx.username) {
 			die("bad auth");
 		}
 
@@ -1312,7 +1325,7 @@ doauth(ctx: *sshd_ctx) {
 	encode_str(&s, ctx);
 	b = SSH_MSG_USERAUTH_REQUEST;
 	encode_u8(&b, ctx);
-	set_str(&s, "erai");
+	set_str(&s, ctx.username);
 	encode_str(&s, ctx);
 	set_str(&s, "ssh-connection");
 	encode_str(&s, ctx);
@@ -1520,6 +1533,20 @@ dorequest(ctx: *sshd_ctx) {
 	}
 }
 
+struct pfd4 {
+	p0: int;
+	p1: int;
+	p2: int;
+	p3: int;
+}
+
+reset_pfd(pfd: *int, ctx: *sshd_ctx) {
+	pfd[0] = ctx.fd | (POLLIN << 32);
+	pfd[1] = ctx.child_stdin | (POLLOUT << 32);
+	pfd[2] = ctx.child_stdout | (POLLIN << 32);
+	pfd[3] = ctx.child_stderr | (POLLIN << 32);
+}
+
 client_loop(ctx: *sshd_ctx) {
 	var tag: int;
 
@@ -1575,6 +1602,7 @@ struct sshd_ctx {
 	userpub: _ed25519_pub;
 	hostkey: *byte;
 	hostkeylen: int;
+	username: *byte;
 	userkey: *byte;
 	userkeylen: int;
 	buf: *byte;
@@ -1625,6 +1653,25 @@ format_key(d: **byte, dlen: *int, k: *byte, ctx: *sshd_ctx) {
 	clear_frame(ctx);
 }
 
+dosigchld() {
+	loop {
+		if wait(-1, 0:*int, WNOHANG) < 0 {
+			break;
+		}
+	}
+}
+
+_restorer();
+
+signal(sig: int, handler: func()) {
+	var act: sigaction;
+	act.handler = (&dosigchld):int;
+	act.flags = 1 << 26;
+	act.restorer = _restorer:int;
+	act.mask = 0;
+	sigaction(sig, &act, 0:*sigaction);
+}
+
 main(argc: int, argv: **byte, envp: **byte) {
 	var fd: int;
 	var cfd: int;
@@ -1633,6 +1680,8 @@ main(argc: int, argv: **byte, envp: **byte) {
 	var ctx: sshd_ctx;
 	var a: alloc;
 	setup_alloc(&a);
+
+	signal(SIGCHLD, dosigchld);
 
 	bzero((&ctx):*byte, sizeof(ctx));
 
@@ -1649,6 +1698,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	ctx.ckex = alloc(ctx.a, 4096);
 	ctx.sver = "SSH-2.0-omiltem";
 
+	ctx.username = "erai";
 	format_key(&ctx.hostkey, &ctx.hostkeylen, (&ctx.pub):*byte, &ctx);
 	format_key(&ctx.userkey, &ctx.userkeylen, (&ctx.userpub):*byte, &ctx);
 
@@ -1657,7 +1707,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 		die("failed to open socket");
 	}
 
-	port = 2020;
+	port = 2222;
 	sa.fpa = AF_INET | ((port & 0xff) << 24) | (((port >> 8) & 0xff) << 16);
 	sa.pad = 0;
 	if bind(fd, (&sa):*byte, sizeof(sa)) != 0 {
@@ -1670,8 +1720,12 @@ main(argc: int, argv: **byte, envp: **byte) {
 
 	loop {
 		ctx.fd = accept(fd, 0:*byte, 0:*int);
-		if ctx.fd < 0 {
+		if ctx.fd == -EINTR {
 			continue;
+		}
+
+		if ctx.fd < 0 {
+			exit(1);
 		}
 
 		if fork() == 0 {
