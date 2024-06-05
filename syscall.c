@@ -8,6 +8,7 @@ enum {
 	O_DIRECTORY = 0x1000,
 
 	EINTR = 4,
+	EPIPE = 32,
 
 	AF_INET = 2,
 	SOCK_STREAM = 1,
@@ -25,6 +26,7 @@ enum {
 	SIG_IGN = 1,
 
 	SIGINT = 2,
+	SIGPIPE = 13,
 	SIGALRM = 14,
 	SIGCHLD = 17,
 	SIGWINCH = 28,
