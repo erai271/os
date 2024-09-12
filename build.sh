@@ -8,7 +8,7 @@ BOOT="pxe.asm"
 SSHD="chacha20.c poly1305.c sha256.c sha512.c ed25519.c sshd.c"
 KERNEL="kernel.c"
 SHELL="echo.c cmp.c rm.c ls.c cat.c xxd.c mv.c mkdir.c cpio.c sh.c"
-BIN="echo cmp rm ls cat xxd mv mkdir cpio sh sshd init cc1 cc2 build.sh peg.peg cc2.peg"
+BIN="echo cmp rm ls cat xxd mv mkdir cpio sh sshd init cc1 cc2 build.sh peg.peg cc3.peg"
 ALL="${LIBS} ${CC} ${PEG} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
 
 ./cc1 ${LIBS} ${CC} -o cc2
