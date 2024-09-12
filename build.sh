@@ -3,18 +3,18 @@
 LIBS="bufio.c lib.c alloc.c syscall.c"
 CRYPTO="ed25519.c sha512.c sha256.c chacha20.c poly1305.c"
 CC="cc1.c type.c parse1.c lex1.c as.c"
-GENLEX="genlex.c"
+PEG="peg.c"
 BOOT="pxe.asm"
 SSHD="chacha20.c poly1305.c sha256.c sha512.c ed25519.c sshd.c"
 KERNEL="kernel.c"
 SHELL="echo.c cmp.c rm.c ls.c cat.c xxd.c mv.c mkdir.c cpio.c sh.c"
-BIN="echo cmp rm ls cat xxd mv mkdir cpio sh sshd init cc1 cc2 build.sh cc3.l"
-ALL="${LIBS} ${CC} ${GENLEX} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
+BIN="echo cmp rm ls cat xxd mv mkdir cpio sh sshd init cc1 cc2 build.sh peg.peg cc2.peg"
+ALL="${LIBS} ${CC} ${PEG} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
 
 ./cc1 ${LIBS} ${CC} -o cc2
 
-./cc2 ${LIBS} ${GENLEX} -o genlex
-./genlex < cc3.l > lex3.c
+./cc1 ${LIBS} ${PEG} -o peg
+./peg peg.peg
 
 ./cc2 ${LIBS} echo.c -o echo
 ./cc2 ${LIBS} cmp.c -o cmp
