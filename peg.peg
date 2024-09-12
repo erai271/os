@@ -1,0 +1,15 @@
+grammar <- sp rule+ !.
+rule <- ident '<-' sp pattern
+pattern <- alt ( '/' sp alt )*
+preop <- [!&] sp
+alt <- ( preop? suffix )+
+postop <- [*+?] sp
+suffix <- primary postop*
+primary <- group / any / literal / charclass / nonterminal
+group <- '(' sp pattern ')' sp
+any <- '.' sp
+literal <- ['] ( !['] . )* ['] sp
+charclass <- '[' ( !']' ( . '-' . / . ) )* ']' sp
+nonterminal <- ident !'<-'
+ident <- [a-zA-Z]+ sp
+sp <- ( [ \t\r\n] / '#' ( ![\r\n] . )* )*

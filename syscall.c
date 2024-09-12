@@ -61,6 +61,10 @@ poll(pfd: *int, nfd: int, timeout: int): int {
 	return syscall(7, pfd:int, nfd, timeout, 0, 0, 0);
 }
 
+lseek(fd: int, off: int, whence: int): int {
+	return syscall(8, fd, off, whence, 0, 0, 0);
+}
+
 mmap(addr: int, len: int, prot: int, flags: int, fd: int, off: int): int {
 	return syscall(9, addr, len, prot, flags, fd, off);
 }

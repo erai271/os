@@ -1,0 +1,120 @@
+grammar <- sp (enum_decl / struct_decl / func_decl)* !.
+
+enum_decl <- enum ident '{' sp (ident (',' ident)*)? (',' sp)? '}' sp
+
+struct_decl <- struct ident '{' sp (ident ':' sp type ';' sp)* '}' sp
+
+func_decl <- ident func_type (';' / '{' sp stmt* '}' ) sp
+
+type <- ident
+      / byte
+      / int
+      / void
+      / '*' sp type
+      / '(' sp type ')' sp
+      / func func_type
+
+func_type <- '(' sp
+             ( ident ':' sp type (',' sp ident ':' sp type)* )?
+             ( ',' sp )?
+             ')' sp (':' sp type)?
+
+stmt <- if_stmt
+      / loop_stmt
+      / break_stmt
+      / continue_stmt
+      / return_stmt
+      / var_stmt
+      / label_stmt
+      / goto_stmt
+      / assign_stmt
+      / expr_stmt
+      / empty_stmt
+
+if_stmt <- if expr '{' sp stmt* '}' sp
+           (else if expr '{' sp stmt* '}' sp)*
+           (else '{' sp stmt '}' sp)?
+
+loop_stmt <- 'loop' sp '{' sp stmt* '}' sp
+
+break_stmt <- 'break' sp ';' sp
+
+continue_stmt <- 'continue' sp ';' sp
+
+return_stmt <- return expr? sp ';' sp
+
+var_stmt <- var ident ':' sp type ';' sp
+
+label_stmt <- ':' sp ident ';' sp
+
+goto_stmt <- goto ident ';' sp
+
+assign_stmt <- unary_expr '=' sp expr ';' sp
+
+expr_stmt <- expr ';' sp
+
+empty_stmt <- ';' sp
+
+bool_expr <- comp_expr (('&&' / '||') sp comp_expr)*
+
+comp_expr <- add_expr (('<=' / '>=' / '<' / '>' / '==' / '!=') sp add_expr)?
+
+add_expr <- mul_expr (('+' / '-' / '|' / '^') sp add_expr)*
+
+mul_expr <- shift_expr (('*' / '/' / '%' / '&') sp mul_expr)*
+
+shift_expr <- unary_expr (('<<' / '>>') sp shift_expr)*
+
+unary_expr <- (('&' / '*' / '+' / '-' / '~' / '!') sp)* post_expr
+
+post_expr <- primary ( '[' sp expr ']' sp
+                     / '(' sp ( expr (',' sp expr)* )? (',' sp)? ')' sp
+                     / '.' sp ident
+                     / ':' sp type )*
+
+primary <- ident
+         / literal
+         / '(' sp expr ')' sp
+         / sizeof '(' sp expr ')' sp
+
+literal <- '0x'[0-9a-fA-F]+ sp
+         / [0-9]+ sp
+         / ["] ([\\] . / .)* ["] sp
+         / ['] ([\\] . / .) ['] sp
+
+reserved <- return
+          / break
+          / sizeof
+          / if
+          / else
+          / loop
+          / continue
+          / goto
+          / var
+          / enum
+          / struct
+          / byte
+          / int
+          / void
+
+return <- 'return' tc
+break <- 'break' tc
+sizeof <- 'sizeof' tc
+if <- 'if' tc
+else <- 'else' tc
+loop <- 'loop' tc
+continue <- 'continue' tc
+goto <- 'goto' tc
+var <- 'var' tc
+enum <- 'enum' tc
+struct <- 'struct' tc
+byte <- 'byte' tc
+int <- 'int' tc
+void <- 'void' tc
+
+ident <- !reserved [a-zA-Z_][a-zA-Z0-9_]* sp
+
+tc <- ![a-zA-Z0-9_] sp
+
+sp <- ( [ \r\n\t]
+      / '//' (![\r\n] .)* )*

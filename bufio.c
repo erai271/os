@@ -153,3 +153,10 @@ fputs(f: *file, s: *byte) {
 		i = i + 1;
 	}
 }
+
+fseek(f: *file, off: int) {
+	f.r = 0;
+	f.w = 0;
+	f.eof = 0;
+	lseek(f.fd, off, 0);
+}
