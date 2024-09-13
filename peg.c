@@ -24,6 +24,9 @@ struct peg {
 	op: int;
 	out: *peg_op;
 	cap: int;
+	nstack: **peg_node;
+	np: int;
+	ncap: int;
 }
 
 enum {
@@ -629,17 +632,106 @@ p_sp(c: *peg): int {
 	return OK;
 }
 
+struct peg_node {
+	tag: int;
+	next: *peg_node;
+	child: *peg_node;
+	str: *byte;
+	len: int;
+}
+
+construct(c: *peg): *peg_node {
+	var i: int;
+	var j: int;
+	var nargs: int;
+	var n: *peg_node;
+	var link: **peg_node;
+
+	c.nstack[0] = 0:*peg_node;
+
+	i = 0;
+	loop {
+		if i == c.op {
+			return c.nstack[0];
+		}
+
+		n = alloc(c.a, sizeof(*n)):*peg_node;
+
+		n.tag = c.out[i].tag;
+		n.next = 0:*peg_node;
+		n.child = 0:*peg_node;
+		n.str = &c.src[c.out[i].start];
+		n.len = c.out[i].end - c.out[i].start;
+
+		nargs = c.out[i].nargs;
+		if nargs > c.np {
+			die("node underflow");
+		}
+
+		link = &n.child;
+		j = c.np - nargs;
+		loop {
+			if j == c.np {
+				break;
+			}
+
+			*link = c.nstack[j];
+			link = &c.nstack[j].next;
+
+			j = j + 1;
+		}
+
+		c.np = c.np - nargs;
+		if c.np == c.ncap {
+			die("node overflow");
+		}
+
+		c.nstack[c.np] = n;
+		c.np = c.np + 1;
+
+		i = i + 1;
+	}
+}
+
+show(n: *peg_node) {
+	fdputc(1, '(');
+	fdputs(1, tag_to_str(n.tag));
+	if n.child {
+		n = n.child;
+		loop {
+			if !n {
+				break;
+			}
+
+			fdputc(1, ' ');
+			show(n);
+
+			n = n.next;
+		}
+	} else {
+		fdputc(1, ' ');
+		fdputc(1, '"');
+		write(1, n.str, n.len);
+		fdputc(1, '"');
+	}
+	fdputc(1, ')');
+}
+
 main(argc: int, argv: **byte, envp: **byte) {
 	var fd: int;
 	var a: alloc;
 	var c: peg;
-	var i: int;
+	var node: *peg_node;
 	setup_alloc(&a);
 
 	c.a = &a;
 	c.pos = 0;
 	c.limit = 1024;
 	c.stack = alloc(c.a, c.limit * sizeof(c.stack[0])):*peg_frame;
+
+	c.ncap = 1024;
+	c.np = 0;
+	c.nstack = alloc(c.a, c.ncap * sizeof(c.nstack[0])):**peg_node;
 
 	if argc != 2 {
 		die("usage: ./peg <grammar.peg>");
@@ -660,28 +752,6 @@ main(argc: int, argv: **byte, envp: **byte) {
 	}
 	commit(&c);
 
-	i = 0;
-	loop {
-		if i == c.op {
-			break;
-		}
-
-		if c.out[i].nargs == 0 {
-			fdputs(1, tag_to_str(c.out[i].tag));
-			fdputc(1, ' ');
-			fdputc(1, '"');
-			write(1, &c.src[c.out[i].start], c.out[i].end - c.out[i].start);
-			fdputc(1, '"');
-			fdputc(1, '\n');
-		}
-
-		if c.out[i].nargs != 0 {
-			fdputs(1, tag_to_str(c.out[i].tag));
-			fdputc(1, ' ');
-			fdputd(1, c.out[i].nargs);
-			fdputc(1, '\n');
-		}
-
-		i = i + 1;
-	}
+	node = construct(&c);
+	show(node);
 }
