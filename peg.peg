@@ -1,15 +1,15 @@
 grammar <- sp rule+ !.
-rule <- ident '<-' sp pattern
-pattern <- alt ( '/' sp alt )*
-preop <- [!&] sp
-alt <- ( preop? suffix )+
-postop <- [*+?] sp
-suffix <- primary postop*
-primary <- group / any / literal / charclass / nonterminal
-group <- '(' sp pattern ')' sp
-any <- '.' sp
-literal <- ['] ( !['] . )* ['] sp
-charclass <- '[' ( !']' ( . '-' . / . ) )* ']' sp
-nonterminal <- ident !'<-'
-ident <- [a-zA-Z]+ sp
-sp <- ( [ \t\r\n] / '#' ( ![\r\n] . )* )*
+rule <- identifier sp '<-' sp pattern
+pattern <- alternative ( '/' !'/' sp alternative )*
+alternative <- lookahead+
+lookop <- [!&]
+lookahead <- (lookop sp)? suffix
+countop <- [*+?]
+suffix <- primary (countop sp)*
+primary <- ( '(' sp pattern ')' / any / literal / class / call ) sp
+any <- '.'
+literal <- ['] ( !['] . )* [']
+class <- '[' ( !']' ( . '-' . / . ) )* ']'
+call <- identifier !(sp '<-')
+identifier <- [a-zA-Z0-9_]+
+sp <- ( [ \t\r\n] / '//' ( ![\r\n] . )* )*

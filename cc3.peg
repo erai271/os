@@ -35,11 +35,11 @@ if_stmt <- if expr '{' sp stmt* '}' sp
            (else if expr '{' sp stmt* '}' sp)*
            (else '{' sp stmt '}' sp)?
 
-loop_stmt <- 'loop' sp '{' sp stmt* '}' sp
+loop_stmt <- loop '{' sp stmt* '}' sp
 
-break_stmt <- 'break' sp ';' sp
+break_stmt <- break ';' sp
 
-continue_stmt <- 'continue' sp ';' sp
+continue_stmt <- continue sp ';' sp
 
 return_stmt <- return expr? sp ';' sp
 
@@ -116,5 +116,4 @@ ident <- !reserved [a-zA-Z_][a-zA-Z0-9_]* sp
 
 tc <- ![a-zA-Z0-9_] sp
 
-sp <- ( [ \r\n\t]
-      / '//' (![\r\n] .)* )*
+sp <- ( [ \r\n\t] / '//' (![\r\n] .)* )*

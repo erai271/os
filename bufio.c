@@ -158,5 +158,41 @@ fseek(f: *file, off: int) {
 	f.r = 0;
 	f.w = 0;
 	f.eof = 0;
-	lseek(f.fd, off, 0);
+	if lseek(f.fd, off, 0) != off {
+		die("invalid seek");
+	}
+}
+
+freadall(f: *file, size: *int): *byte {
+	var i: int;
+	var cap: int;
+	var ret: *byte;
+	var tmp: *byte;
+	var ch: int;
+
+	i = 0;
+	cap = 0;
+	loop {
+		ch = fgetc(f);
+		if ch == -1 {
+			*size = i;
+			return ret;
+		}
+
+		if i == cap {
+			if cap == 0 {
+				cap = 4096;
+				ret = alloc(f.a, cap);
+			} else {
+				cap = cap * 2;
+				tmp = alloc(f.a, cap);
+				memcpy(tmp, ret, i);
+				free(f.a, ret);
+				ret = tmp;
+			}
+		}
+
+		ret[i] = ch:byte;
+		i = i + 1;
+	}
 }
