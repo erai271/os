@@ -3,7 +3,7 @@
 LIBS="bufio.c lib.c alloc.c syscall.c"
 CRYPTO="ed25519.c sha512.c sha256.c chacha20.c poly1305.c"
 CC="cc1.c type.c parse1.c lex1.c as.c"
-PEG="peg.c peglib.c"
+PEG="peg.c peglib.c parsepeg.c"
 BOOT="pxe.asm"
 SSHD="chacha20.c poly1305.c sha256.c sha512.c ed25519.c sshd.c"
 KERNEL="kernel.c"
