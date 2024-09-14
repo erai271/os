@@ -4,6 +4,7 @@ disk
 cc0
 cc1
 cc2
+cc3
 gencc
 parse3.c
 pxe

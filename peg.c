@@ -776,7 +776,7 @@ translate_literal(c: *peg, n: *peg_node) {
 
 		ch = n.str[i]:int;
 
-		if ch < 32 || ch > 127 {
+		if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
 			fputc(c.fout, '\\');
 			fputc(c.fout, 'x');
 			fputc(c.fout, hex[ch >> 4]:int);
@@ -914,7 +914,7 @@ translate_charset(c: *peg, n: *peg_node) {
 		}
 
 		if c.scratch[i] {
-			if i < 32 || i > 127 {
+			if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
 				fputc(c.fout, '\\');
 				fputc(c.fout, 'x');
 				fputc(c.fout, hex[i >> 4]:int);
@@ -1002,7 +1002,7 @@ translate_pattern(c: *peg, n: *peg_node) {
 				fputs(c.fout, "    loop {\n");
 				fputs(c.fout, "    choice(c);\n");
 				translate_pattern(c, n.child);
-				fputs(c.fout, "    if !ok { break }\n");
+				fputs(c.fout, "    if !ok { ok = 1; break; }\n");
 				fputs(c.fout, "    commit(c);\n");
 				fputs(c.fout, "    }\n");
 			} else if count == ONE_OR_MORE {
@@ -1011,7 +1011,7 @@ translate_pattern(c: *peg, n: *peg_node) {
 				fputs(c.fout, "    loop {\n");
 				fputs(c.fout, "    choice(c);\n");
 				translate_pattern(c, n.child);
-				fputs(c.fout, "    if !ok { break }\n");
+				fputs(c.fout, "    if !ok { ok = 1; break; }\n");
 				fputs(c.fout, "    commit(c);\n");
 				fputs(c.fout, "    }\n");
 				fputs(c.fout, "    }\n");
@@ -1065,6 +1065,27 @@ translate(c: *peg, n: *peg_node) {
 
 		v = v.next;
 	}
+	fputs(c.fout, "}\n");
+
+	// Generate tag to string
+	fputs(c.fout, "\ntag_to_str(tag: int): *byte {\n");
+	v = n.child;
+	loop {
+		if !v {
+			break;
+		}
+
+		if v.tag == P_rule {
+			fputs(c.fout, "    if tag == P_");
+			fputb(c.fout, v.child.str, v.child.len);
+			fputs(c.fout, " { return \"");
+			fputb(c.fout, v.child.str, v.child.len);
+			fputs(c.fout, "\"; }\n");
+		}
+
+		v = v.next;
+	}
+	fputs(c.fout, "    die(\"invalid tag\");\n");
 	fputs(c.fout, "}\n");
 
 	// Generate parsing functions for each rule
