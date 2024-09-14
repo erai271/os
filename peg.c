@@ -77,6 +77,7 @@ translate_literal(c: *compiler, n: *peg_node) {
 
 	hex = "0123456789abcdef";
 
+	fputs(c.out, "    ok = literal(c, \"");
 	i = 1;
 	len = n.len - 1;
 	loop {
@@ -97,6 +98,7 @@ translate_literal(c: *compiler, n: *peg_node) {
 
 		i = i + 1;
 	}
+	fputs(c.out, "\");\n");
 }
 
 hexdig(c: byte): int {
@@ -166,6 +168,7 @@ translate_charset(c: *compiler, n: *peg_node) {
 	var a: int;
 	var b: int;
 	var hex: *byte;
+	var count: int;
 
 	hex = "0123456789abcdef";
 
@@ -217,6 +220,29 @@ translate_charset(c: *compiler, n: *peg_node) {
 		}
 	}
 
+	count = 0;
+	i = 1;
+	loop {
+		if i == 256 {
+			break;
+		}
+		count = count + c.scratch[i]:int;
+		i = i + 1;
+	}
+
+	if count == 0 {
+		fputs(c.out, "    fail(c);\n");
+		fputs(c.out, "    ok = 0;\n");
+		return;
+	} else if count >= 255 {
+		fputs(c.out, "    ok = any(c);\n");
+		return;
+	} else if count == 1 {
+		fputs(c.out, "    ok = literal(c, \"");
+	} else {
+		fputs(c.out, "    ok = charset(c, \"");
+	}
+
 	i = 1;
 	loop {
 		if i == 256 {
@@ -236,6 +262,7 @@ translate_charset(c: *compiler, n: *peg_node) {
 
 		i = i + 1;
 	}
+	fputs(c.out, "\");\n");
 }
 
 translate_pattern(c: *compiler, n: *peg_node) {
@@ -333,13 +360,9 @@ translate_pattern(c: *compiler, n: *peg_node) {
 		} else if n.tag == P_any {
 			fputs(c.out, "    ok = any(c);\n");
 		} else if n.tag == P_literal {
-			fputs(c.out, "    ok = literal(c, \"");
 			translate_literal(c, n);
-			fputs(c.out, "\");\n");
 		} else if n.tag == P_class {
-			fputs(c.out, "    ok = charset(c, \"");
 			translate_charset(c, n);
-			fputs(c.out, "\");\n");
 		} else if n.tag == P_call {
 			fputs(c.out, "    ok = p_");
 			fputb(c.out, n.child.str, n.child.len);
@@ -410,7 +433,9 @@ translate(c: *compiler, n: *peg_node) {
 			fputb(c.out, v.child.str, v.child.len);
 			fputs(c.out, "(c: *peg): int {\n");
 			fputs(c.out, "    var ok: int;\n");
-			fputs(c.out, "    enter(c);\n");
+			fputs(c.out, "    enter(c, P_");
+			fputb(c.out, v.child.str, v.child.len);
+			fputs(c.out, ");\n");
 			translate_pattern(c, v.child.next);
 			fputs(c.out, "    if ok { leave(c, P_");
 			fputb(c.out, v.child.str, v.child.len);
@@ -434,10 +459,12 @@ main(argc: int, argv: **byte, envp: **byte) {
 	var src: *byte;
 	var len: int;
 	var node: *peg_node;
+	var filename: *byte;
 	setup_alloc(&a);
 
 	ifd = 0;
 	ofd = 1;
+	filename = "-";
 
 	i = 1;
 	loop {
@@ -470,6 +497,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 			die("too many inputs");
 		}
 
+		filename = argv[i];
 		ifd = open(argv[i], 0, 0);
 		if ifd < 0 {
 			die("failed to open input");
@@ -488,7 +516,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	out = fopen(ofd, c.a);
 	c.out = out;
 
-	c.p = peg_new(src, len, c.a);
+	c.p = peg_new(filename, src, len, c.a);
 	node = peg_parse(c.p);
 
 	translate(&c, node);

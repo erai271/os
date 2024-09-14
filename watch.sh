@@ -1,6 +1,6 @@
 #!/bin/sh
 clear
-./pxe.sh
+sh -e ./build.sh
 echo status $?
 : < ~/.post
 exec "$0"

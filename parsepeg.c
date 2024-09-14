@@ -37,7 +37,7 @@ tag_to_str(tag: int): *byte {
 
 p_grammar(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_grammar);
     ok = p_sp(c);
     if ok {
     ok = p_rule(c);
@@ -61,7 +61,7 @@ p_grammar(c: *peg): int {
 
 p_rule(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_rule);
     ok = p_identifier(c);
     if ok {
     ok = p_sp(c);
@@ -81,7 +81,7 @@ p_rule(c: *peg): int {
 
 p_pattern(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_pattern);
     ok = p_alternative(c);
     if ok {
     loop {
@@ -108,7 +108,7 @@ p_pattern(c: *peg): int {
 
 p_alternative(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_alternative);
     ok = p_lookahead(c);
     if ok {
     loop {
@@ -124,7 +124,7 @@ p_alternative(c: *peg): int {
 
 p_lookop(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_lookop);
     ok = charset(c, "!&");
     if ok { leave(c, P_lookop); } else { fail(c); }
     return ok;
@@ -132,7 +132,7 @@ p_lookop(c: *peg): int {
 
 p_lookahead(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_lookahead);
     choice(c);
     ok = p_lookop(c);
     if ok {
@@ -148,7 +148,7 @@ p_lookahead(c: *peg): int {
 
 p_countop(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_countop);
     ok = charset(c, "*+?");
     if ok { leave(c, P_countop); } else { fail(c); }
     return ok;
@@ -156,7 +156,7 @@ p_countop(c: *peg): int {
 
 p_suffix(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_suffix);
     ok = p_primary(c);
     if ok {
     loop {
@@ -175,7 +175,7 @@ p_suffix(c: *peg): int {
 
 p_primary(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_primary);
     choice(c);
     ok = literal(c, "(");
     if ok {
@@ -221,7 +221,7 @@ p_primary(c: *peg): int {
 
 p_any(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_any);
     ok = literal(c, ".");
     if ok { leave(c, P_any); } else { fail(c); }
     return ok;
@@ -229,13 +229,13 @@ p_any(c: *peg): int {
 
 p_literal(c: *peg): int {
     var ok: int;
-    enter(c);
-    ok = charset(c, "'");
+    enter(c, P_literal);
+    ok = literal(c, "'");
     if ok {
     loop {
     choice(c);
     choice(c);
-    ok = charset(c, "'");
+    ok = literal(c, "'");
     if ok { fail(c); fail(c); ok = 0; } else { ok = 1; }
     if ok {
     ok = any(c);
@@ -245,7 +245,7 @@ p_literal(c: *peg): int {
     }
     }
     if ok {
-    ok = charset(c, "'");
+    ok = literal(c, "'");
     }
     if ok { leave(c, P_literal); } else { fail(c); }
     return ok;
@@ -253,7 +253,7 @@ p_literal(c: *peg): int {
 
 p_class(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_class);
     ok = literal(c, "[");
     if ok {
     loop {
@@ -291,7 +291,7 @@ p_class(c: *peg): int {
 
 p_call(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_call);
     ok = p_identifier(c);
     if ok {
     choice(c);
@@ -307,7 +307,7 @@ p_call(c: *peg): int {
 
 p_identifier(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_identifier);
     ok = charset(c, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz");
     if ok {
     loop {
@@ -323,7 +323,7 @@ p_identifier(c: *peg): int {
 
 p_sp(c: *peg): int {
     var ok: int;
-    enter(c);
+    enter(c, P_sp);
     loop {
     choice(c);
     choice(c);

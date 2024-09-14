@@ -18,7 +18,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	src = freadall(f, &len);
 	fclose(f);
 
-	peg = peg_new(src, len, &a);
+	peg = peg_new(argv[1], src, len, &a);
 	node = peg_parse(peg);
 	peg_free(peg);
 

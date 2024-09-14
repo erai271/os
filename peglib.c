@@ -2,6 +2,9 @@ struct peg_frame {
 	pos: int;
 	depth: int;
 	op: int;
+	tag: int;
+	line: int;
+	col: int;
 }
 
 struct peg_op {
@@ -14,9 +17,20 @@ struct peg_op {
 struct peg {
 	a: *alloc;
 
+	filename: *byte;
+
 	src: *byte;
 	size: int;
 	pos: int;
+	line: int;
+	col: int;
+	tag: int;
+
+	fail_depth: int;
+	fail_tag: int;
+	fail_line: int;
+	fail_col: int;
+	fail_literal: *byte;
 
 	stack: *peg_frame;
 	sp: int;
@@ -47,6 +61,9 @@ choice(c: *peg) {
 	c.stack[c.sp].pos = c.pos;
 	c.stack[c.sp].depth = c.depth;
 	c.stack[c.sp].op = c.op;
+	c.stack[c.sp].tag = c.tag;
+	c.stack[c.sp].line = c.line;
+	c.stack[c.sp].col = c.col;
 	c.sp = c.sp + 1;
 }
 
@@ -61,10 +78,22 @@ fail(c: *peg) {
 	if c.sp == 0 {
 		die("fail underflow");
 	}
+
+	if c.depth > c.fail_depth {
+		c.fail_depth = c.depth;
+		c.fail_tag = c.tag;
+		c.fail_line = c.line;
+		c.fail_col = c.col;
+		c.fail_literal = 0:*byte;
+	}
+
 	c.sp = c.sp - 1;
 	c.pos = c.stack[c.sp].pos;
 	c.depth = c.stack[c.sp].depth;
 	c.op = c.stack[c.sp].op;
+	c.tag = c.stack[c.sp].tag;
+	c.line = c.stack[c.sp].line;
+	c.col = c.stack[c.sp].col;
 }
 
 get(c: *peg): int {
@@ -76,6 +105,16 @@ get(c: *peg): int {
 
 	ch = c.src[c.pos]:int;
 	c.pos = c.pos + 1;
+	c.col = c.col + 1;
+
+	if ch == '\n' {
+		c.col = 1;
+		c.line = c.line + 1;
+	}
+
+	if ch == 0 {
+		die("invalid nul in source");
+	}
 
 	return ch;
 }
@@ -93,6 +132,7 @@ literal(c: *peg, s: *byte): int {
 		ch = get(c);
 		if ch != (s[i]:int) {
 			fail(c);
+			c.fail_literal = s;
 			return 0;
 		}
 
@@ -102,8 +142,9 @@ literal(c: *peg, s: *byte): int {
 	return 1;
 }
 
-enter(c: *peg) {
+enter(c: *peg, tag: int) {
 	choice(c);
+	c.tag = tag;
 }
 
 leave(c: *peg, tag: int) {
@@ -113,6 +154,7 @@ leave(c: *peg, tag: int) {
 	var tmp: *byte;
 
 	commit(c);
+	c.fail_depth = 0;
 
 	nargs = c.depth - c.stack[c.sp].depth;
 	start = c.stack[c.sp].pos;
@@ -226,16 +268,28 @@ construct(c: *peg): *peg_node {
 	}
 }
 
-peg_new(src: *byte, len: int, a: *alloc): *peg {
+peg_new(filename: *byte, src: *byte, len: int, a: *alloc): *peg {
 	var c: *peg;
 
 	c = alloc(a, sizeof(*c)):*peg;
 
 	c.a = a;
 
+	c.filename = filename;
+
 	c.src = src;
 	c.size = len;
 	c.pos = 0;
+	c.tag = 0;
+	c.line = 1;
+	c.col = 1;
+	c.tag = 0;
+
+	c.fail_depth = 0;
+	c.fail_tag = 0;
+	c.fail_line = 0;
+	c.fail_col = 0;
+	c.fail_literal = 0:*byte;
 
 	c.limit = 1024;
 	c.stack = alloc(a, c.limit * sizeof(*c.stack)):*peg_frame;
@@ -256,7 +310,21 @@ peg_new(src: *byte, len: int, a: *alloc): *peg {
 peg_parse(c: *peg): *peg_node {
 	choice(c);
 	if !p_grammar(c) {
-		die("syntax error");
+		fdputs(2, "syntax error at ");
+		fdputs(2, c.filename);
+		fdputs(2, ":");
+		fdputd(2, c.fail_line);
+		fdputs(2, ":");
+		fdputd(2, c.fail_col);
+		fdputs(2, " expected ");
+		fdputs(2, tag_to_str(c.fail_tag));
+		if c.fail_literal {
+			fdputs(2, " '");
+			fdputs(2, c.fail_literal);
+			fdputs(2, "'");
+		}
+		fdputs(2, "\n");
+		exit(1);
 	}
 	commit(c);
 	return construct(c);
@@ -266,6 +334,15 @@ peg_reset(c: *peg, src: *byte, len: int) {
 	c.src = src;
 	c.size = len;
 	c.pos = 0;
+	c.tag = 0;
+	c.line = 1;
+	c.col = 1;
+	c.tag = 0;
+	c.fail_depth = 0;
+	c.fail_tag = 0;
+	c.fail_line = 0;
+	c.fail_col = 0;
+	c.fail_literal = 0:*byte;
 	c.depth = 0;
 	c.sp = 0;
 	c.op = 0;
