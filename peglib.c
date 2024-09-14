@@ -215,7 +215,7 @@ any(c: *peg): int {
 	return 1;
 }
 
-construct(c: *peg): *peg_node {
+construct(c: *peg, sp: int): *peg_node {
 	var i: int;
 	var j: int;
 	var nargs: int;
@@ -250,8 +250,12 @@ construct(c: *peg): *peg_node {
 				break;
 			}
 
-			*link = c.nstack[j];
-			link = &c.nstack[j].next;
+			if c.nstack[j].tag != sp {
+				*link = c.nstack[j];
+				link = &c.nstack[j].next;
+			} else {
+				free(c.a, c.nstack[j]:*byte);
+			}
 
 			j = j + 1;
 		}
@@ -307,7 +311,7 @@ peg_new(filename: *byte, src: *byte, len: int, a: *alloc): *peg {
 	return c;
 }
 
-peg_parse(c: *peg): *peg_node {
+peg_parse(c: *peg, sp: int): *peg_node {
 	choice(c);
 	if !p_grammar(c) {
 		fdputs(2, "syntax error at ");
@@ -327,7 +331,7 @@ peg_parse(c: *peg): *peg_node {
 		exit(1);
 	}
 	commit(c);
-	return construct(c);
+	return construct(c, sp);
 }
 
 peg_reset(c: *peg, src: *byte, len: int) {

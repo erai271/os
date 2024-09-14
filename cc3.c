@@ -19,7 +19,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	fclose(f);
 
 	peg = peg_new(argv[1], src, len, &a);
-	node = peg_parse(peg);
+	node = peg_parse(peg, P_sp);
 	peg_free(peg);
 
 	out = fopen(1, &a);

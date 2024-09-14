@@ -191,22 +191,10 @@ p_primary(c: *peg): int {
     ok = p_any(c);
     }
     if !ok { choice(c);
-    ok = p_any(c);
-    }
-    if !ok { choice(c);
-    ok = p_literal(c);
-    }
-    if !ok { choice(c);
     ok = p_literal(c);
     }
     if !ok { choice(c);
     ok = p_class(c);
-    }
-    if !ok { choice(c);
-    ok = p_class(c);
-    }
-    if !ok { choice(c);
-    ok = p_call(c);
     }
     if !ok { choice(c);
     ok = p_call(c);
@@ -273,9 +261,6 @@ p_class(c: *peg): int {
     if !ok { choice(c);
     ok = any(c);
     }
-    if !ok { choice(c);
-    ok = any(c);
-    }
     if ok { commit(c); } else { fail(c); }
     }
     if !ok { ok = 1; break; }
@@ -328,22 +313,6 @@ p_sp(c: *peg): int {
     choice(c);
     choice(c);
     ok = charset(c, "\x09\x0a\x0d\x20");
-    if !ok { choice(c);
-    ok = literal(c, "//");
-    if ok {
-    loop {
-    choice(c);
-    choice(c);
-    ok = charset(c, "\x0a\x0d");
-    if ok { fail(c); fail(c); ok = 0; } else { ok = 1; }
-    if ok {
-    ok = any(c);
-    }
-    if !ok { ok = 1; break; }
-    commit(c);
-    }
-    }
-    }
     if !ok { choice(c);
     ok = literal(c, "//");
     if ok {

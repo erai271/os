@@ -517,7 +517,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	c.out = out;
 
 	c.p = peg_new(filename, src, len, c.a);
-	node = peg_parse(c.p);
+	node = peg_parse(c.p, P_sp);
 
 	translate(&c, node);
 
