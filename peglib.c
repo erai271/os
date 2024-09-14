@@ -280,6 +280,10 @@ peg_free(c: *peg) {
 }
 
 peg_show(out: *file, n: *peg_node) {
+	var i: int;
+	var ch: int;
+	var hex: *byte;
+	hex = "0123456789abcdef";
 	fputs(out, "(");
 	fputs(out, tag_to_str(n.tag));
 	if n.child {
@@ -297,7 +301,24 @@ peg_show(out: *file, n: *peg_node) {
 	} else {
 		fputc(out, ' ');
 		fputc(out, '"');
-		fputb(out, n.str, n.len);
+		i = 0;
+		loop {
+			if i == n.len {
+				break;
+			}
+
+			ch = n.str[i]:int;
+			if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
+				fputc(out, '\\');
+				fputc(out, 'x');
+				fputc(out, hex[ch >> 4]:int);
+				fputc(out, hex[ch & 15]:int);
+			} else {
+				fputc(out, ch);
+			}
+
+			i = i + 1;
+		}
 		fputc(out, '"');
 	}
 	fputs(out, ")");
