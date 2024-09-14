@@ -14,6 +14,9 @@ ALL="${LIBS} ${CC} ${PEG} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
 ./cc1 ${LIBS} ${CC} -o cc2
 
 ./cc1 ${LIBS} ${PEG} -o peg
+./peg -o parsepeg2.c peg.peg
+cmp parsepeg.c parsepeg2.c || echo peg mismatch
+
 ./peg -o parse3.c cc3.peg
 ./cc1 -o cc3 bufio.c lib.c alloc.c syscall.c peglib.c cc3.c parse3.c
 
