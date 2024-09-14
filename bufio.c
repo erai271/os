@@ -154,6 +154,18 @@ fputs(f: *file, s: *byte) {
 	}
 }
 
+fputb(f: *file, s: *byte, n: int) {
+	var i: int;
+	i = 0;
+	loop {
+		if i >= n {
+			break;
+		}
+		fputc(f, s[i]:int);
+		i = i + 1;
+	}
+}
+
 fseek(f: *file, off: int) {
 	f.r = 0;
 	f.w = 0;

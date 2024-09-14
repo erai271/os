@@ -69,6 +69,10 @@ mmap(addr: int, len: int, prot: int, flags: int, fd: int, off: int): int {
 	return syscall(9, addr, len, prot, flags, fd, off);
 }
 
+munmap(addr: int, len: int): int {
+	return syscall(11, addr, len, 0, 0, 0, 0);
+}
+
 struct sigaction {
 	handler: int;
 	flags: int;
