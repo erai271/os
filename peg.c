@@ -1,139 +1,13 @@
-struct peg_frame {
-	pos: int;
-	depth: int;
-	op: int;
-}
-
-struct peg_op {
-	tag: int;
-	nargs: int;
-	start: int;
-	end: int;
-}
-
-struct peg {
+struct compiler {
 	a: *alloc;
-	f: *file;
-	fout: *file;
-	src: *byte;
-	size: int;
-	pos: int;
-	stack: *peg_frame;
-	sp: int;
-	limit: int;
-	depth: int;
-	op: int;
-	out: *peg_op;
-	cap: int;
-	nstack: **peg_node;
-	np: int;
-	ncap: int;
+	p: *peg;
+	out: *file;
 	scratch: *byte;
 }
 
 enum {
 	FAIL = 0,
 	OK = 1,
-}
-
-choice(c: *peg) {
-	if c.sp == c.limit {
-		die("choice overflow");
-	}
-	c.stack[c.sp].pos = c.pos;
-	c.stack[c.sp].depth = c.depth;
-	c.stack[c.sp].op = c.op;
-	c.sp = c.sp + 1;
-}
-
-commit(c: *peg) {
-	if c.sp == 0 {
-		die("commit underflow");
-	}
-	c.sp = c.sp - 1;
-}
-
-fail(c: *peg) {
-	if c.sp == 0 {
-		die("fail underflow");
-	}
-	c.sp = c.sp - 1;
-	c.pos = c.stack[c.sp].pos;
-	c.depth = c.stack[c.sp].depth;
-	c.op = c.stack[c.sp].op;
-}
-
-get(c: *peg): int {
-	var ch: int;
-
-	if c.pos == c.size {
-		return -1;
-	}
-
-	ch = c.src[c.pos]:int;
-	c.pos = c.pos + 1;
-
-	return ch;
-}
-
-literal(c: *peg, s: *byte): int {
-	var i: int;
-	var ch: int;
-
-	i = 0;
-	loop {
-		if !s[i] {
-			break;
-		}
-
-		ch = get(c);
-		if ch != (s[i]:int) {
-			fail(c);
-			return FAIL;
-		}
-
-		i = i + 1;
-	}
-
-	return OK;
-}
-
-enter(c: *peg) {
-	choice(c);
-}
-
-leave(c: *peg, tag: int) {
-	var nargs: int;
-	var start: int;
-	var end: int;
-	var tmp: *byte;
-
-	commit(c);
-
-	nargs = c.depth - c.stack[c.sp].depth;
-	start = c.stack[c.sp].pos;
-	end = c.pos;
-
-	if c.op == c.cap {
-		if c.cap == 0 {
-			c.cap = 1024;
-			c.out = alloc(c.a, c.cap * sizeof(c.out[0])):*peg_op;
-		} else {
-			c.cap = c.cap * 2;
-			tmp = alloc(c.a, c.cap * sizeof(c.out[0]));
-			memcpy(tmp, c.out:*byte, c.op * sizeof(c.out[0]));
-			free(c.a, c.out:*byte);
-			c.out = tmp:*peg_op;
-		}
-	}
-
-	c.out[c.op].tag = tag;
-	c.out[c.op].nargs = nargs;
-	c.out[c.op].start = start;
-	c.out[c.op].end = end;
-
-	c.op = c.op + 1;
-	c.depth = c.depth - nargs + 1;
 }
 
 enum {
@@ -171,39 +45,6 @@ tag_to_str(tag: int): *byte {
 	if tag == P_identifier { return "P_identifier"; }
 	if tag == P_sp { return "P_sp"; }
 	return "(invalid)";
-}
-
-charclass(c: *peg, s: *byte): int {
-	var i: int;
-	var ch: int;
-
-	ch = get(c);
-
-	i = 0;
-	loop {
-		if !s[i] {
-			fail(c);
-			return FAIL;
-		}
-
-		if ch == (s[i]:int) {
-			break;
-		}
-
-		i = i + 1;
-	}
-
-	return OK;
-}
-
-any(c: *peg): int {
-	var ch: int;
-	ch = get(c);
-	if ch == -1 {
-		fail(c);
-		return FAIL;
-	}
-	return OK;
 }
 
 // grammar <- sp rule+ !.
@@ -314,7 +155,7 @@ p_pattern(c: *peg): int {
 p_lookop(c: *peg): int {
 	enter(c);
 
-	if !charclass(c, "!&") {
+	if !charset(c, "!&") {
 		fail(c);
 		return FAIL;
 	}
@@ -368,7 +209,7 @@ p_lookahead(c: *peg): int {
 p_countop(c: *peg): int {
 	enter(c);
 
-	if !charclass(c, "*+?") {
+	if !charset(c, "*+?") {
 		fail(c);
 		return FAIL;
 	}
@@ -569,7 +410,7 @@ p_identifier(c: *peg): int {
 
 	chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
 
-	if !charclass(c, chars) {
+	if !charset(c, chars) {
 		fail(c);
 		return FAIL;
 	}
@@ -577,7 +418,7 @@ p_identifier(c: *peg): int {
 	loop {
 		choice(c);
 
-		if !charclass(c, chars) {
+		if !charset(c, chars) {
 			break;
 		}
 
@@ -596,7 +437,7 @@ p_sp(c: *peg): int {
 		choice(c);
 
 		choice(c);
-		if charclass(c, " \t\r\n") {
+		if charset(c, " \t\r\n") {
 			commit(c);
 			commit(c);
 			continue;
@@ -608,7 +449,7 @@ p_sp(c: *peg): int {
 				choice(c);
 
 				choice(c);
-				if charclass(c, "\r\n") {
+				if charset(c, "\r\n") {
 					fail(c);
 					fail(c);
 					break;
@@ -632,67 +473,6 @@ p_sp(c: *peg): int {
 
 	leave(c, P_sp);
 	return OK;
-}
-
-struct peg_node {
-	tag: int;
-	next: *peg_node;
-	child: *peg_node;
-	str: *byte;
-	len: int;
-}
-
-construct(c: *peg): *peg_node {
-	var i: int;
-	var j: int;
-	var nargs: int;
-	var n: *peg_node;
-	var link: **peg_node;
-
-	c.nstack[0] = 0:*peg_node;
-
-	i = 0;
-	loop {
-		if i == c.op {
-			return c.nstack[0];
-		}
-
-		n = alloc(c.a, sizeof(*n)):*peg_node;
-
-		n.tag = c.out[i].tag;
-		n.next = 0:*peg_node;
-		n.child = 0:*peg_node;
-		n.str = &c.src[c.out[i].start];
-		n.len = c.out[i].end - c.out[i].start;
-
-		nargs = c.out[i].nargs;
-		if nargs > c.np {
-			die("node underflow");
-		}
-
-		link = &n.child;
-		j = c.np - nargs;
-		loop {
-			if j == c.np {
-				break;
-			}
-
-			*link = c.nstack[j];
-			link = &c.nstack[j].next;
-
-			j = j + 1;
-		}
-
-		c.np = c.np - nargs;
-		if c.np == c.ncap {
-			die("node overflow");
-		}
-
-		c.nstack[c.np] = n;
-		c.np = c.np + 1;
-
-		i = i + 1;
-	}
 }
 
 enum {
@@ -759,7 +539,7 @@ decode_count(n: *peg_node): int {
 	}
 }
 
-translate_literal(c: *peg, n: *peg_node) {
+translate_literal(c: *compiler, n: *peg_node) {
 	var i: int;
 	var len: int;
 	var ch: int;
@@ -777,12 +557,12 @@ translate_literal(c: *peg, n: *peg_node) {
 		ch = n.str[i]:int;
 
 		if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
-			fputc(c.fout, '\\');
-			fputc(c.fout, 'x');
-			fputc(c.fout, hex[ch >> 4]:int);
-			fputc(c.fout, hex[ch & 15]:int);
+			fputc(c.out, '\\');
+			fputc(c.out, 'x');
+			fputc(c.out, hex[ch >> 4]:int);
+			fputc(c.out, hex[ch & 15]:int);
 		} else {
-			fputc(c.fout, ch);
+			fputc(c.out, ch);
 		}
 
 		i = i + 1;
@@ -849,7 +629,7 @@ parse_escape(s: *byte, i: *int, n: int): int {
 	}
 }
 
-translate_charset(c: *peg, n: *peg_node) {
+translate_charset(c: *compiler, n: *peg_node) {
 	var i: int;
 	var len: int;
 	var ch: int;
@@ -915,12 +695,12 @@ translate_charset(c: *peg, n: *peg_node) {
 
 		if c.scratch[i] {
 			if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
-				fputc(c.fout, '\\');
-				fputc(c.fout, 'x');
-				fputc(c.fout, hex[i >> 4]:int);
-				fputc(c.fout, hex[i & 15]:int);
+				fputc(c.out, '\\');
+				fputc(c.out, 'x');
+				fputc(c.out, hex[i >> 4]:int);
+				fputc(c.out, hex[i & 15]:int);
 			} else {
-				fputc(c.fout, i);
+				fputc(c.out, i);
 			}
 		}
 
@@ -928,7 +708,7 @@ translate_charset(c: *peg, n: *peg_node) {
 	}
 }
 
-translate_pattern(c: *peg, n: *peg_node) {
+translate_pattern(c: *compiler, n: *peg_node) {
 	var count: int;
 	var look: int;
 	var d: *peg_node;
@@ -939,7 +719,7 @@ translate_pattern(c: *peg, n: *peg_node) {
 			if !d.next {
 				translate_pattern(c, d);
 			} else {
-				fputs(c.fout, "    choice(c);\n");
+				fputs(c.out, "    choice(c);\n");
 				translate_pattern(c, d);
 				d = d.next;
 				loop {
@@ -947,13 +727,13 @@ translate_pattern(c: *peg, n: *peg_node) {
 						break;
 					}
 
-					fputs(c.fout, "    if !ok { choice(c);\n");
+					fputs(c.out, "    if !ok { choice(c);\n");
 					translate_pattern(c, d);
-					fputs(c.fout, "    }\n");
+					fputs(c.out, "    }\n");
 
 					d = d.next;
 				}
-				fputs(c.fout, "    if ok { commit(c); } else { fail(c); }\n");
+				fputs(c.out, "    if ok { commit(c); } else { fail(c); }\n");
 			}
 		} else if n.tag == P_alternative {
 			d = n.child;
@@ -964,9 +744,9 @@ translate_pattern(c: *peg, n: *peg_node) {
 					break;
 				}
 
-				fputs(c.fout, "    if ok {\n");
+				fputs(c.out, "    if ok {\n");
 				translate_pattern(c, d);
-				fputs(c.fout, "    }\n");
+				fputs(c.out, "    }\n");
 
 				d = d.next;
 			}
@@ -978,13 +758,13 @@ translate_pattern(c: *peg, n: *peg_node) {
 			}
 
 			if look == LOOK_AND {
-				fputs(c.fout, "    choice(c);\n");
+				fputs(c.out, "    choice(c);\n");
 				translate_pattern(c, d);
-				fputs(c.fout, "    fail(c);\n");
+				fputs(c.out, "    fail(c);\n");
 			} else if look == LOOK_NOT {
-				fputs(c.fout, "    choice(c);\n");
+				fputs(c.out, "    choice(c);\n");
 				translate_pattern(c, d);
-				fputs(c.fout, "    if ok { fail(c); fail(c); ok = 0; } else { ok = 1; }\n");
+				fputs(c.out, "    if ok { fail(c); fail(c); ok = 0; } else { ok = 1; }\n");
 			} else if look == LOOK_NORMAL {
 				translate_pattern(c, d);
 			} else {
@@ -993,47 +773,47 @@ translate_pattern(c: *peg, n: *peg_node) {
 		} else if n.tag == P_suffix {
 			count = decode_count(n);
 			if count == ZERO_OR_ONE {
-				fputs(c.fout, "    choice(c);\n");
+				fputs(c.out, "    choice(c);\n");
 				translate_pattern(c, n.child);
-				fputs(c.fout, "    if ok { commit(c); } else { ok = 1; }\n");
+				fputs(c.out, "    if ok { commit(c); } else { ok = 1; }\n");
 			} else if count == EXACTLY_ONE {
 				translate_pattern(c, n.child);
 			} else if count == ZERO_OR_MORE {
-				fputs(c.fout, "    loop {\n");
-				fputs(c.fout, "    choice(c);\n");
+				fputs(c.out, "    loop {\n");
+				fputs(c.out, "    choice(c);\n");
 				translate_pattern(c, n.child);
-				fputs(c.fout, "    if !ok { ok = 1; break; }\n");
-				fputs(c.fout, "    commit(c);\n");
-				fputs(c.fout, "    }\n");
+				fputs(c.out, "    if !ok { ok = 1; break; }\n");
+				fputs(c.out, "    commit(c);\n");
+				fputs(c.out, "    }\n");
 			} else if count == ONE_OR_MORE {
 				translate_pattern(c, n.child);
-				fputs(c.fout, "    if ok {\n");
-				fputs(c.fout, "    loop {\n");
-				fputs(c.fout, "    choice(c);\n");
+				fputs(c.out, "    if ok {\n");
+				fputs(c.out, "    loop {\n");
+				fputs(c.out, "    choice(c);\n");
 				translate_pattern(c, n.child);
-				fputs(c.fout, "    if !ok { ok = 1; break; }\n");
-				fputs(c.fout, "    commit(c);\n");
-				fputs(c.fout, "    }\n");
-				fputs(c.fout, "    }\n");
+				fputs(c.out, "    if !ok { ok = 1; break; }\n");
+				fputs(c.out, "    commit(c);\n");
+				fputs(c.out, "    }\n");
+				fputs(c.out, "    }\n");
 			} else {
 				die("invalid countop");
 			}
 		} else if n.tag == P_primary {
 			translate_pattern(c, n.child);
 		} else if n.tag == P_any {
-			fputs(c.fout, "    ok = any(c);\n");
+			fputs(c.out, "    ok = any(c);\n");
 		} else if n.tag == P_literal {
-			fputs(c.fout, "    ok = literal(c, \"");
+			fputs(c.out, "    ok = literal(c, \"");
 			translate_literal(c, n);
-			fputs(c.fout, "\");\n");
+			fputs(c.out, "\");\n");
 		} else if n.tag == P_class {
-			fputs(c.fout, "    ok = charset(c, \"");
+			fputs(c.out, "    ok = charset(c, \"");
 			translate_charset(c, n);
-			fputs(c.fout, "\");\n");
+			fputs(c.out, "\");\n");
 		} else if n.tag == P_call {
-			fputs(c.fout, "    ok = p_");
-			fputb(c.fout, n.child.str, n.child.len);
-			fputs(c.fout, "(c);\n");
+			fputs(c.out, "    ok = p_");
+			fputb(c.out, n.child.str, n.child.len);
+			fputs(c.out, "(c);\n");
 		} else if n.tag == P_sp {
 			n = n.next;
 			continue;
@@ -1046,11 +826,11 @@ translate_pattern(c: *peg, n: *peg_node) {
 	}
 }
 
-translate(c: *peg, n: *peg_node) {
+translate(c: *compiler, n: *peg_node) {
 	var v: *peg_node;
 
 	// Generate tags for each rule
-	fputs(c.fout, "enum {\n");
+	fputs(c.out, "enum {\n");
 	v = n.child;
 	loop {
 		if !v {
@@ -1058,17 +838,17 @@ translate(c: *peg, n: *peg_node) {
 		}
 
 		if v.tag == P_rule {
-			fputs(c.fout, "    P_");
-			fputb(c.fout, v.child.str, v.child.len);
-			fputs(c.fout, ",\n");
+			fputs(c.out, "    P_");
+			fputb(c.out, v.child.str, v.child.len);
+			fputs(c.out, ",\n");
 		}
 
 		v = v.next;
 	}
-	fputs(c.fout, "}\n");
+	fputs(c.out, "}\n");
 
 	// Generate tag to string
-	fputs(c.fout, "\ntag_to_str(tag: int): *byte {\n");
+	fputs(c.out, "\ntag_to_str(tag: int): *byte {\n");
 	v = n.child;
 	loop {
 		if !v {
@@ -1076,17 +856,17 @@ translate(c: *peg, n: *peg_node) {
 		}
 
 		if v.tag == P_rule {
-			fputs(c.fout, "    if tag == P_");
-			fputb(c.fout, v.child.str, v.child.len);
-			fputs(c.fout, " { return \"");
-			fputb(c.fout, v.child.str, v.child.len);
-			fputs(c.fout, "\"; }\n");
+			fputs(c.out, "    if tag == P_");
+			fputb(c.out, v.child.str, v.child.len);
+			fputs(c.out, " { return \"");
+			fputb(c.out, v.child.str, v.child.len);
+			fputs(c.out, "\"; }\n");
 		}
 
 		v = v.next;
 	}
-	fputs(c.fout, "    die(\"invalid tag\");\n");
-	fputs(c.fout, "}\n");
+	fputs(c.out, "    die(\"invalid tag\");\n");
+	fputs(c.out, "}\n");
 
 	// Generate parsing functions for each rule
 	v = n.child;
@@ -1096,17 +876,17 @@ translate(c: *peg, n: *peg_node) {
 		}
 
 		if v.tag == P_rule {
-			fputs(c.fout, "\np_");
-			fputb(c.fout, v.child.str, v.child.len);
-			fputs(c.fout, "(c: *peg): int {\n");
-			fputs(c.fout, "    var ok: int;\n");
-			fputs(c.fout, "    enter(c);\n");
+			fputs(c.out, "\np_");
+			fputb(c.out, v.child.str, v.child.len);
+			fputs(c.out, "(c: *peg): int {\n");
+			fputs(c.out, "    var ok: int;\n");
+			fputs(c.out, "    enter(c);\n");
 			translate_pattern(c, v.child.next);
-			fputs(c.fout, "    if ok { leave(c, P_");
-			fputb(c.fout, v.child.str, v.child.len);
-			fputs(c.fout, "); } else { fail(c); }\n");
-			fputs(c.fout, "    return ok;\n");
-			fputs(c.fout, "}\n");
+			fputs(c.out, "    if ok { leave(c, P_");
+			fputb(c.out, v.child.str, v.child.len);
+			fputs(c.out, "); } else { fail(c); }\n");
+			fputs(c.out, "    return ok;\n");
+			fputs(c.out, "}\n");
 		}
 
 		v = v.next;
@@ -1116,9 +896,13 @@ translate(c: *peg, n: *peg_node) {
 main(argc: int, argv: **byte, envp: **byte) {
 	var ifd: int;
 	var ofd: int;
+	var f: *file;
+	var out: *file;
 	var a: alloc;
-	var c: peg;
+	var c: compiler;
 	var i: int;
+	var src: *byte;
+	var len: int;
 	var node: *peg_node;
 	setup_alloc(&a);
 
@@ -1165,31 +949,20 @@ main(argc: int, argv: **byte, envp: **byte) {
 	}
 
 	c.a = &a;
-	c.pos = 0;
-	c.limit = 1024;
-	c.stack = alloc(c.a, c.limit * sizeof(c.stack[0])):*peg_frame;
-
-	c.ncap = 1024;
-	c.np = 0;
-	c.nstack = alloc(c.a, c.ncap * sizeof(c.nstack[0])):**peg_node;
-
 	c.scratch = alloc(c.a, 256);
 
-	c.f = fopen(ifd, c.a);
-	c.src = freadall(c.f, &c.size);
+	f = fopen(ifd, c.a);
+	src = freadall(f, &len);
+	fclose(f);
 
-	c.fout = fopen(ofd, c.a);
+	out = fopen(ofd, c.a);
+	c.out = out;
 
-	choice(&c);
-	if !p_grammar(&c) {
-		die("Syntax error");
-	}
-	commit(&c);
-
-	node = construct(&c);
+	c.p = peg_new(src, len, c.a);
+	node = peg_parse(c.p);
 
 	translate(&c, node);
 
-	fflush(c.fout);
-	fclose(c.fout);
+	fflush(out);
+	fclose(out);
 }
