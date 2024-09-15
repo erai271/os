@@ -183,15 +183,38 @@ node_to_str(kind: int): *byte {
 }
 
 show_node(n: *node) {
+	var i: int;
+	var ch: int;
+	var hex: *byte;
+	hex = "0123456789abcdef";
 	if !n {
 		return;
 	}
 	fdputc(2, '(');
 	fdputs(2, node_to_str(n.kind));
+	if n.kind == N_NUM {
+		fdputc(2, ' ');
+		fdputd(2, n.n);
+	}
 	if n.s {
 		fdputc(2, ' ');
 		fdputc(2, '"');
-		fdputs(2, n.s);
+		i = 0;
+		loop {
+			ch = n.s[i]:int;
+			if !ch {
+				break;
+			}
+			if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
+				fdputc(2, '\\');
+				fdputc(2, 'x');
+				fdputc(2, hex[ch >> 4]:int);
+				fdputc(2, hex[ch & 15]:int);
+			} else {
+				fdputc(2, ch);
+			}
+			i = i + 1;
+		}
 		fdputc(2, '"');
 	}
 	if n.a {
