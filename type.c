@@ -110,6 +110,14 @@ mktype2(c: *compiler, kind: int, a: *type, b: *type): *type {
 	return mktype(c, kind, a, b, 0:*decl);
 }
 
+type_isint(t: *type): int {
+	return t.kind == TY_INT || t.kind == TY_BYTE;
+}
+
+type_isprim(t: *type): int {
+	return t.kind != TY_VOID && t.kind != TY_STRUCT;
+}
+
 prototype(c: *compiler, n: *node): *type {
 	var a: *type;
 	var b: *type;
@@ -175,12 +183,4 @@ prototype(c: *compiler, n: *node): *type {
 	} else {
 		cdie(c, "prototype: invalid type");
 	}
-}
-
-type_isint(t: *type): int {
-	return t.kind == TY_INT || t.kind == TY_BYTE;
-}
-
-type_isprim(t: *type): int {
-	return t.kind != TY_VOID && t.kind != TY_STRUCT;
 }

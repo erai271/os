@@ -26,6 +26,8 @@ fopen(fd: int, a: *alloc): *file {
 }
 
 fclose(f: *file): void {
+	fflush(f);
+
 	if (close(f.fd) != 0) {
 		die("write failed");
 	}

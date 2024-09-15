@@ -494,3 +494,165 @@ readall(fd: int, len: *int, a: *alloc): *byte {
 
 	return buf;
 }
+
+hex2int(s: *byte, len: int, ok: *int): int {
+	var i: int;
+	var x: int;
+	var d: int;
+	x = 0;
+	i = 0;
+	loop {
+		if i == len {
+			break;
+		}
+
+		d = s[i]:int;
+
+		if d >= '0' && d <= '9' {
+			d = d - '0';
+		} else if d >= 'a' && d <= 'f' {
+			d = d - 'a' + 10;
+		} else if d >= 'A' && d <= 'F' {
+			d = d - 'A' + 10;
+		} else {
+			*ok = 0;
+			return 0;
+		}
+
+		x = x * 16;
+		x = x + d;
+		i = i + 1;
+
+		if x > 0x7fffffff {
+			*ok = 0;
+			return 0;
+		}
+	}
+
+	*ok = 1;
+	return x;
+}
+
+dec2int(s: *byte, len: int, ok: *int): int {
+	var x: int;
+	var d: int;
+	var i: int;
+
+	x = 0;
+	i = 0;
+	loop {
+		if i == len {
+			break;
+		}
+
+		d = s[i]:int;
+		if d >= '0' && d <= '9' {
+			d = d - '0';
+		} else {
+			*ok = 0;
+			return 0;
+		}
+
+		x = x * 10;
+
+		x = x + d;
+		i = i + 1;
+
+		if x > 0x7fffffff {
+			*ok = 0;
+			return 0;
+		}
+	}
+
+	*ok = 1;
+	return x;
+}
+
+hexdig(ch: int, ok: *int): int {
+	if ch >= '0' && ch <= '9' {
+		*ok = 1;
+		return ch - '0';
+	} else if ch >= 'A' && ch <= 'F' {
+		*ok = 1;
+		return ch - 'F' + 10;
+	} else if ch >= 'a' && ch <= 'f' {
+		*ok = 1;
+		return ch - 'a' + 10;
+	} else {
+		*ok = 0;
+		return 0;
+	}
+}
+
+
+unescape(s: *byte, i: *int, len: int, ok: *int): int {
+	var ch: int;
+	var hex: int;
+
+	*ok = 1;
+
+	if *i >= len {
+		*ok = 0;
+		return 0;
+	}
+
+	ch = s[*i]:int;
+	*i = *i + 1;
+
+	if ch != '\\' {
+		return ch;
+	}
+
+	if *i >= len {
+		*ok = 0;
+		return 0;
+	}
+
+	ch = s[*i]:int;
+	*i = *i + 1;
+
+	if ch == 't' {
+		return '\t';
+	} else if ch == 'r' {
+		return '\r';
+	} else if ch == 'n' {
+		return '\n';
+	} else if ch == '\\' {
+		return '\\';
+	} else if ch == '\'' {
+		return '\'';
+	} else if ch == '\"' {
+		return '\"';
+	} else if ch == 'x' {
+		if *i >= len {
+			*ok = 0;
+			return 0;
+		}
+
+		ch = s[*i]:int;
+		*i = *i + 1;
+
+		hex = hexdig(ch, ok) * 16;
+		if !*ok {
+			return 0;
+		}
+
+		if *i >= len {
+			*ok = 0;
+			return 0;
+		}
+
+		ch = s[*i]:int;
+		*i = *i + 1;
+
+		hex = hex | hexdig(ch, ok);
+		if !*ok {
+			return 0;
+		}
+
+		return hex;
+	} else {
+		*ok = 0;
+		return 0;
+	}
+}

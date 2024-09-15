@@ -1,3 +1,16 @@
+struct lexer {
+	a: *alloc;
+	in: *file;
+	nc: int;
+	filename: *byte;
+	lineno: int;
+	colno: int;
+	tt: int;
+	token: *byte;
+	tlen: int;
+	tmax: int;
+}
+
 enum {
 	T_EOF,
 	T_IDENT,
@@ -38,7 +51,47 @@ enum {
 	T_MOD,
 }
 
-open_source(c: *compiler, filename: *byte) {
+setup_lexer(a: *alloc): *lexer {
+	var c: *lexer;
+
+	c = alloc(a, sizeof(*c)):*lexer;
+
+	c.a = a;
+
+	c.in = 0: *file;
+	c.nc = 0;
+	c.filename = 0:*byte;
+	c.lineno = 1;
+	c.colno = 1;
+	c.tlen = 0;
+	c.tmax = 4096;
+	c.token = alloc(c.a, c.tmax);
+	c.tt = 0;
+
+	return c;
+}
+
+lshow_context(c: *lexer) {
+	fdputs(2, "on ");
+	if (c.filename) {
+		fdputs(2, c.filename);
+	}
+	fdputs(2, ":");
+	fdputd(2, c.lineno);
+	fdputs(2, ":");
+	fdputd(2, c.colno);
+	fdputs(2, "\n");
+}
+
+ldie(c: *lexer, msg: *byte) {
+	lshow_context(c);
+	fdputs(2, "cdie: ");
+	fdputs(2, msg);
+	fdputs(2, "\n");
+	exit(1);
+}
+
+open_source(c: *lexer, filename: *byte) {
 	var fd: int;
 
 	c.filename = filename;
@@ -50,7 +103,7 @@ open_source(c: *compiler, filename: *byte) {
 
 	fd = open(filename, 0, 0);
 	if (fd < 0) {
-		cdie(c, "failed to open file");
+		ldie(c, "failed to open file");
 	}
 
 	c.in = fopen(fd, c.a);
@@ -59,14 +112,14 @@ open_source(c: *compiler, filename: *byte) {
 	feed(c);
 }
 
-close_source(c: *compiler) {
+close_source(c: *lexer) {
 	if (c.in) {
 		fclose(c.in);
 	}
 	c.in = 0: *file;
 }
 
-feedc(c: *compiler) {
+feedc(c: *lexer) {
 	c.nc = fgetc(c.in);
 	if (c.nc == '\n') {
 		c.lineno = c.lineno + 1;
@@ -75,17 +128,17 @@ feedc(c: *compiler) {
 	c.colno = c.colno + 1;
 }
 
-tappend(c: *compiler) {
+tappend(c: *lexer) {
 	c.token[c.tlen] = c.nc:byte;
 	c.tlen = c.tlen + 1;
 	if (c.tlen == c.tmax) {
-		cdie(c, "identifier too long");
+		ldie(c, "identifier too long");
 	}
 	c.token[c.tlen] = 0:byte;
 	feedc(c);
 }
 
-feed(c: *compiler) {
+feed(c: *lexer) {
 	c.tlen = 0;
 	c.token[0] = 0:byte;
 
@@ -244,11 +297,11 @@ feed(c: *compiler) {
 		c.tt = T_MOD;
 		feedc(c);
 	} else {
-		cdie(c, "invalid char");
+		ldie(c, "invalid char");
 	}
 }
 
-feed_ident(c: *compiler) {
+feed_ident(c: *lexer) {
 	c.tt = T_IDENT;
 	loop {
 		if (!((c.nc >= 'a' && c.nc <= 'z') ||
@@ -261,25 +314,9 @@ feed_ident(c: *compiler) {
 	}
 }
 
-hexdig(c: *compiler): int {
-	if (c.nc >= '0' && c.nc <= '9') {
-		return c.nc - '0';
-	}
-
-	if (c.nc >= 'A' && c.nc <= 'F') {
-		return (c.nc - 'F') + 10;
-	}
-
-	if (c.nc >= 'a' && c.nc <= 'f') {
-		return (c.nc - 'a') + 10;
-	}
-
-	cdie(c, "invalid hex digit");
-	return 0;
-}
-
-feed_escape(c: *compiler) {
+feed_escape(c: *lexer) {
 	var hex: int;
+	var ok: int;
 
 	// backslash
 	feedc(c);
@@ -292,18 +329,24 @@ feed_escape(c: *compiler) {
 		c.nc = '\n';
 	} else if (c.nc == 'x') {
 		c.nc = fgetc(c.in);
-		hex = hexdig(c) * 16;
+		hex = hexdig(c.nc, &ok) * 16;
+		if !ok {
+			ldie(c, "invalid escape");
+		}
 
 		c.nc = fgetc(c.in);
-		hex = hex + hexdig(c);
+		hex = hex + hexdig(c.nc, &ok);
+		if !ok {
+			ldie(c, "invalid escape");
+		}
 
 		c.nc = hex;
 	} else if (c.nc != '\\' && c.nc != '\'' && c.nc != '"') {
-		cdie(c, "invalid escape");
+		ldie(c, "invalid escape");
 	}
 }
 
-feed_str(c: *compiler) {
+feed_str(c: *lexer) {
 	c.tt = T_STR;
 
 	// quote
@@ -316,11 +359,11 @@ feed_str(c: *compiler) {
 		}
 
 		if (c.nc == -1 || c.nc == 0 || c.nc == '\n') {
-			cdie(c, "invalid char in string");
+			ldie(c, "invalid char in string");
 		}
 
 		if (c.tlen == c.tmax) {
-			cdie(c, "string too long");
+			ldie(c, "string too long");
 		}
 
 		if (c.nc == '\\') {
@@ -331,14 +374,14 @@ feed_str(c: *compiler) {
 	}
 }
 
-feed_char(c: *compiler) {
+feed_char(c: *lexer) {
 	c.tt = T_CHAR;
 
 	// quote
 	feedc(c);
 
 	if (c.nc == 0 || c.nc == -1 || c.nc == '\'' || c.nc == '\n') {
-		cdie(c, "invalid char");
+		ldie(c, "invalid char");
 	}
 
 	if (c.nc == '\\') {
@@ -348,13 +391,13 @@ feed_char(c: *compiler) {
 	tappend(c);
 
 	if (c.nc != '\'') {
-		cdie(c, "expected '");
+		ldie(c, "expected '");
 	}
 
 	feedc(c);
 }
 
-feed_hex(c: *compiler) {
+feed_hex(c: *lexer) {
 	c.tt = T_HEX;
 
 	loop {
@@ -368,11 +411,11 @@ feed_hex(c: *compiler) {
 	}
 
 	if (c.tlen == 0) {
-		cdie(c, "expected hex");
+		ldie(c, "expected hex");
 	}
 }
 
-feed_num(c: *compiler) {
+feed_num(c: *lexer) {
 	c.tt = T_NUM;
 
 	if (c.nc == '0') {

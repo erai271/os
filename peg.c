@@ -101,28 +101,9 @@ translate_literal(c: *compiler, n: *peg_node) {
 	fputs(c.out, "\");\n");
 }
 
-hexdig(c: byte): int {
-	var ch: int;
-
-	ch = c:int;
-
-	if ch >= '0' && ch <= '9' {
-		return ch - '0';
-	}
-
-	if ch >= 'a' && ch <= 'f' {
-		return ch - 'a' + 10;
-	}
-
-	if ch >= 'A' && ch <= 'F' {
-		return ch - 'A' + 10;
-	}
-
-	die("invalid hex digit");
-}
-
 parse_escape(s: *byte, i: *int, n: int): int {
 	var nc: int;
+	var ok: int;
 
 	if *i == n {
 		die("invalid escape");
@@ -153,7 +134,14 @@ parse_escape(s: *byte, i: *int, n: int): int {
 		if n - *i < 2 {
 			die("invalid escape");
 		}
-		nc = hexdig(s[*i]) * 16 + hexdig(s[*i + 1]);
+		nc = hexdig(s[*i]:int, &ok) * 16;
+		if !ok {
+			die("invalid hex");
+		}
+		nc = nc + hexdig(s[*i + 1]:int, &ok);
+		if !ok {
+			die("invalid hex");
+		}
 		*i = *i + 2;
 		return nc;
 	} else {

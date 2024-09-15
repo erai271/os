@@ -1,44 +1,31 @@
 grammar <- sp (enum_decl / struct_decl / func_decl)* !.
 
-enum_def <- ident sp ('=' sp expr)?
-enum_decl <- enum sp '{' sp (enum_def (',' sp enum_def)*)? (',' sp)? '}' sp
+enum_item <- ident sp ('=' sp expr)?
+enum_decl <- enum sp '{' sp (enum_item (',' sp enum_item)*)? (',' sp)? '}' sp
 
-struct_def <- ident sp ':' sp type ';' sp
-struct_decl <- struct sp ident sp '{' sp struct_def* '}' sp
+member_decl <- ident sp ':' sp type ';' sp
+struct_decl <- struct sp ident sp '{' sp member_decl* '}' sp
 
-func_decl <- ident sp func_type (';' / '{' sp stmt* '}') sp
+func_decl <- ident sp func_type (';' sp / compound_stmt)
 
-type <- ident sp
-      / byte sp
-      / int sp
-      / void sp
-      / func sp func_type
-      / '*' sp type
-      / '(' sp type ')' sp
+type <- ident sp / byte sp / int sp / void sp
+      / func sp func_type / ptr_type / '(' sp type ')' sp
 
-func_type <- '(' sp
-             ( ident sp ':' sp type (',' sp ident sp ':' sp type)* )?
-             ( ',' sp )?
-             ')' sp (':' sp type)?
+ptr_type <- '*' sp type
 
-stmt <- if_stmt
-      / loop_stmt
-      / break_stmt
-      / continue_stmt
-      / return_stmt
-      / var_stmt
-      / label_stmt
-      / goto_stmt
-      / assign_stmt
-      / expr_stmt
-      / empty_stmt
-      / compound_stmt
+arg_decl <- ident sp ':' sp type
+func_type <- '(' sp ( arg_decl (',' sp arg_decl)* )?  ( ',' sp )?  ')' sp
+             (':' sp type)?
 
-if_stmt <- if sp expr '{' sp stmt* '}' sp
-           (else sp if sp expr '{' sp stmt* '}' sp)*
-           (else sp '{' sp stmt* '}' sp)?
+stmt <- if_stmt / loop_stmt / break_stmt / continue_stmt
+      / return_stmt / var_stmt / label_stmt / goto_stmt
+      / assign_stmt / expr_stmt / empty_stmt / compound_stmt
 
-loop_stmt <- loop sp '{' sp stmt* '}' sp
+elif_stmt <- else sp if sp expr compound_stmt
+else_stmt <- else sp compound_stmt
+if_stmt <- if sp expr compound_stmt elif_stmt* else_stmt?
+
+loop_stmt <- loop sp compound_stmt sp
 
 break_stmt <- break sp ';' sp
 
@@ -62,52 +49,60 @@ compound_stmt <- '{' sp stmt* '}' sp
 
 expr <- bool_expr
 
-bool_expr <- comp_expr (('&&' / '||') sp comp_expr)*
+band_op <- '&&'
+bor_op <- '||'
+bool_expr <- comp_expr ((band_op / bor_op) sp comp_expr)*
 
-comp_expr <- add_expr (('<=' / '>=' / '<' / '>' / '==' / '!=') sp add_expr)?
+le_op <- '<='
+ge_op <- '>='
+lt_op <- '<' !'=' !'<'
+gt_op <- '>' !'=' !'>'
+eq_op <- '=='
+ne_op <- '!='
+comp_expr <- add_expr ((le_op / ge_op / lt_op / gt_op / eq_op / ne_op) sp add_expr)?
 
-add_expr <- mul_expr (('+' / '-' / '|' !'|' / '^') sp add_expr)*
+add_op <- '+'
+sub_op <- '-'
+or_op <- '|' !'|'
+xor_op <- '^'
+add_expr <- mul_expr ((add_op / sub_op / or_op / xor_op) sp mul_expr)*
 
-mul_expr <- shift_expr (('*' / '/' / '%' / '&' !'&') sp mul_expr)*
+mul_op <- '*'
+div_op <- '/' !'/'
+mod_op <- '%'
+and_op <- '&' !'&'
+mul_expr <- shift_expr ((mul_op / div_op / mod_op / and_op) sp shift_expr)*
 
-shift_expr <- unary_expr (('<<' / '>>') sp shift_expr)*
+lsh_op <- '<<'
+rsh_op <- '>>'
+shift_expr <- unary_expr ((lsh_op / rsh_op) sp unary_expr)*
 
-unary_expr <- (('&' !'&' / '*' / '+' / '-' / '~' / '!') sp)* post_expr
+ref_op <- '&' !'&'
+deref_op <- '*'
+pos_op <- '+'
+neg_op <- '-'
+not_op <- '~'
+bnot_op <- '!' !'='
+unary_expr <- ((ref_op / deref_op / pos_op / neg_op / not_op / bnot_op) sp)* post_expr
 
-post_expr <- primary ( '[' sp expr ']' sp
-                     / '(' sp ( expr (',' sp expr)* )? (',' sp)? ')' sp
-                     / '.' sp ident sp
-                     / ':' sp type )*
+index_expr <- '[' sp expr ']' sp
+call_expr <- '(' sp ( expr (',' sp expr)* )? (',' sp)? ')' sp
+member_expr <-  '.' sp ident sp
+cast_expr <- ':' sp type
+post_expr <- primary (index_expr / call_expr / member_expr / cast_expr)*
 
-primary <- ident sp
-         / hexadecimal sp
-	 / decimal sp
-	 / string sp
-	 / character sp
-         / '(' sp expr ')' sp
-         / sizeof sp '(' sp expr ')' sp
+primary <- ident sp / hex sp / dec sp / str sp / char sp
+         / sizeof_expr / '(' sp expr ')' sp
 
-hexadecimal <- '0x'[0-9a-fA-F]+
-decimal <- [0-9]+
+sizeof_expr <- sizeof sp '(' sp expr ')' sp
 
-string <- ["] ([\\] . / !["] .)* ["]
-character <- ['] ([\\] . / !['] .) [']
+hex <- '0x'[0-9a-fA-F]+
+dec <- [0-9]+
+str <- ["] ([\\] . / !["] .)* ["]
+char <- ['] ([\\] . / !['] .)+ [']
 
-reserved <- return
-          / break
-          / sizeof
-          / if
-          / else
-          / loop
-          / continue
-          / goto
-          / var
-          / enum
-          / struct
-          / byte
-          / int
-          / void
-	  / func
+reserved <- return / break / sizeof / if / else / loop / continue / goto
+          / var / enum / struct / byte / int / void / func
 
 return <- 'return' ![a-zA-Z0-9_]
 break <- 'break' ![a-zA-Z0-9_]

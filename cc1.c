@@ -1,52 +1,14 @@
-struct decl {
-	name: *byte;
-	member_name: *byte;
-	p: *decl;
-	l: *decl;
-	r: *decl;
-
-	func_defined: int;
-	func_type: *type;
-	func_label: *label;
-	func_def: *node;
-
-	struct_defined: int;
-	struct_size: int;
-	struct_layout_done: int;
-	struct_def: *node;
-
-	member_defined: int;
-	member_type: *type;
-	member_offset: int;
-	member_def: *node;
-
-	enum_defined: int;
-	enum_value: int;
-	enum_def: *node;
-
-	var_defined: int;
-	var_type: *type;
-	var_offset: int;
-	var_def: *node;
-
-	goto_defined: int;
-	goto_label: *label;
-}
-
 struct compiler {
 	// Allocator
 	a: *alloc;
 
-	// Lexer
-	in: *file;
-	nc: int;
+	// Parser
+	p: *parser;
+
+	// Context
 	filename: *byte;
 	lineno: int;
 	colno: int;
-	tt: int;
-	token: *byte;
-	tlen: int;
-	tmax: int;
 
 	// Assembler
 	as: *assembler;
@@ -55,7 +17,7 @@ struct compiler {
 	decls: *decl;
 }
 
-show_context(c: *compiler) {
+cshow_context(c: *compiler) {
 	fdputs(2, "on ");
 	if (c.filename) {
 		fdputs(2, c.filename);
@@ -68,7 +30,7 @@ show_context(c: *compiler) {
 }
 
 cdie(c: *compiler, msg: *byte) {
-	show_context(c);
+	cshow_context(c);
 	fdputs(2, "cdie: ");
 	fdputs(2, msg);
 	fdputs(2, "\n");
@@ -82,15 +44,11 @@ comp_setup(a: *alloc): *compiler {
 
 	c.a = a;
 
-	c.in = 0: *file;
-	c.nc = 0;
+	c.p = setup_parser(a);
+
 	c.filename = 0:*byte;
-	c.lineno = 1;
-	c.colno = 1;
-	c.tlen = 0;
-	c.tmax = 4096;
-	c.token = alloc(c.a, c.tmax);
-	c.tt = 0;
+	c.lineno = 0;
+	c.colno = 0;
 
 	c.as = setup_assembler(a);
 
@@ -463,7 +421,7 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 
 	c.filename = n.filename;
 	c.lineno = n.lineno;
-	c.colno = 0;
+	c.colno = n.colno;
 
 	kind = n.kind;
 	if (kind == N_STR) {
@@ -1105,7 +1063,7 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 
 	c.filename = n.filename;
 	c.lineno = n.lineno;
-	c.colno = 0;
+	c.colno = n.colno;
 
 	kind = n.kind;
 	if (kind == N_CONDLIST) {
@@ -1184,139 +1142,6 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 	} else if (kind != N_VARDECL) {
 		compile_expr(c, d, n, 1);
 		emit_pop(c.as, 1);
-	}
-}
-
-find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
-	var p: *decl;
-	var d: *decl;
-	var link: **decl;
-	var dir: int;
-
-	p = 0: *decl;
-	link = &c.decls;
-	loop {
-		d = *link;
-		if (!d) {
-			break;
-		}
-
-		dir = strcmp(name, d.name);
-
-		if (dir == 0) {
-			if (!member_name && !d.member_name) {
-				dir = 0;
-			} else if (!member_name) {
-				dir = -1;
-			} else if (!d.member_name) {
-				dir = 1;
-			} else {
-				dir = strcmp(member_name, d.member_name);
-			}
-		}
-
-		if (dir < 0) {
-			p = d;
-			link = &d.l;
-		} else if (dir > 0) {
-			p = d;
-			link = &d.r;
-		} else {
-			return d;
-		}
-	}
-
-
-	if (!make) {
-		return 0:*decl;
-	}
-
-	d = alloc(c.a, sizeof(*d)): *decl;
-
-	d.name = name;
-	d.member_name = member_name;
-
-	d.p = p;
-	d.l = 0:*decl;
-	d.r = 0:*decl;
-
-	d.func_defined = 0;
-	d.func_type = 0:*type;
-	d.func_label = mklabel(c.as);
-	d.func_def = 0:*node;
-
-	d.struct_defined = 0;
-	d.struct_size = 0;
-	d.struct_layout_done = 0;
-	d.struct_def = 0:*node;
-
-	d.member_defined = 0;
-	d.member_type = 0:*type;
-	d.member_offset = 0;
-	d.member_def = 0:*node;
-
-	d.enum_defined = 0;
-	d.enum_value = 0;
-	d.enum_def = 0:*node;
-
-	d.var_defined = 0;
-	d.var_type = 0:*type;
-	d.var_offset = 0;
-	d.var_def = 0:*node;
-
-	d.goto_defined = 0;
-	d.goto_label = mklabel(c.as);
-
-	*link = d;
-
-	return d;
-}
-
-// Find the first declaration
-first_decl(c: *compiler): *decl {
-	var d: *decl;
-
-	d = c.decls;
-	if (!d) {
-		return 0:*decl;
-	}
-
-	loop {
-		if (!d.l) {
-			return d;
-		}
-
-		d = d.l;
-	}
-}
-
-next_decl(c: *compiler, d: *decl): *decl {
-	if (!d) {
-		return 0:*decl;
-	}
-
-	if (d.r) {
-		d = d.r;
-
-		loop {
-			if (!d.l) {
-				return d;
-			}
-
-			d = d.l;
-		}
-	}
-
-	loop {
-		if (!d.p) {
-			return 0:*decl;
-		}
-
-		if (d.p.l == d) {
-			return d.p;
-		}
-
-		d = d.p;
 	}
 }
 
@@ -1553,57 +1378,8 @@ emit_isr(c: *compiler) {
 	as_op(c.as, OP_IRETQ);
 }
 
-main(argc: int, argv: **byte, envp: **byte) {
-	var a: alloc;
-	var c: *compiler;
-	var p: *node;
+emit_builtin(c: *compiler) {
 	var d: *decl;
-	var start: *label;
-	var kstart: *label;
-	var i: int;
-
-	setup_alloc(&a);
-
-	c = comp_setup(&a);
-
-	i = 1;
-	loop {
-		if (i >= argc) {
-			break;
-		}
-
-		if (!strcmp(argv[i], "-o")) {
-			i = i + 1;
-			if (i >= argc) {
-				die("invalid -o at end of argument list");
-			}
-			open_output(c.as, argv[i]);
-			i = i + 1;
-			continue;
-		}
-
-		if (!strcmp(argv[i], "-C")) {
-			i = i + 1;
-			if (i >= argc) {
-				die("invalid -C at end of argument list");
-			}
-			//open_coutput(c.as, argv[i]);
-			i = i + 1;
-			continue;
-		}
-
-		if (argv[i][0] == '-':byte) {
-			die("invalid argument");
-		}
-
-		open_source(c, argv[i]);
-		p = parse_program(c, p);
-		close_source(c);
-
-		i = i + 1;
-	}
-
-	compile(c, p);
 
 	d = find(c, "syscall", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
@@ -2156,6 +1932,72 @@ main(argc: int, argv: **byte, envp: **byte) {
 		// iretq
 		as_op(c.as, OP_IRETQ);
 	}
+}
+
+main(argc: int, argv: **byte, envp: **byte) {
+	var a: alloc;
+	var c: *compiler;
+	var p: *node;
+	var d: *decl;
+	var start: *label;
+	var kstart: *label;
+	var i: int;
+	var show: int;
+
+	setup_alloc(&a);
+
+	c = comp_setup(&a);
+
+	show = 0;
+
+	i = 1;
+	loop {
+		if (i >= argc) {
+			break;
+		}
+
+		if (!strcmp(argv[i], "-o")) {
+			i = i + 1;
+			if (i >= argc) {
+				die("invalid -o at end of argument list");
+			}
+			open_output(c.as, argv[i]);
+			i = i + 1;
+			continue;
+		}
+
+		if (!strcmp(argv[i], "-fdump")) {
+			i = i + 1;
+			show = 1;
+			continue;
+		}
+
+		if (!strcmp(argv[i], "-C")) {
+			i = i + 1;
+			if (i >= argc) {
+				die("invalid -C at end of argument list");
+			}
+			//open_coutput(c.as, argv[i]);
+			i = i + 1;
+			continue;
+		}
+
+		if (argv[i][0] == '-':byte) {
+			die("invalid argument");
+		}
+
+		p = concat_program(p, parse(c.p, argv[i]));
+
+		i = i + 1;
+	}
+
+	if show {
+		show_node(p);
+	}
+
+	compile(c, p);
+
+	emit_builtin(c);
 
 	start = 0: *label;
 	d = find(c, "_start", 0:*byte, 0);

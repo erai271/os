@@ -1,7 +1,7 @@
 #!/bin/sh
 
 LIBS="bufio.c lib.c alloc.c syscall.c"
-SOURCES="cc1.c type.c parse1.c lex1.c as.c"
+SOURCES="cc1.c type.c parse1.c lex1.c as.c decl.c node.c"
 
 gcc -Wall -Wextra -Wno-unused -pedantic -std=c99 ./cc0.c -o cc0
 

@@ -12,6 +12,8 @@ struct peg_op {
 	nargs: int;
 	start: int;
 	end: int;
+	line: int;
+	col: int;
 }
 
 struct peg {
@@ -52,6 +54,9 @@ struct peg_node {
 	child: *peg_node;
 	str: *byte;
 	len: int;
+	filename: *byte;
+	line: int;
+	col: int;
 }
 
 choice(c: *peg) {
@@ -150,6 +155,8 @@ enter(c: *peg, tag: int) {
 leave(c: *peg, tag: int) {
 	var nargs: int;
 	var start: int;
+	var line: int;
+	var col: int;
 	var end: int;
 	var tmp: *byte;
 
@@ -157,6 +164,8 @@ leave(c: *peg, tag: int) {
 	c.fail_depth = 0;
 
 	nargs = c.depth - c.stack[c.sp].depth;
+	line = c.stack[c.sp].line;
+	col = c.stack[c.sp].col;
 	start = c.stack[c.sp].pos;
 	end = c.pos;
 
@@ -177,6 +186,8 @@ leave(c: *peg, tag: int) {
 	c.out[c.op].nargs = nargs;
 	c.out[c.op].start = start;
 	c.out[c.op].end = end;
+	c.out[c.op].line = line;
+	c.out[c.op].col = col;
 
 	c.op = c.op + 1;
 	c.depth = c.depth - nargs + 1;
@@ -230,39 +241,44 @@ construct(c: *peg, sp: int): *peg_node {
 			return c.nstack[0];
 		}
 
-		n = alloc(c.a, sizeof(*n)):*peg_node;
+		if c.out[i].tag != sp {
+			n = alloc(c.a, sizeof(*n)):*peg_node;
 
-		n.tag = c.out[i].tag;
-		n.next = 0:*peg_node;
-		n.child = 0:*peg_node;
-		n.str = &c.src[c.out[i].start];
-		n.len = c.out[i].end - c.out[i].start;
+			n.tag = c.out[i].tag;
+			n.next = 0:*peg_node;
+			n.child = 0:*peg_node;
+			n.str = &c.src[c.out[i].start];
+			n.len = c.out[i].end - c.out[i].start;
+			n.filename = c.filename;
+			n.line = c.out[i].line;
+			n.col = c.out[i].col;
 
-		nargs = c.out[i].nargs;
-		if nargs > c.np {
-			die("node underflow");
-		}
-
-		link = &n.child;
-		j = c.np - nargs;
-		loop {
-			if j == c.np {
-				break;
+			nargs = c.out[i].nargs;
+			if nargs > c.np {
+				die("node underflow");
 			}
 
-			if c.nstack[j].tag != sp {
-				*link = c.nstack[j];
-				link = &c.nstack[j].next;
-			} else {
-				free(c.a, c.nstack[j]:*byte);
+			link = &n.child;
+			j = c.np - nargs;
+			loop {
+				if j == c.np {
+					break;
+				}
+
+				if c.nstack[j] {
+					*link = c.nstack[j];
+					link = &c.nstack[j].next;
+				}
+
+				j = j + 1;
 			}
 
-			j = j + 1;
-		}
-
-		c.np = c.np - nargs;
-		if c.np == c.ncap {
-			die("node overflow");
+			c.np = c.np - nargs;
+			if c.np == c.ncap {
+				die("node overflow");
+			}
+		} else {
+			n = 0:*peg_node;
 		}
 
 		c.nstack[c.np] = n;
@@ -334,7 +350,8 @@ peg_parse(c: *peg, sp: int): *peg_node {
 	return construct(c, sp);
 }
 
-peg_reset(c: *peg, src: *byte, len: int) {
+peg_reset(c: *peg, filename: *byte, src: *byte, len: int) {
+	c.filename = filename;
 	c.src = src;
 	c.size = len;
 	c.pos = 0;
