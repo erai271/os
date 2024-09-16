@@ -317,6 +317,7 @@ reconstruct_bool(c: *parser, pn: *peg_node): *node {
 		n = reconstruct_comp(c, pn.next);
 		*link = mknode(c, kind, *link, n);
 		copypos(*link, pn);
+		link = &(*link).b;
 
 		pn = pn.next.next;
 	}
