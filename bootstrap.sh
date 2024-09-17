@@ -5,7 +5,7 @@ PEG="peg.c peglib.c parsepeg.c"
 SOURCES="cc1.c type.c parse2.c parse3.c peglib.c as.c decl.c node.c cout.c"
 
 # Build the bootstrap compiler from c
-gcc -Wall -Wextra -Wno-unused -pedantic -std=c99 ./cc0.c -o cc0
+gcc -std=c99 ./cc0.c -o cc0
 
 # Bootstrap the parser tool
 ./cc0 ${LIBS} ${PEG} -o peg0
