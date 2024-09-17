@@ -825,7 +825,7 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 	var mb_addr: int;
 
 	if (!c.out) {
-		open_output(c, "a.out");
+		die("output not opened");
 	}
 
 	load_addr = 0x100000;

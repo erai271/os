@@ -182,7 +182,7 @@ node_to_str(kind: int): *byte {
 	return "(invalid)";
 }
 
-show_node(n: *node) {
+show_node(out: *file, n: *node) {
 	var i: int;
 	var ch: int;
 	var hex: *byte;
@@ -190,15 +190,15 @@ show_node(n: *node) {
 	if !n {
 		return;
 	}
-	fdputc(2, '(');
-	fdputs(2, node_to_str(n.kind));
+	fputc(out, '(');
+	fputs(out, node_to_str(n.kind));
 	if n.kind == N_NUM {
-		fdputc(2, ' ');
-		fdputd(2, n.n);
+		fputc(out, ' ');
+		fputd(out, n.n);
 	}
 	if n.s {
-		fdputc(2, ' ');
-		fdputc(2, '"');
+		fputc(out, ' ');
+		fputc(out, '"');
 		i = 0;
 		loop {
 			ch = n.s[i]:int;
@@ -206,24 +206,24 @@ show_node(n: *node) {
 				break;
 			}
 			if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
-				fdputc(2, '\\');
-				fdputc(2, 'x');
-				fdputc(2, hex[ch >> 4]:int);
-				fdputc(2, hex[ch & 15]:int);
+				fputc(out, '\\');
+				fputc(out, 'x');
+				fputc(out, hex[ch >> 4]:int);
+				fputc(out, hex[ch & 15]:int);
 			} else {
-				fdputc(2, ch);
+				fputc(out, ch);
 			}
 			i = i + 1;
 		}
-		fdputc(2, '"');
+		fputc(out, '"');
 	}
 	if n.a {
-		fdputc(2, ' ');
-		show_node(n.a);
+		fputc(out, ' ');
+		show_node(out, n.a);
 	}
 	if n.b {
-		fdputc(2, ' ');
-		show_node(n.b);
+		fputc(out, ' ');
+		show_node(out, n.b);
 	}
-	fdputc(2, ')');
+	fputc(out, ')');
 }

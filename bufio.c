@@ -168,6 +168,25 @@ fputb(f: *file, s: *byte, n: int) {
 	}
 }
 
+fputd(out: *file, n: int) {
+	var a: int;
+
+	if (n < 0) {
+		fputc(out, '-');
+		a = -(n % 10);
+		n = n / -10;
+	} else {
+		a = n % 10;
+		n = n / 10;
+	}
+
+	if (n != 0) {
+		fputd(out, n);
+	}
+
+	fputc(out, '0' + a);
+}
+
 fseek(f: *file, off: int) {
 	f.r = 0;
 	f.w = 0;

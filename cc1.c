@@ -15,6 +15,10 @@ struct compiler {
 
 	// Namespace
 	decls: *decl;
+
+	// C Output
+	do_cout: int;
+	cout: *file;
 }
 
 cshow_context(c: *compiler) {
@@ -54,7 +58,31 @@ comp_setup(a: *alloc): *compiler {
 
 	c.decls = 0:*decl;
 
+	c.do_cout = 0;
+	c.cout = 0:*file;
+
 	return c;
+}
+
+open_coutput(c: *compiler, filename: *byte) {
+	var fd: int;
+
+	if (c.cout) {
+		die("multiple output files");
+	}
+
+	unlink(filename);
+
+	fd = open(filename, O_CREAT | O_WRONLY, (6 << 6) + (6 << 3) + 6);
+	if (fd < 0) {
+		die("failed to open output");
+	}
+
+	c.cout = fopen(fd, c.a);
+}
+
+flush_coutput(c: *compiler) {
+	fflush(c.cout);
 }
 
 compile(c: *compiler, p: *node) {
@@ -365,6 +393,8 @@ hoist_locals(c: *compiler, d: *decl, n: *node, offset: int): int {
 
 	name = n.a.s;
 	t = prototype(c, n.b);
+
+	n.t = t;
 
 	v = find(c, d.name, name, 1);
 
@@ -1943,12 +1973,16 @@ main(argc: int, argv: **byte, envp: **byte) {
 	var kstart: *label;
 	var i: int;
 	var show: int;
+	var filename: *byte;
+	var err: *file;
 
 	setup_alloc(&a);
 
 	c = comp_setup(&a);
 
 	show = 0;
+
+	filename = "a.out";
 
 	i = 1;
 	loop {
@@ -1961,7 +1995,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 			if (i >= argc) {
 				die("invalid -o at end of argument list");
 			}
-			open_output(c.as, argv[i]);
+			filename = argv[i];
 			i = i + 1;
 			continue;
 		}
@@ -1973,11 +2007,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 		}
 
 		if (!strcmp(argv[i], "-C")) {
-			i = i + 1;
-			if (i >= argc) {
-				die("invalid -C at end of argument list");
-			}
-			//open_coutput(c.as, argv[i]);
+			c.do_cout = 1;
 			i = i + 1;
 			continue;
 		}
@@ -1992,10 +2022,21 @@ main(argc: int, argv: **byte, envp: **byte) {
 	}
 
 	if show {
-		show_node(p);
+		err = fopen(2, &a);
+		show_node(err, p);
+		fflush(err);
+		return;
 	}
 
 	compile(c, p);
+
+	if c.do_cout {
+		open_coutput(c, filename);
+
+		ctranslate(c);
+
+		return;
+	}
 
 	emit_builtin(c);
 
@@ -2010,6 +2051,8 @@ main(argc: int, argv: **byte, envp: **byte) {
 	if (d && d.func_defined) {
 		kstart = d.func_label;
 	}
+
+	open_output(c.as, filename);
 
 	writeout(c.as, start, kstart);
 }
