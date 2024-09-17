@@ -2,7 +2,7 @@
 
 LIBS="bufio.c lib.c alloc.c syscall.c"
 PEG="peg.c peglib.c parsepeg.c"
-SOURCES="cc1.c type.c parse2.c parse3.c peglib.c as.c decl.c node.c"
+SOURCES="cc1.c type.c parse2.c parse3.c peglib.c as.c decl.c node.c cout.c"
 
 # Build the bootstrap compiler from c
 gcc -Wall -Wextra -Wno-unused -pedantic -std=c99 ./cc0.c -o cc0
@@ -25,3 +25,6 @@ cmp peg0 peg || echo peg mismatch
 # Verify that the saved bootstrap parsepeg.c came from peg.peg
 ./peg peg.peg -o parsepeg2.c
 cmp parsepeg.c parsepeg2.c || echo parsepeg mismatch
+
+./cc1 -C ${LIBS} ${SOURCES} -o cc2.c
+cmp cc0.c cc2.c || echo bootstrap mismatch

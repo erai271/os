@@ -4,6 +4,7 @@ disk
 cc0
 cc1
 cc2
+cc2.c
 gencc
 parse3.c
 parsepeg2.c
