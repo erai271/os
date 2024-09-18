@@ -35,7 +35,7 @@ parse(c: *parser, filename: *byte): *node {
 	fclose(f);
 
 	peg_reset(c.p, filename, src, len);
-	pn = peg_parse(c.p, P_sp);
+	pn = peg_parse(c.p, P_sp, peg_P_grammar);
 
 	return reconstruct(c, pn);
 }

@@ -78,7 +78,7 @@ ctranslate(c: *compiler) {
 		}
 
 		if d.func_defined {
-			ctranslate_type(c, d.func_type, d.name, 0);
+			ctranslate_type(c, d.func_type, d.name, 1, d.func_decl.b.a);
 			fputs(c.cout, ";\n");
 		}
 
@@ -102,71 +102,74 @@ ctranslate(c: *compiler) {
 	flush_coutput(c);
 }
 
-ctranslate_type(c: *compiler, ty: *type, name: *byte, ptr: int) {
-	var arg: *type;
+// type <- ('void' / 'unsigned' ('long' / 'char')) declarator
+// declarator <- [*]* (ident / '(' declarator ')' '(' type (',' type)* ')')?
+
+ctranslate_type1(c: *compiler, ty: *type, name: *byte, decl: int) {
 	if ty.kind == TY_VOID {
-		fputs(c.cout, "void ");
-		if name && name[0] {
-			fputs(c.cout, " my_");
-			fputs(c.cout, name);
-		}
+		fputs(c.cout, "void");
 	} else if ty.kind == TY_INT {
-		fputs(c.cout, "unsigned long ");
-		if name && name[0] {
-			fputs(c.cout, " my_");
-			fputs(c.cout, name);
-		}
+		fputs(c.cout, "unsigned long");
 	} else if ty.kind == TY_BYTE {
-		fputs(c.cout, "unsigned char ");
-		if name && name[0] {
-			fputs(c.cout, " my_");
-			fputs(c.cout, name);
-		}
+		fputs(c.cout, "unsigned char");
 	} else if ty.kind == TY_PTR {
-		ctranslate_type(c, ty.val, "", 1);
+		ctranslate_type1(c, ty.val, "", decl);
 		fputs(c.cout, "*");
-		if name && name[0] {
-			fputs(c.cout, " my_");
-			fputs(c.cout, name);
-		}
 	} else if ty.kind == TY_FUNC {
-		ctranslate_type(c, ty.val, "", 1);
-		if ptr {
-			die("fixme cdecl order is hard");
-		}
-		if name && name[0] {
-			fputs(c.cout, " my_");
-			fputs(c.cout, name);
-		}
+		ctranslate_type1(c, ty.val, "", 0);
 		fputs(c.cout, "(");
-		if ptr {
+		if !decl {
 			fputs(c.cout, "*");
 		}
+	} else if ty.kind == TY_STRUCT {
+		fputs(c.cout, "struct my_");
+		fputs(c.cout, ty.st.name);
+	} else {
+		die("invalid type");
+	}
+}
+
+ctranslate_type2(c: *compiler, ty: *type, name: *byte, args: *node) {
+	var arg: *type;
+	if ty.kind == TY_PTR {
+		ctranslate_type2(c, ty.val, name, args);
+	} else if ty.kind == TY_FUNC {
+		ctranslate_type2(c, ty.val, name, args);
+		fputs(c.cout, ")(");
 		arg = ty.arg;
 		if arg {
 			loop {
-				ctranslate_type(c, arg.val, "", 1);
+				if args {
+					ctranslate_type(c, arg.val, args.a.a.s, 0, 0:*node);
+				} else {
+					ctranslate_type(c, arg.val, "", 0, 0:*node);
+				}
 				arg = arg.arg;
 				if arg {
-					fputs(c.cout, ", ");
+					fputs(c.cout, ",");
 				} else {
 					break;
 				}
+				if args {
+					args = args.b;
+				}
 			}
+
 		} else {
 			fputs(c.cout, "void");
 		}
 		fputs(c.cout, ")");
-	} else if ty.kind == TY_STRUCT {
-		fputs(c.cout, "struct my_");
-		fputs(c.cout, ty.st.name);
+	} else {
 		if name && name[0] {
 			fputs(c.cout, " my_");
 			fputs(c.cout, name);
 		}
-	} else {
-		die("invalid type");
 	}
+}
+
+ctranslate_type(c: *compiler, ty: *type, name: *byte, decl: int, args: *node) {
+	ctranslate_type1(c, ty, name, decl);
+	ctranslate_type2(c, ty, name, args);
 }
 
 ctranslate_zero(c: *compiler, ty: *type) {
@@ -215,7 +218,7 @@ ctranslate_struct(c: *compiler, d: *decl) {
 		v = find(c, d.name, n.a.a.s, 0);
 
 		fputs(c.cout, "\t");
-		ctranslate_type(c, v.member_type, n.a.a.s, 1);
+		ctranslate_type(c, v.member_type, n.a.a.s, 0, 0:*node);
 		fputs(c.cout, ";\n");
 
 		n = n.b;
@@ -252,7 +255,7 @@ ctranslate_vars(c: *compiler, n: *node) {
 		ctranslate_vars(c, n.a);
 	} else if kind == N_VARDECL {
 		fputs(c.cout, "\t");
-		ctranslate_type(c, n.t, n.a.s, 1);
+		ctranslate_type(c, n.t, n.a.s, 0, 0:*node);
 		fputs(c.cout, " = ");
 		ctranslate_zero(c, n.t);
 		fputs(c.cout, ";\n");
@@ -405,19 +408,19 @@ ctranslate_expr(c: *compiler, n: *node) {
 		ctranslate_expr(c, n.a);
 	} else if n.kind == N_NEG {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(-(unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))");
 	} else if n.kind == N_NOT {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(~(unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))");
 	} else if n.kind == N_ADD {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))+((unsigned long)(");
@@ -425,7 +428,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_SUB {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))-((unsigned long)(");
@@ -433,7 +436,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_MUL {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))*((long)(");
@@ -441,7 +444,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_DIV {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))/((long)(");
@@ -449,7 +452,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_MOD {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))%((long)(");
@@ -457,7 +460,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_LSH {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))<<((unsigned long)(");
@@ -465,7 +468,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_RSH {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))>>((unsigned long)(");
@@ -473,7 +476,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_AND {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))&((unsigned long)(");
@@ -481,7 +484,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_OR {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))|((unsigned long)(");
@@ -489,7 +492,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_XOR {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))^((unsigned long)(");
@@ -497,7 +500,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_CAST {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 1);
+		ctranslate_type(c, n.t, "", 0, 0:*node);
 		fputs(c.cout, ")");
 		ctranslate_expr(c, n.a);
 	} else {
@@ -589,27 +592,7 @@ ctranslate_func(c: *compiler, d: *decl) {
 	var n: *node;
 	var ty: *type;
 	if d.func_def {
-		ctranslate_type(c, d.func_type.val, "", 1);
-		fputs(c.cout, "my_");
-		fputs(c.cout, d.name);
-		fputs(c.cout, "(");
-		n = d.func_def.a.b.a;
-		ty = d.func_type.arg;
-		loop {
-			if !n {
-				break;
-			}
-
-			ctranslate_type(c, ty.val, n.a.a.s, 1);
-
-			n = n.b;
-			ty = ty.arg;
-
-			if n {
-				fputs(c.cout, ", ");
-			}
-		}
-		fputs(c.cout, ")\n");
+		ctranslate_type(c, d.func_type, d.name, 1, d.func_def.a.b.a);
 		fputs(c.cout, "{\n");
 		ctranslate_vars(c, d.func_def.b);
 		ctranslate_stmt(c, d.func_def.b);

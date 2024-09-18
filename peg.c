@@ -1,8 +1,9 @@
-struct compiler {
+struct peg_compiler {
 	a: *alloc;
 	p: *peg;
 	out: *file;
 	scratch: *byte;
+	prefix: *byte;
 }
 
 enum {
@@ -15,7 +16,7 @@ decode_look(n: *peg_node): int {
 	var ret: int;
 
 	ret = LOOK_NORMAL;
-	if n.child.tag == P_lookop {
+	if n.child.tag == PEG_lookop {
 		if n.child.str[0] == '!':byte {
 			ret = LOOK_NOT;
 		} else if n.child.str[0] == '&':byte {
@@ -43,7 +44,7 @@ decode_count(n: *peg_node): int {
 			return ret;
 		}
 
-		if n.tag == P_countop {
+		if n.tag == PEG_countop {
 			if n.str[0] == '?':byte {
 				if ret == EXACTLY_ONE {
 					ret = ZERO_OR_ONE;
@@ -69,7 +70,7 @@ decode_count(n: *peg_node): int {
 	}
 }
 
-translate_literal(c: *compiler, n: *peg_node) {
+translate_literal(c: *peg_compiler, n: *peg_node) {
 	var i: int;
 	var len: int;
 	var ch: int;
@@ -149,7 +150,7 @@ parse_escape(s: *byte, i: *int, n: int): int {
 	}
 }
 
-translate_charset(c: *compiler, n: *peg_node) {
+translate_charset(c: *peg_compiler, n: *peg_node) {
 	var i: int;
 	var len: int;
 	var ch: int;
@@ -253,13 +254,13 @@ translate_charset(c: *compiler, n: *peg_node) {
 	fputs(c.out, "\");\n");
 }
 
-translate_pattern(c: *compiler, n: *peg_node) {
+translate_pattern(c: *peg_compiler, n: *peg_node) {
 	var count: int;
 	var look: int;
 	var d: *peg_node;
 
 	loop {
-		if n.tag == P_pattern {
+		if n.tag == PEG_pattern {
 			d = n.child;
 			if !d.next {
 				translate_pattern(c, d);
@@ -280,7 +281,7 @@ translate_pattern(c: *compiler, n: *peg_node) {
 				}
 				fputs(c.out, "    if ok { commit(c); } else { fail(c); }\n");
 			}
-		} else if n.tag == P_alternative {
+		} else if n.tag == PEG_alternative {
 			d = n.child;
 			translate_pattern(c, d);
 			d = d.next;
@@ -295,10 +296,10 @@ translate_pattern(c: *compiler, n: *peg_node) {
 
 				d = d.next;
 			}
-		} else if n.tag == P_lookahead {
+		} else if n.tag == PEG_lookahead {
 			look = decode_look(n);
 			d = n.child;
-			if d.tag == P_lookop {
+			if d.tag == PEG_lookop {
 				d = d.next;
 			}
 
@@ -315,7 +316,7 @@ translate_pattern(c: *compiler, n: *peg_node) {
 			} else {
 				die("invalid lookop");
 			}
-		} else if n.tag == P_suffix {
+		} else if n.tag == PEG_suffix {
 			count = decode_count(n);
 			if count == ZERO_OR_ONE {
 				fputs(c.out, "    choice(c);\n");
@@ -343,19 +344,20 @@ translate_pattern(c: *compiler, n: *peg_node) {
 			} else {
 				die("invalid countop");
 			}
-		} else if n.tag == P_primary {
+		} else if n.tag == PEG_primary {
 			translate_pattern(c, n.child);
-		} else if n.tag == P_any {
+		} else if n.tag == PEG_any {
 			fputs(c.out, "    ok = any(c);\n");
-		} else if n.tag == P_literal {
+		} else if n.tag == PEG_literal {
 			translate_literal(c, n);
-		} else if n.tag == P_class {
+		} else if n.tag == PEG_class {
 			translate_charset(c, n);
-		} else if n.tag == P_call {
-			fputs(c.out, "    ok = p_");
+		} else if n.tag == PEG_call {
+			fputs(c.out, "    ok = peg_");
+			fputs(c.out, c.prefix);
 			fputb(c.out, n.child.str, n.child.len);
 			fputs(c.out, "(c);\n");
-		} else if n.tag == P_sp {
+		} else if n.tag == PEG_sp {
 			n = n.next;
 			continue;
 		} else {
@@ -367,7 +369,7 @@ translate_pattern(c: *compiler, n: *peg_node) {
 	}
 }
 
-translate(c: *compiler, n: *peg_node) {
+translate(c: *peg_compiler, n: *peg_node) {
 	var v: *peg_node;
 
 	// Generate tags for each rule
@@ -378,8 +380,9 @@ translate(c: *compiler, n: *peg_node) {
 			break;
 		}
 
-		if v.tag == P_rule {
-			fputs(c.out, "    P_");
+		if v.tag == PEG_rule {
+			fputs(c.out, "    ");
+			fputs(c.out, c.prefix);
 			fputb(c.out, v.child.str, v.child.len);
 			fputs(c.out, ",\n");
 		}
@@ -396,8 +399,9 @@ translate(c: *compiler, n: *peg_node) {
 			break;
 		}
 
-		if v.tag == P_rule {
-			fputs(c.out, "    if tag == P_");
+		if v.tag == PEG_rule {
+			fputs(c.out, "    if tag == ");
+			fputs(c.out, c.prefix);
 			fputb(c.out, v.child.str, v.child.len);
 			fputs(c.out, " { return \"");
 			fputb(c.out, v.child.str, v.child.len);
@@ -416,16 +420,19 @@ translate(c: *compiler, n: *peg_node) {
 			break;
 		}
 
-		if v.tag == P_rule {
-			fputs(c.out, "\np_");
+		if v.tag == PEG_rule {
+			fputs(c.out, "\npeg_");
+			fputs(c.out, c.prefix);
 			fputb(c.out, v.child.str, v.child.len);
 			fputs(c.out, "(c: *peg): int {\n");
 			fputs(c.out, "    var ok: int;\n");
-			fputs(c.out, "    enter(c, P_");
+			fputs(c.out, "    enter(c, ");
+			fputs(c.out, c.prefix);
 			fputb(c.out, v.child.str, v.child.len);
 			fputs(c.out, ");\n");
 			translate_pattern(c, v.child.next);
-			fputs(c.out, "    if ok { leave(c, P_");
+			fputs(c.out, "    if ok { leave(c, ");
+			fputs(c.out, c.prefix);
 			fputb(c.out, v.child.str, v.child.len);
 			fputs(c.out, "); } else { fail(c); }\n");
 			fputs(c.out, "    return ok;\n");
@@ -442,7 +449,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	var f: *file;
 	var out: *file;
 	var a: alloc;
-	var c: compiler;
+	var c: peg_compiler;
 	var i: int;
 	var src: *byte;
 	var len: int;
@@ -453,6 +460,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	ifd = 0;
 	ofd = 1;
 	filename = "-";
+	c.prefix = "P_";
 
 	i = 1;
 	loop {
@@ -477,8 +485,20 @@ main(argc: int, argv: **byte, envp: **byte) {
 			continue;
 		}
 
+		if strcmp(argv[i], "-P") == 0 {
+			i = i + 1;
+			if i >= argc {
+				die("expected output file name");
+			}
+
+			c.prefix = argv[i];
+
+			i = i + 1;
+			continue;
+		}
+
 		if argv[i][0] == '-':byte {
-			die("usage: ./peg [-o grammar.c] <grammar.peg>");
+			die("usage: ./peg [-P prefix] [-o grammar.c] <grammar.peg>");
 		}
 
 		if ifd != 0 {
@@ -505,7 +525,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	c.out = out;
 
 	c.p = peg_new(filename, src, len, c.a);
-	node = peg_parse(c.p, P_sp);
+	node = peg_parse(c.p, PEG_sp, peg_PEG_grammar);
 
 	translate(&c, node);
 

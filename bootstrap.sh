@@ -23,7 +23,7 @@ cmp cc1 cc2 || echo cc mismatch
 cmp peg0 peg || echo peg mismatch
 
 # Verify that the saved bootstrap parsepeg.c came from peg.peg
-./peg peg.peg -o parsepeg2.c
+./peg -P PEG_ peg.peg -o parsepeg2.c
 cmp parsepeg.c parsepeg2.c || echo parsepeg mismatch
 
 ./cc1 -C ${LIBS} ${SOURCES} -o cc2.c

@@ -9,6 +9,7 @@ struct decl {
 	func_type: *type;
 	func_label: *label;
 	func_def: *node;
+	func_decl: *node;
 
 	struct_defined: int;
 	struct_size: int;

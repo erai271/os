@@ -327,9 +327,9 @@ peg_new(filename: *byte, src: *byte, len: int, a: *alloc): *peg {
 	return c;
 }
 
-peg_parse(c: *peg, sp: int): *peg_node {
+peg_parse(c: *peg, sp: int, grammar: (func(c:*peg):int)): *peg_node {
 	choice(c);
-	if !p_grammar(c) {
+	if !grammar(c) {
 		fdputs(2, "syntax error at ");
 		fdputs(2, c.filename);
 		fdputs(2, ":");

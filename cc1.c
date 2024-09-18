@@ -172,6 +172,7 @@ defextern(c: *compiler, n: *node): *decl {
 
 	d.func_defined = 1;
 	d.func_type = t;
+	d.func_decl = n;
 
 	return d;
 }
