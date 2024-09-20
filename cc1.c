@@ -160,6 +160,10 @@ defextern(c: *compiler, n: *node): *decl {
 	var name: *byte;
 	var t: *type;
 
+	c.filename = n.filename;
+	c.lineno = n.lineno;
+	c.colno = n.colno;
+
 	name = n.a.s;
 
 	t = prototype(c, n.b);
@@ -191,6 +195,10 @@ defstruct(c: *compiler, n: *node) {
 
 	name = n.a.s;
 
+	c.filename = n.filename;
+	c.lineno = n.lineno;
+	c.colno = n.colno;
+
 	if (!strcmp(name, "int") || !strcmp(name, "byte") || !strcmp(name, "func")) {
 		cdie(c, "reserved word");
 	}
@@ -216,6 +224,10 @@ defenum(c: *compiler, n: *node) {
 		if (!n) {
 			break;
 		}
+
+		c.filename = n.a.filename;
+		c.lineno = n.a.lineno;
+		c.colno = n.a.colno;
 
 		name = n.a.a.s;
 		d = find(c, name, 0:*byte, 1);
@@ -255,11 +267,16 @@ layout_struct(c: *compiler, d: *decl) {
 	d.struct_layout_done = 2;
 
 	m = d.struct_def.b;
+
 	offset = 0;
 	loop {
 		if (!m) {
 			break;
 		}
+
+		c.filename = m.a.filename;
+		c.lineno = m.a.lineno;
+		c.colno = m.a.colno;
 
 		name = m.a.a.s;
 		t = prototype(c, m.a.b);
@@ -297,11 +314,16 @@ compile_func(c: *compiler, d: *decl) {
 	}
 
 	n = d.func_def.a.b.a;
+
 	offset = 16;
 	loop {
 		if (!n) {
 			break;
 		}
+
+		c.filename = n.a.filename;
+		c.lineno = n.a.lineno;
+		c.colno = n.a.colno;
 
 		name = n.a.a.s;
 		t = prototype(c, n.a.b);
@@ -1965,6 +1987,11 @@ emit_builtin(c: *compiler) {
 	}
 }
 
+struct name_node {
+	next: *name_node;
+	name: *byte;
+}
+
 main(argc: int, argv: **byte, envp: **byte) {
 	var a: alloc;
 	var c: *compiler;
@@ -1976,6 +2003,12 @@ main(argc: int, argv: **byte, envp: **byte) {
 	var show: int;
 	var filename: *byte;
 	var err: *file;
+	var input: *name_node;
+	var tmp: *name_node;
+	var link: **name_node;
+	var peg: *peg_compiler;
+
+	link = &input;
 
 	setup_alloc(&a);
 
@@ -2013,13 +2046,52 @@ main(argc: int, argv: **byte, envp: **byte) {
 			continue;
 		}
 
+		if (!strcmp(argv[i], "-P")) {
+			i = i + 1;
+			if (i >= argc) {
+				die("invalid -P at end of argument list");
+			}
+			peg = setup_peg(&a, argv[i]);
+			i = i + 1;
+			continue;
+		}
+
 		if (argv[i][0] == '-':byte) {
 			die("invalid argument");
 		}
 
-		p = concat_program(p, parse(c.p, argv[i]));
+		tmp = alloc(&a, sizeof(*tmp)):*name_node;
+		tmp.next = 0:*name_node;
+		tmp.name = argv[i];
+		*link = tmp;
+		link = &tmp.next;
 
 		i = i + 1;
+	}
+
+	if peg {
+		if !input {
+			die("expected input");
+		}
+		peg_open_output(peg, filename);
+		tmp = input;
+		loop {
+			if !tmp {
+				break;
+			}
+			peg_compile(peg, tmp.name);
+			tmp = tmp.next;
+		}
+		return;
+	}
+
+	tmp = input;
+	loop {
+		if !tmp {
+			break;
+		}
+		p = concat_program(p, parse(c.p, tmp.name));
+		tmp = tmp.next;
 	}
 
 	if show {

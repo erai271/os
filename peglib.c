@@ -337,7 +337,7 @@ peg_parse(c: *peg, sp: int, grammar: (func(c:*peg):int)): *peg_node {
 		fdputs(2, ":");
 		fdputd(2, c.fail_col);
 		fdputs(2, " expected ");
-		fdputs(2, tag_to_str(c.fail_tag));
+		fdputs(2, P_tag_to_str(c.fail_tag));
 		if c.fail_literal {
 			fdputs(2, " '");
 			fdputs(2, c.fail_literal);
@@ -383,7 +383,7 @@ peg_show(out: *file, n: *peg_node) {
 	var hex: *byte;
 	hex = "0123456789abcdef";
 	fputs(out, "(");
-	fputs(out, tag_to_str(n.tag));
+	fputs(out, P_tag_to_str(n.tag));
 	if n.child {
 		n = n.child;
 		loop {

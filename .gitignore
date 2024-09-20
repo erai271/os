@@ -7,6 +7,7 @@ cc2
 cc2.c
 gencc
 parse3.c
+parsepeg.c
 parsepeg2.c
 pxe
 cmp

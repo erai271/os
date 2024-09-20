@@ -361,7 +361,7 @@ translate_pattern(c: *peg_compiler, n: *peg_node) {
 			n = n.next;
 			continue;
 		} else {
-			fdputs(2, tag_to_str(n.tag));
+			fdputs(2, PEG_tag_to_str(n.tag));
 			die("invalid tag");
 		}
 
@@ -389,10 +389,11 @@ translate(c: *peg_compiler, n: *peg_node) {
 
 		v = v.next;
 	}
-	fputs(c.out, "}\n");
+	fputs(c.out, "}\n\n");
 
 	// Generate tag to string
-	fputs(c.out, "\ntag_to_str(tag: int): *byte {\n");
+	fputs(c.out, c.prefix);
+	fputs(c.out, "tag_to_str(tag: int): *byte {\n");
 	v = n.child;
 	loop {
 		if !v {
@@ -443,92 +444,54 @@ translate(c: *peg_compiler, n: *peg_node) {
 	}
 }
 
-main(argc: int, argv: **byte, envp: **byte) {
-	var ifd: int;
-	var ofd: int;
+setup_peg(a: *alloc, prefix: *byte): *peg_compiler {
+	var c: *peg_compiler;
+	c = alloc(a, sizeof(*c)): *peg_compiler;
+	c.a = a;
+	c.prefix = prefix;
+	c.scratch = alloc(c.a, 256);
+	return c;
+}
+
+peg_open_output(c: *peg_compiler, filename: *byte) {
+	var fd: int;
 	var f: *file;
-	var out: *file;
-	var a: alloc;
-	var c: peg_compiler;
-	var i: int;
+
+	unlink(filename);
+
+	fd = open(filename, O_CREAT | O_WRONLY, (6 << 6) + (6 << 3) + 6);
+	if fd < 0 {
+		die("failed to open output");
+	}
+
+	f = fopen(fd, c.a);
+	c.out = f;
+}
+
+peg_compile(c: *peg_compiler, filename: *byte) {
+	var fd: int;
+	var f: *file;
 	var src: *byte;
 	var len: int;
 	var node: *peg_node;
-	var filename: *byte;
-	setup_alloc(&a);
 
-	ifd = 0;
-	ofd = 1;
-	filename = "-";
-	c.prefix = "P_";
-
-	i = 1;
-	loop {
-		if i >= argc {
-			break;
+	if strcmp(filename, "-") == 0 {
+		fd = 0;
+	} else {
+		fd = open(filename, O_RDONLY, 0);
+		if fd < 0 {
+			die("failed to open output");
 		}
-
-		if strcmp(argv[i], "-o") == 0 {
-			i = i + 1;
-			if i >= argc {
-				die("expected output file name");
-			}
-
-			unlink(argv[i]);
-
-			ofd = open(argv[i], O_CREAT | O_WRONLY, (6 << 6) + (6 << 3) + 6);
-			if ofd < 0 {
-				die("failed to open output");
-			}
-
-			i = i + 1;
-			continue;
-		}
-
-		if strcmp(argv[i], "-P") == 0 {
-			i = i + 1;
-			if i >= argc {
-				die("expected output file name");
-			}
-
-			c.prefix = argv[i];
-
-			i = i + 1;
-			continue;
-		}
-
-		if argv[i][0] == '-':byte {
-			die("usage: ./peg [-P prefix] [-o grammar.c] <grammar.peg>");
-		}
-
-		if ifd != 0 {
-			die("too many inputs");
-		}
-
-		filename = argv[i];
-		ifd = open(argv[i], 0, 0);
-		if ifd < 0 {
-			die("failed to open input");
-		}
-
-		i = i + 1;
 	}
 
-	c.a = &a;
-	c.scratch = alloc(c.a, 256);
-
-	f = fopen(ifd, c.a);
+	f = fopen(fd, c.a);
 	src = freadall(f, &len);
 	fclose(f);
 
-	out = fopen(ofd, c.a);
-	c.out = out;
-
 	c.p = peg_new(filename, src, len, c.a);
+
 	node = peg_parse(c.p, PEG_sp, peg_PEG_grammar);
+	translate(c, node);
 
-	translate(&c, node);
-
-	fflush(out);
-	fclose(out);
+	fflush(c.out);
 }
