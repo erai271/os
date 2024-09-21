@@ -2,14 +2,13 @@
 
 LIBS="bufio.c lib.c alloc.c syscall.c"
 CRYPTO="ed25519.c sha512.c sha256.c chacha20.c poly1305.c"
-CC="cc1.c type.c parse1.c lex1.c as.c decl.c node.c"
+CC="cc1.c type.c as.c decl.c node.c"
 PEG="peg.c peglib.c parsepeg.c"
-BOOT="pxe.asm"
 SSHD="chacha20.c poly1305.c sha256.c sha512.c ed25519.c sshd.c"
 KERNEL="kernel.c"
 SHELL="echo.c cmp.c rm.c ls.c cat.c xxd.c mv.c mkdir.c cpio.c sh.c"
 BIN="echo cmp rm ls cat xxd mv mkdir cpio sh sshd init cc1 cc2 build.sh peg.peg cc3.peg"
-ALL="${LIBS} ${CC} ${PEG} ${BOOT} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
+ALL="${LIBS} ${CC} ${PEG} ${SSHD} ${KERNEL} ${SHELL} ${BIN}"
 
 ./cc1 ${LIBS} echo.c -o echo
 ./cc1 ${LIBS} cmp.c -o cmp
