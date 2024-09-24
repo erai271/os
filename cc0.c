@@ -1,9945 +1,5005 @@
-#ifndef my__start
-#define my__start main
-#endif
-#ifndef my_syscall
-#define my_syscall syscall
-#endif
-struct my_alloc;
-struct my_assembler;
-struct my_chunk;
-struct my_compiler;
-struct my_decl;
-struct my_file;
-struct my_fixup;
-struct my_label;
-struct my_name_node;
-struct my_node;
-struct my_page;
-struct my_parser;
-struct my_peg;
-struct my_peg_compiler;
-struct my_peg_frame;
-struct my_peg_node;
-struct my_peg_op;
-struct my_sigaction;
-struct my_type;
-struct my_alloc {
-	struct my_page* my_page;
-};
-struct my_assembler {
-	struct my_alloc* my_a;
-	struct my_file* my_out;
-	unsigned long my_at;
-	struct my_chunk* my_text;
-	struct my_chunk* my_text_end;
-	unsigned long my_bits32;
-};
-struct my_chunk {
-	struct my_chunk* my_next;
-	unsigned char* my_buf;
-	unsigned long my_fill;
-	unsigned long my_cap;
-};
-struct my_compiler {
-	struct my_alloc* my_a;
-	struct my_parser* my_p;
-	unsigned char* my_filename;
-	unsigned long my_lineno;
-	unsigned long my_colno;
-	struct my_assembler* my_as;
-	struct my_decl* my_decls;
-	unsigned long my_do_cout;
-	struct my_file* my_cout;
-};
-struct my_decl {
-	unsigned char* my_name;
-	unsigned char* my_member_name;
-	struct my_decl* my_p;
-	struct my_decl* my_l;
-	struct my_decl* my_r;
-	unsigned long my_func_defined;
-	struct my_type* my_func_type;
-	struct my_label* my_func_label;
-	struct my_node* my_func_def;
-	struct my_node* my_func_decl;
-	unsigned long my_struct_defined;
-	unsigned long my_struct_size;
-	unsigned long my_struct_layout_done;
-	struct my_node* my_struct_def;
-	unsigned long my_member_defined;
-	struct my_type* my_member_type;
-	unsigned long my_member_offset;
-	struct my_node* my_member_def;
-	unsigned long my_enum_defined;
-	unsigned long my_enum_value;
-	struct my_node* my_enum_def;
-	unsigned long my_var_defined;
-	struct my_type* my_var_type;
-	unsigned long my_var_offset;
-	struct my_node* my_var_def;
-	unsigned long my_goto_defined;
-	struct my_label* my_goto_label;
-};
-struct my_file {
-	struct my_alloc* my_a;
-	unsigned long my_fd;
-	unsigned char* my_buf;
-	unsigned long my_r;
-	unsigned long my_w;
-	unsigned long my_cap;
-	unsigned long my_eof;
-};
-struct my_fixup {
-	struct my_fixup* my_next;
-	unsigned char* my_ptr;
-	unsigned long my_at;
-};
-struct my_label {
-	struct my_fixup* my_fix;
-	unsigned long my_at;
-	unsigned long my_fixed;
-};
-struct my_name_node {
-	struct my_name_node* my_next;
-	unsigned char* my_name;
-};
-struct my_node {
-	unsigned long my_kind;
-	struct my_node* my_a;
-	struct my_node* my_b;
-	unsigned char* my_filename;
-	unsigned long my_lineno;
-	unsigned long my_colno;
-	unsigned long my_n;
-	unsigned char* my_s;
-	struct my_type* my_t;
-};
-struct my_page {
-	unsigned char* my_ptr;
-	unsigned long my_fill;
-	unsigned long my_size;
-};
-struct my_parser {
-	struct my_alloc* my_a;
-	struct my_peg* my_p;
-};
-struct my_peg {
-	struct my_alloc* my_a;
-	unsigned char* my_filename;
-	unsigned char* my_src;
-	unsigned long my_size;
-	unsigned long my_pos;
-	unsigned long my_line;
-	unsigned long my_col;
-	unsigned long my_tag;
-	unsigned long my_fail_depth;
-	unsigned long my_fail_tag;
-	unsigned long my_fail_line;
-	unsigned long my_fail_col;
-	unsigned char* my_fail_literal;
-	struct my_peg_frame* my_stack;
-	unsigned long my_sp;
-	unsigned long my_limit;
-	unsigned long my_depth;
-	unsigned long my_op;
-	struct my_peg_op* my_out;
-	unsigned long my_cap;
-	struct my_peg_node** my_nstack;
-	unsigned long my_np;
-	unsigned long my_ncap;
-};
-struct my_peg_compiler {
-	struct my_alloc* my_a;
-	struct my_peg* my_p;
-	struct my_file* my_out;
-	unsigned char* my_scratch;
-	unsigned char* my_prefix;
-};
-struct my_peg_frame {
-	unsigned long my_pos;
-	unsigned long my_depth;
-	unsigned long my_op;
-	unsigned long my_tag;
-	unsigned long my_line;
-	unsigned long my_col;
-};
-struct my_peg_node {
-	unsigned long my_tag;
-	struct my_peg_node* my_next;
-	struct my_peg_node* my_child;
-	unsigned char* my_str;
-	unsigned long my_len;
-	unsigned char* my_filename;
-	unsigned long my_line;
-	unsigned long my_col;
-};
-struct my_peg_op {
-	unsigned long my_tag;
-	unsigned long my_nargs;
-	unsigned long my_start;
-	unsigned long my_end;
-	unsigned long my_line;
-	unsigned long my_col;
-};
-struct my_sigaction {
-	unsigned long my_handler;
-	unsigned long my_flags;
-	unsigned long my_restorer;
-	unsigned long my_mask;
-};
-struct my_type {
-	unsigned long my_kind;
-	struct my_decl* my_st;
-	struct my_type* my_val;
-	struct my_type* my_arg;
-};
+#define _POSIX_C_SOURCE 1
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+///////////////////////////////////////////////////////////////////////////////
+// Forward Declarations                                                      //
+///////////////////////////////////////////////////////////////////////////////
+
+FILE *fin;
+FILE *fout;
+
+int nc;
+unsigned char *filename;
+int lineno;
+struct node;
+struct type;
+struct label;
+struct fix;
+struct sdecl;
+
+void feed(void);
+struct node *type(void);
+struct node *stmt_list(void);
+struct node *expr(void);
+struct label *mklabel(void);
+void compute_struct(struct sdecl *s);
+int type_sizeof(struct type *t);
+void addfixup(struct label *l);
+
+///////////////////////////////////////////////////////////////////////////////
+// Helpers                                                                   //
+///////////////////////////////////////////////////////////////////////////////
+
+void
+die(char *msg)
+{
+	fprintf(stderr, "die(%s:%d): %s\n", filename, lineno, msg);
+	exit(1);
+}
+
+void
+open_output(unsigned char *name)
+{
+	int fd;
+
+	filename = name;
+
+	if (fout != stdout) {
+		die("multiple output files");
+	}
+
+	unlink((char *)name);
+
+	fd = open((char *)name, 64 + 1, (7 << 6) + (7 << 3) + 7);
+	if (fd < 0) {
+		die("failed to open output");
+	}
+
+	fout = fdopen(fd, "wb");
+}
+
+void
+open_source(unsigned char *name)
+{
+	int fd;
+
+	if (fin != stdin) {
+		die("invalid");
+	}
+
+	filename = name;
+
+	fd = open((char *)name, 0, 0);
+	if (fd < 0) {
+		die("failed to open file");
+	}
+
+	fin = fdopen(fd, "rb");
+	lineno = 1;
+
+	nc = fgetc(fin);
+	feed();
+}
+
+void
+close_source(void)
+{
+	if (fin != stdin) {
+		fclose(fin);
+		fin = stdin;
+	}
+	fin = stdin;
+}
+
+// strlen-ish
+int
+slen(unsigned char *s)
+{
+	int i;
+
+	i = 0;
+	while (1) {
+		if (s[i] == 0) {
+			return i;
+		}
+
+		i = i + 1;
+	}
+}
+
+// strcmp-ish
+int
+cmp(unsigned char *a, unsigned char *b)
+{
+	int i;
+
+	i = 0;
+	while (1) {
+		if (a[i] > b[i]) {
+			return 1;
+		}
+
+		if (a[i] < b[i]) {
+			return -1;
+		}
+
+		if (a[i] == 0) {
+			return 0;
+		}
+
+		i = i + 1;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Lexer                                                                     //
+///////////////////////////////////////////////////////////////////////////////
+
 enum {
-	my_AF_INET = 2,
-	my_CC_A = 7,
-	my_CC_AE = 3,
-	my_CC_B = 2,
-	my_CC_BE = 6,
-	my_CC_E = 4,
-	my_CC_G = 15,
-	my_CC_GE = 13,
-	my_CC_L = 12,
-	my_CC_LE = 14,
-	my_CC_NE = 5,
-	my_CC_NO = 1,
-	my_CC_NP = 11,
-	my_CC_NS = 9,
-	my_CC_O = 0,
-	my_CC_P = 10,
-	my_CC_S = 8,
-	my_EINTR = 4,
-	my_EPIPE = 32,
-	my_EXACTLY_ONE = 1,
-	my_LOOK_AND = 2,
-	my_LOOK_NORMAL = 0,
-	my_LOOK_NOT = 1,
-	my_N_ADD = 42,
-	my_N_AND = 50,
-	my_N_ARGDECL = 10,
-	my_N_ARGLIST = 8,
-	my_N_ASSIGN = 30,
-	my_N_BAND = 49,
-	my_N_BNOT = 47,
-	my_N_BOR = 48,
-	my_N_BREAK = 24,
-	my_N_CALL = 6,
-	my_N_CAST = 34,
-	my_N_CHAR = 2,
-	my_N_COND = 19,
-	my_N_CONDLIST = 18,
-	my_N_CONTINUE = 25,
-	my_N_DEREF = 33,
-	my_N_DIV = 56,
-	my_N_DOT = 7,
-	my_N_ENUM = 20,
-	my_N_ENUMITEM = 21,
-	my_N_ENUMLIST = 22,
-	my_N_EQ = 40,
-	my_N_EXPRLIST = 5,
-	my_N_FUNC = 9,
-	my_N_FUNCDECL = 11,
-	my_N_FUNCTYPE = 13,
-	my_N_GE = 39,
-	my_N_GOTO = 29,
-	my_N_GT = 37,
-	my_N_IDENT = 0,
-	my_N_INDEX = 35,
-	my_N_LABEL = 28,
-	my_N_LE = 38,
-	my_N_LOOP = 23,
-	my_N_LSH = 45,
-	my_N_LT = 36,
-	my_N_MEMBERDECL = 16,
-	my_N_MEMBERLIST = 17,
-	my_N_MOD = 57,
-	my_N_MUL = 44,
-	my_N_NE = 41,
-	my_N_NEG = 55,
-	my_N_NOT = 53,
-	my_N_NUM = 1,
-	my_N_OR = 51,
-	my_N_POS = 54,
-	my_N_PROGRAM = 12,
-	my_N_PTRTYPE = 14,
-	my_N_REF = 32,
-	my_N_RETURN = 26,
-	my_N_RSH = 46,
-	my_N_SIZEOF = 31,
-	my_N_STMTLIST = 4,
-	my_N_STR = 3,
-	my_N_STRUCT = 15,
-	my_N_SUB = 43,
-	my_N_VARDECL = 27,
-	my_N_XOR = 52,
-	my_ONE_OR_MORE = 3,
-	my_OP_ADCRM = 19,
-	my_OP_ADDI = 129,
-	my_OP_ADDRM = 3,
-	my_OP_ANDI = 262273,
-	my_OP_ANDRM = 35,
-	my_OP_CALL = 232,
-	my_OP_CLD = 252,
-	my_OP_CLI = 250,
-	my_OP_CMPI = 458881,
-	my_OP_CMPRM = 59,
-	my_OP_CPUID = 4002,
-	my_OP_GS = 101,
-	my_OP_HLT = 244,
-	my_OP_ICALLM = 131327,
-	my_OP_IDIVM = 458999,
-	my_OP_IMULM = 262391,
-	my_OP_IN = 236,
-	my_OP_IND = 237,
-	my_OP_INVLPGM = 462593,
-	my_OP_IRET = 207,
-	my_OP_IRETQ = 18639,
-	my_OP_JCC = 3968,
-	my_OP_JMP = 233,
-	my_OP_LEA = 141,
-	my_OP_LGDTM = 134913,
-	my_OP_LIDTM = 200449,
-	my_OP_LLDM = 134912,
-	my_OP_LLDTM = 134912,
-	my_OP_LOAD = 139,
-	my_OP_LOAD16 = 26250,
-	my_OP_LOADB = 138,
-	my_OP_LTRM = 200448,
-	my_OP_MOVABS = 184,
-	my_OP_MOVE = 139,
-	my_OP_MOVI = 199,
-	my_OP_NEGM = 196855,
-	my_OP_NOP = 144,
-	my_OP_NOTM = 131319,
-	my_OP_ORI = 65665,
-	my_OP_ORRM = 11,
-	my_OP_OS = 102,
-	my_OP_OUT = 238,
-	my_OP_OUTD = 239,
-	my_OP_POPF = 157,
-	my_OP_POPR = 88,
-	my_OP_PUSHF = 156,
-	my_OP_PUSHR = 80,
-	my_OP_RDCRR = 3872,
-	my_OP_RDMSR = 3890,
-	my_OP_RDRAND = 397255,
-	my_OP_RDSR = 140,
-	my_OP_RET = 195,
-	my_OP_SETCC = 3984,
-	my_OP_SHLM = 262355,
-	my_OP_SHRM = 327891,
-	my_OP_STI = 251,
-	my_OP_STORE = 137,
-	my_OP_STORE16 = 26249,
-	my_OP_STOREB = 136,
-	my_OP_SUBI = 327809,
-	my_OP_SUBRM = 43,
-	my_OP_SYSCALL = 3845,
-	my_OP_SYSRET = 3847,
-	my_OP_TESTRM = 133,
-	my_OP_UD2 = 3851,
-	my_OP_WBINVD = 3849,
-	my_OP_WRCRR = 3874,
-	my_OP_WRMSR = 3888,
-	my_OP_WRSR = 142,
-	my_OP_XORRM = 51,
-	my_O_CREAT = 64,
-	my_O_DIRECTORY = 4096,
-	my_O_RDONLY = 0,
-	my_O_RDWR = 2,
-	my_O_WRONLY = 1,
-	my_PEG_alternative = 3,
-	my_PEG_any = 9,
-	my_PEG_call = 12,
-	my_PEG_class = 11,
-	my_PEG_countop = 6,
-	my_PEG_grammar = 0,
-	my_PEG_identifier = 13,
-	my_PEG_literal = 10,
-	my_PEG_lookahead = 5,
-	my_PEG_lookop = 4,
-	my_PEG_pattern = 2,
-	my_PEG_primary = 8,
-	my_PEG_rule = 1,
-	my_PEG_sp = 14,
-	my_PEG_suffix = 7,
-	my_POLLERR = 8,
-	my_POLLHUP = 16,
-	my_POLLIN = 1,
-	my_POLLNVAL = 32,
-	my_POLLOUT = 4,
-	my_POLLPRI = 2,
-	my_P_add_expr = 40,
-	my_P_add_op = 36,
-	my_P_and_op = 44,
-	my_P_arg_decl = 8,
-	my_P_assign_stmt = 21,
-	my_P_band_op = 26,
-	my_P_bnot_op = 54,
-	my_P_bool_expr = 28,
-	my_P_bor_op = 27,
-	my_P_break = 69,
-	my_P_break_stmt = 15,
-	my_P_byte = 79,
-	my_P_call_expr = 57,
-	my_P_cast_expr = 59,
-	my_P_char = 66,
-	my_P_comp_expr = 35,
-	my_P_compound_stmt = 24,
-	my_P_continue = 74,
-	my_P_continue_stmt = 16,
-	my_P_dec = 64,
-	my_P_deref_op = 50,
-	my_P_div_op = 42,
-	my_P_elif_stmt = 11,
-	my_P_else = 72,
-	my_P_else_stmt = 12,
-	my_P_empty_stmt = 23,
-	my_P_enum = 77,
-	my_P_enum_decl = 2,
-	my_P_enum_item = 1,
-	my_P_eq_op = 33,
-	my_P_expr = 25,
-	my_P_expr_stmt = 22,
-	my_P_func = 82,
-	my_P_func_decl = 5,
-	my_P_func_type = 9,
-	my_P_ge_op = 30,
-	my_P_goto = 75,
-	my_P_goto_stmt = 20,
-	my_P_grammar = 0,
-	my_P_gt_op = 32,
-	my_P_hex = 63,
-	my_P_ident = 83,
-	my_P_if = 71,
-	my_P_if_stmt = 13,
-	my_P_index_expr = 56,
-	my_P_int = 80,
-	my_P_label_stmt = 19,
-	my_P_le_op = 29,
-	my_P_loop = 73,
-	my_P_loop_stmt = 14,
-	my_P_lsh_op = 46,
-	my_P_lt_op = 31,
-	my_P_member_decl = 3,
-	my_P_member_expr = 58,
-	my_P_mod_op = 43,
-	my_P_mul_expr = 45,
-	my_P_mul_op = 41,
-	my_P_ne_op = 34,
-	my_P_neg_op = 52,
-	my_P_not_op = 53,
-	my_P_or_op = 38,
-	my_P_pos_op = 51,
-	my_P_post_expr = 60,
-	my_P_primary = 61,
-	my_P_ptr_type = 7,
-	my_P_ref_op = 49,
-	my_P_reserved = 67,
-	my_P_return = 68,
-	my_P_return_stmt = 17,
-	my_P_rsh_op = 47,
-	my_P_shift_expr = 48,
-	my_P_sizeof = 70,
-	my_P_sizeof_expr = 62,
-	my_P_sp = 84,
-	my_P_stmt = 10,
-	my_P_str = 65,
-	my_P_struct = 78,
-	my_P_struct_decl = 4,
-	my_P_sub_op = 37,
-	my_P_type = 6,
-	my_P_unary_expr = 55,
-	my_P_var = 76,
-	my_P_var_stmt = 18,
-	my_P_void = 81,
-	my_P_xor_op = 39,
-	my_R_CR0 = 0,
-	my_R_CR1 = 1,
-	my_R_CR2 = 2,
-	my_R_CR3 = 3,
-	my_R_CR4 = 4,
-	my_R_CR5 = 5,
-	my_R_CR6 = 6,
-	my_R_CR7 = 7,
-	my_R_CS = 1,
-	my_R_DS = 3,
-	my_R_ES = 0,
-	my_R_FS = 4,
-	my_R_GS = 5,
-	my_R_R10 = 10,
-	my_R_R11 = 11,
-	my_R_R12 = 12,
-	my_R_R13 = 13,
-	my_R_R14 = 14,
-	my_R_R15 = 15,
-	my_R_R8 = 8,
-	my_R_R9 = 9,
-	my_R_RAX = 0,
-	my_R_RBP = 5,
-	my_R_RBX = 3,
-	my_R_RCX = 1,
-	my_R_RDI = 7,
-	my_R_RDX = 2,
-	my_R_RIP = 16,
-	my_R_RSI = 6,
-	my_R_RSP = 4,
-	my_R_SS = 2,
-	my_SIGALRM = 14,
-	my_SIGCHLD = 17,
-	my_SIGINT = 2,
-	my_SIGPIPE = 13,
-	my_SIGWINCH = 28,
-	my_SIG_DFL = 0,
-	my_SIG_IGN = 1,
-	my_SOCK_STREAM = 1,
-	my_TY_ARG = 4,
-	my_TY_BYTE = 2,
-	my_TY_FUNC = 5,
-	my_TY_INT = 1,
-	my_TY_PTR = 3,
-	my_TY_STRUCT = 6,
-	my_TY_VOID = 0,
-	my_WNOHANG = 1,
-	my_ZERO_OR_MORE = 2,
-	my_ZERO_OR_ONE = 0
+	T_EOF,
+	T_IDENT,
+	T_NUM,
+	T_HEX,
+	T_STR,
+	T_CHAR,
+	T_LPAR,
+	T_RPAR,
+	T_LBRA,
+	T_RBRA,
+	T_COMMA,
+	T_SEMI,
+	T_COLON,
+	T_STAR,
+	T_DOT,
+	T_NOT,
+	T_ASSIGN,
+	T_AMP,
+	T_OR,
+	T_XOR,
+	T_LT,
+	T_GT,
+	T_LE,
+	T_GE,
+	T_EQ,
+	T_NE,
+	T_ADD,
+	T_SUB,
+	T_LSH,
+	T_RSH,
+	T_BANG,
+	T_BOR,
+	T_BAND,
+	T_LSQ,
+	T_RSQ,
+	T_DIV,
+	T_MOD,
 };
-unsigned char*( my_PEG_tag_to_str)(unsigned long my_tag);
-unsigned char*( my_P_tag_to_str)(unsigned long my_tag);
-void( my__start)(unsigned long my_argc,unsigned char** my_argv,unsigned char** my_envp);
-unsigned long( my_accept)(unsigned long my_fd,unsigned char* my_addr,unsigned long* my_len);
-void( my_addfixup)(struct my_assembler* my_c,struct my_label* my_l);
-unsigned char*( my_alloc)(struct my_alloc* my_c,unsigned long my_size);
-unsigned long( my_any)(struct my_peg* my_c);
-void( my_as_emit)(struct my_assembler* my_a,unsigned long my_b);
-void( my_as_jmp)(struct my_assembler* my_a,unsigned long my_op,struct my_label* my_l);
-void( my_as_modm)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_b,unsigned long my_i,unsigned long my_s,unsigned long my_d);
-void( my_as_modr)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_b);
-void( my_as_modra)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_d);
-void( my_as_modri)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_x);
-void( my_as_modrm)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_b,unsigned long my_i,unsigned long my_s,unsigned long my_d);
-void( my_as_modrr)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_b);
-void( my_as_op)(struct my_assembler* my_a,unsigned long my_op);
-void( my_as_opr)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r);
-void( my_as_opri64)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_x);
-void( my_as_rex)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_i,unsigned long my_b);
-void( my_assert)(unsigned long my_x,unsigned char* my_msg);
-unsigned long( my_bind)(unsigned long my_fd,unsigned char* my_addr,unsigned long my_len);
-void( my_bzero)(unsigned char* my_s,unsigned long my_size);
-void( my_cdie)(struct my_compiler* my_c,unsigned char* my_msg);
-unsigned long( my_charset)(struct my_peg* my_c,unsigned char* my_s);
-void( my_choice)(struct my_peg* my_c);
-unsigned long( my_close)(unsigned long my_fd);
-void( my_commit)(struct my_peg* my_c);
-struct my_compiler*( my_comp_setup)(struct my_alloc* my_a);
-void( my_compile)(struct my_compiler* my_c,struct my_node* my_p);
-void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n,unsigned long my_rhs);
-void( my_compile_func)(struct my_compiler* my_c,struct my_decl* my_d);
-void( my_compile_include)(struct my_compiler* my_c,struct my_node* my_n);
-void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n,struct my_label* my_top,struct my_label* my_out);
-struct my_node*( my_concat_program)(struct my_node* my_a,struct my_node* my_b);
-struct my_peg_node*( my_construct)(struct my_peg* my_c,unsigned long my_sp);
-void( my_copypos)(struct my_node* my_n,struct my_peg_node* my_pn);
-unsigned long( my_count_args)(struct my_compiler* my_c,struct my_type* my_t);
-void( my_cshow_context)(struct my_compiler* my_c);
-void( my_ctranslate)(struct my_compiler* my_c);
-void( my_ctranslate_expr)(struct my_compiler* my_c,struct my_node* my_n);
-void( my_ctranslate_func)(struct my_compiler* my_c,struct my_decl* my_d);
-void( my_ctranslate_stmt)(struct my_compiler* my_c,struct my_node* my_n);
-void( my_ctranslate_str)(struct my_compiler* my_c,unsigned char* my_s);
-void( my_ctranslate_struct)(struct my_compiler* my_c,struct my_decl* my_d);
-void( my_ctranslate_type)(struct my_compiler* my_c,struct my_type* my_ty,unsigned char* my_name,unsigned long my_decl,struct my_node* my_args);
-void( my_ctranslate_type1)(struct my_compiler* my_c,struct my_type* my_ty,unsigned char* my_name,unsigned long my_decl);
-void( my_ctranslate_type2)(struct my_compiler* my_c,struct my_type* my_ty,unsigned char* my_name,struct my_node* my_args);
-void( my_ctranslate_vars)(struct my_compiler* my_c,struct my_node* my_n);
-void( my_ctranslate_zero)(struct my_compiler* my_c,struct my_type* my_ty);
-unsigned long( my_dec2int)(unsigned char* my_s,unsigned long my_len,unsigned long* my_ok);
-unsigned long( my_decode_count)(struct my_peg_node* my_n);
-unsigned long( my_decode_look)(struct my_peg_node* my_n);
-void( my_defenum)(struct my_compiler* my_c,struct my_node* my_n);
-struct my_decl*( my_defextern)(struct my_compiler* my_c,struct my_node* my_n);
-void( my_defstruct)(struct my_compiler* my_c,struct my_node* my_n);
-void( my_defun)(struct my_compiler* my_c,struct my_node* my_n);
-void( my_die)(unsigned char* my_msg);
-unsigned long( my_dup2)(unsigned long my_old,unsigned long my_new);
-void( my_emit)(struct my_assembler* my_c,unsigned long my_x);
-void( my_emit_add)(struct my_assembler* my_c);
-void( my_emit_and)(struct my_assembler* my_c);
-void( my_emit_blob)(struct my_assembler* my_c,unsigned char* my_s,unsigned long my_n);
-void( my_emit_builtin)(struct my_compiler* my_c);
-void( my_emit_call)(struct my_assembler* my_c,unsigned long my_n);
-void( my_emit_div)(struct my_assembler* my_c);
-void( my_emit_eq)(struct my_assembler* my_c);
-void( my_emit_ge)(struct my_assembler* my_c);
-void( my_emit_gt)(struct my_assembler* my_c);
-void( my_emit_isr)(struct my_compiler* my_c);
-void( my_emit_jmp)(struct my_assembler* my_c,struct my_label* my_l);
-void( my_emit_jz)(struct my_assembler* my_c,struct my_label* my_l);
-void( my_emit_kstart)(struct my_assembler* my_c);
-void( my_emit_lcall)(struct my_assembler* my_c,struct my_label* my_l,unsigned long my_n);
-void( my_emit_le)(struct my_assembler* my_c);
-void( my_emit_lea)(struct my_assembler* my_c,unsigned long my_offset);
-void( my_emit_load)(struct my_assembler* my_c,struct my_type* my_t);
-void( my_emit_lsh)(struct my_assembler* my_c);
-void( my_emit_lt)(struct my_assembler* my_c);
-void( my_emit_mod)(struct my_assembler* my_c);
-void( my_emit_mul)(struct my_assembler* my_c);
-void( my_emit_ne)(struct my_assembler* my_c);
-void( my_emit_neg)(struct my_assembler* my_c);
-void( my_emit_not)(struct my_assembler* my_c);
-void( my_emit_num)(struct my_assembler* my_c,unsigned long my_x);
-void( my_emit_or)(struct my_assembler* my_c);
-void( my_emit_pop)(struct my_assembler* my_c,unsigned long my_n);
-void( my_emit_preamble)(struct my_assembler* my_c,unsigned long my_n,unsigned long my_pragma);
-void( my_emit_ptr)(struct my_assembler* my_c,struct my_label* my_l);
-void( my_emit_restorer)(struct my_assembler* my_c);
-void( my_emit_ret)(struct my_assembler* my_c);
-void( my_emit_rsh)(struct my_assembler* my_c);
-void( my_emit_ssr)(struct my_compiler* my_c);
-void( my_emit_store)(struct my_assembler* my_c,struct my_type* my_t);
-void( my_emit_str)(struct my_assembler* my_c,unsigned char* my_s);
-void( my_emit_sub)(struct my_assembler* my_c);
-void( my_emit_syscall)(struct my_assembler* my_c);
-void( my_emit_ud)(struct my_assembler* my_c);
-void( my_emit_xor)(struct my_assembler* my_c);
-void( my_enter)(struct my_peg* my_c,unsigned long my_tag);
-unsigned long( my_exec)(unsigned char* my_cmd,unsigned char** my_argv,unsigned char** my_envp);
-void( my_exit)(unsigned long my_n);
-void( my_fail)(struct my_peg* my_c);
-void( my_fclose)(struct my_file* my_f);
-unsigned long( my_fdgetc)(unsigned long my_fd);
-void( my_fdputc)(unsigned long my_fd,unsigned long my_ch);
-void( my_fdputd)(unsigned long my_fd,unsigned long my_n);
-void( my_fdputh)(unsigned long my_fd,unsigned long my_n);
-void( my_fdputh16)(unsigned long my_fd,unsigned long my_x);
-void( my_fdputh32)(unsigned long my_fd,unsigned long my_x);
-void( my_fdputh64)(unsigned long my_fd,unsigned long my_x);
-void( my_fdputh8)(unsigned long my_fd,unsigned long my_x);
-void( my_fdputhn)(unsigned long my_fd,unsigned long my_x,unsigned long my_d);
-void( my_fdputs)(unsigned long my_fd,unsigned char* my_msg);
-void( my_fdxxd)(unsigned long my_fd,unsigned char* my_data,unsigned long my_len);
-void( my_ffill)(struct my_file* my_f);
-void( my_fflush)(struct my_file* my_f);
-unsigned long( my_fgetc)(struct my_file* my_f);
-unsigned long( my_fgets)(struct my_file* my_f,unsigned char* my_buf,unsigned long my_len);
-void( my_fillpos)(struct my_parser* my_c,struct my_node* my_n);
-struct my_decl*( my_find)(struct my_compiler* my_c,unsigned char* my_name,unsigned char* my_member_name,unsigned long my_make);
-struct my_decl*( my_first_decl)(struct my_compiler* my_c);
-void( my_fixup)(struct my_assembler* my_c,unsigned char* my_here,unsigned long my_delta);
-void( my_fixup_label)(struct my_assembler* my_c,struct my_label* my_l);
-void( my_flush_coutput)(struct my_compiler* my_c);
-struct my_file*( my_fopen)(unsigned long my_fd,struct my_alloc* my_a);
-unsigned long( my_fork)(void);
-void( my_fputb)(struct my_file* my_f,unsigned char* my_s,unsigned long my_n);
-void( my_fputc)(struct my_file* my_f,unsigned long my_ch);
-void( my_fputd)(struct my_file* my_out,unsigned long my_n);
-void( my_fputs)(struct my_file* my_f,unsigned char* my_s);
-unsigned char*( my_freadall)(struct my_file* my_f,unsigned long* my_size);
-void( my_free)(struct my_alloc* my_a,unsigned char* my_p);
-void( my_fseek)(struct my_file* my_f,unsigned long my_off);
-unsigned long( my_fstat)(unsigned long my_fd,unsigned char* my_buf);
-unsigned long( my_get)(struct my_peg* my_c);
-unsigned long( my_getdirents)(unsigned long my_fd,unsigned char* my_buf,unsigned long my_len);
-unsigned long( my_hex2int)(unsigned char* my_s,unsigned long my_len,unsigned long* my_ok);
-unsigned long( my_hexdig)(unsigned long my_ch,unsigned long* my_ok);
-unsigned long( my_hoist_locals)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n,unsigned long my_offset);
-void( my_layout_struct)(struct my_compiler* my_c,struct my_decl* my_d);
-void( my_leave)(struct my_peg* my_c,unsigned long my_tag);
-unsigned long( my_listen)(unsigned long my_fd,unsigned long my_backlog);
-unsigned long( my_literal)(struct my_peg* my_c,unsigned char* my_s);
-unsigned long( my_lseek)(unsigned long my_fd,unsigned long my_off,unsigned long my_whence);
-void( my_main)(unsigned long my_argc,unsigned char** my_argv,unsigned char** my_envp);
-unsigned long( my_memcmp)(unsigned char* my_a,unsigned char* my_b,unsigned long my_n);
-void( my_memcpy)(unsigned char* my_dest,unsigned char* my_src,unsigned long my_size);
-void( my_memset)(unsigned char* my_dest,unsigned long my_c,unsigned long my_size);
-unsigned long( my_mkdir)(unsigned char* my_name);
-struct my_label*( my_mklabel)(struct my_assembler* my_c);
-struct my_node*( my_mknode)(struct my_parser* my_c,unsigned long my_kind,struct my_node* my_a,struct my_node* my_b);
-struct my_node*( my_mknode0)(struct my_parser* my_c,unsigned long my_kind);
-struct my_node*( my_mknode1)(struct my_parser* my_c,unsigned long my_kind,struct my_node* my_a);
-struct my_type*( my_mktype)(struct my_compiler* my_c,unsigned long my_kind,struct my_type* my_a,struct my_type* my_b,struct my_decl* my_st);
-struct my_type*( my_mktype0)(struct my_compiler* my_c,unsigned long my_kind);
-struct my_type*( my_mktype1)(struct my_compiler* my_c,unsigned long my_kind,struct my_type* my_a);
-struct my_type*( my_mktype2)(struct my_compiler* my_c,unsigned long my_kind,struct my_type* my_a,struct my_type* my_b);
-struct my_type*( my_mktype_struct)(struct my_compiler* my_c,struct my_decl* my_st);
-unsigned long( my_mmap)(unsigned long my_addr,unsigned long my_len,unsigned long my_prot,unsigned long my_flags,unsigned long my_fd,unsigned long my_off);
-unsigned long( my_munmap)(unsigned long my_addr,unsigned long my_len);
-struct my_decl*( my_next_decl)(struct my_compiler* my_c,struct my_decl* my_d);
-unsigned char*( my_node_to_str)(unsigned long my_kind);
-unsigned long( my_open)(unsigned char* my_name,unsigned long my_flags,unsigned long my_mode);
-void( my_open_coutput)(struct my_compiler* my_c,unsigned char* my_filename);
-void( my_open_output)(struct my_assembler* my_c,unsigned char* my_filename);
-struct my_node*( my_parse)(struct my_parser* my_c,unsigned char* my_filename);
-unsigned long( my_parse_escape)(unsigned char* my_s,unsigned long* my_i,unsigned long my_n);
-unsigned long( my_peg_PEG_alternative)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_any)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_call)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_class)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_countop)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_grammar)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_identifier)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_literal)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_lookahead)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_lookop)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_pattern)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_primary)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_rule)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_sp)(struct my_peg* my_c);
-unsigned long( my_peg_PEG_suffix)(struct my_peg* my_c);
-unsigned long( my_peg_P_add_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_add_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_and_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_arg_decl)(struct my_peg* my_c);
-unsigned long( my_peg_P_assign_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_band_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_bnot_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_bool_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_bor_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_break)(struct my_peg* my_c);
-unsigned long( my_peg_P_break_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_byte)(struct my_peg* my_c);
-unsigned long( my_peg_P_call_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_cast_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_char)(struct my_peg* my_c);
-unsigned long( my_peg_P_comp_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_compound_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_continue)(struct my_peg* my_c);
-unsigned long( my_peg_P_continue_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_dec)(struct my_peg* my_c);
-unsigned long( my_peg_P_deref_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_div_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_elif_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_else)(struct my_peg* my_c);
-unsigned long( my_peg_P_else_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_empty_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_enum)(struct my_peg* my_c);
-unsigned long( my_peg_P_enum_decl)(struct my_peg* my_c);
-unsigned long( my_peg_P_enum_item)(struct my_peg* my_c);
-unsigned long( my_peg_P_eq_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_expr_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_func)(struct my_peg* my_c);
-unsigned long( my_peg_P_func_decl)(struct my_peg* my_c);
-unsigned long( my_peg_P_func_type)(struct my_peg* my_c);
-unsigned long( my_peg_P_ge_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_goto)(struct my_peg* my_c);
-unsigned long( my_peg_P_goto_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_grammar)(struct my_peg* my_c);
-unsigned long( my_peg_P_gt_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_hex)(struct my_peg* my_c);
-unsigned long( my_peg_P_ident)(struct my_peg* my_c);
-unsigned long( my_peg_P_if)(struct my_peg* my_c);
-unsigned long( my_peg_P_if_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_index_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_int)(struct my_peg* my_c);
-unsigned long( my_peg_P_label_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_le_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_loop)(struct my_peg* my_c);
-unsigned long( my_peg_P_loop_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_lsh_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_lt_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_member_decl)(struct my_peg* my_c);
-unsigned long( my_peg_P_member_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_mod_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_mul_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_mul_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_ne_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_neg_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_not_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_or_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_pos_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_post_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_primary)(struct my_peg* my_c);
-unsigned long( my_peg_P_ptr_type)(struct my_peg* my_c);
-unsigned long( my_peg_P_ref_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_reserved)(struct my_peg* my_c);
-unsigned long( my_peg_P_return)(struct my_peg* my_c);
-unsigned long( my_peg_P_return_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_rsh_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_shift_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_sizeof)(struct my_peg* my_c);
-unsigned long( my_peg_P_sizeof_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_sp)(struct my_peg* my_c);
-unsigned long( my_peg_P_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_str)(struct my_peg* my_c);
-unsigned long( my_peg_P_struct)(struct my_peg* my_c);
-unsigned long( my_peg_P_struct_decl)(struct my_peg* my_c);
-unsigned long( my_peg_P_sub_op)(struct my_peg* my_c);
-unsigned long( my_peg_P_type)(struct my_peg* my_c);
-unsigned long( my_peg_P_unary_expr)(struct my_peg* my_c);
-unsigned long( my_peg_P_var)(struct my_peg* my_c);
-unsigned long( my_peg_P_var_stmt)(struct my_peg* my_c);
-unsigned long( my_peg_P_void)(struct my_peg* my_c);
-unsigned long( my_peg_P_xor_op)(struct my_peg* my_c);
-void( my_peg_compile)(struct my_peg_compiler* my_c,unsigned char* my_filename);
-void( my_peg_free)(struct my_peg* my_c);
-struct my_peg*( my_peg_new)(unsigned char* my_filename,unsigned char* my_src,unsigned long my_len,struct my_alloc* my_a);
-void( my_peg_open_output)(struct my_peg_compiler* my_c,unsigned char* my_filename);
-struct my_peg_node*( my_peg_parse)(struct my_peg* my_c,unsigned long my_sp,unsigned long(* my_grammar)(struct my_peg*));
-void( my_peg_reset)(struct my_peg* my_c,unsigned char* my_filename,unsigned char* my_src,unsigned long my_len);
-void( my_peg_show)(struct my_file* my_out,struct my_peg_node* my_n);
-unsigned long( my_pipe)(unsigned long* my_rfd,unsigned long* my_wfd);
-unsigned long( my_poll)(unsigned long* my_pfd,unsigned long my_nfd,unsigned long my_timeout);
-struct my_type*( my_prototype)(struct my_compiler* my_c,struct my_node* my_n);
-void( my_putchar)(struct my_assembler* my_c,unsigned long my_ch);
-unsigned long( my_read)(unsigned long my_fd,unsigned char* my_buf,unsigned long my_n);
-unsigned char*( my_readall)(unsigned long my_fd,unsigned long* my_len,struct my_alloc* my_a);
-struct my_node*( my_reconstruct)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_add)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_arg_decl)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_args)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_assign)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_bool)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_break)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_char)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_comp)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_compound)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_continue)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_dec)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_empty)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_enum)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_enum_item)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_expr)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_expr_stmt)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_func)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_func_type)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_goto)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_hex)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_ident)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_if)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_intern)(struct my_parser* my_c,struct my_peg_node* my_pn,unsigned char* my_s,unsigned long my_len);
-struct my_node*( my_reconstruct_label)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_loop)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_member_decl)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_member_list)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_mul)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_post)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_primary)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_return)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_shift)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_sizeof)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_stmt)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_str)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_struct)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_type)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_unary)(struct my_parser* my_c,struct my_peg_node* my_pn);
-struct my_node*( my_reconstruct_var)(struct my_parser* my_c,struct my_peg_node* my_pn);
-unsigned long( my_rename)(unsigned char* my_oldname,unsigned char* my_newname);
-void( my_reserve)(struct my_assembler* my_c,unsigned long my_n);
-void( my_reverse)(unsigned char* my_buf,unsigned long my_len);
-void( my_setup_alloc)(struct my_alloc* my_c);
-struct my_assembler*( my_setup_assembler)(struct my_alloc* my_a);
-struct my_parser*( my_setup_parser)(struct my_alloc* my_a);
-struct my_peg_compiler*( my_setup_peg)(struct my_alloc* my_a,unsigned char* my_prefix);
-void( my_show_node)(struct my_file* my_out,struct my_node* my_n);
-unsigned long( my_sigaction)(unsigned long my_sig,struct my_sigaction* my_act,struct my_sigaction* my_oact);
-unsigned long( my_socket)(unsigned long my_pf,unsigned long my_ty,unsigned long my_pc);
-unsigned long( my_strcmp)(unsigned char* my_a,unsigned char* my_b);
-unsigned long( my_strlen)(unsigned char* my_s);
-unsigned long( my_syscall)(unsigned long my_n,unsigned long my_a1,unsigned long my_a2,unsigned long my_a3,unsigned long my_a4,unsigned long my_a5,unsigned long my_a6);
-void( my_translate)(struct my_peg_compiler* my_c,struct my_peg_node* my_n);
-void( my_translate_charset)(struct my_peg_compiler* my_c,struct my_peg_node* my_n);
-void( my_translate_literal)(struct my_peg_compiler* my_c,struct my_peg_node* my_n);
-void( my_translate_pattern)(struct my_peg_compiler* my_c,struct my_peg_node* my_n);
-unsigned long( my_type_isint)(struct my_type* my_t);
-unsigned long( my_type_isprim)(struct my_type* my_t);
-unsigned long( my_type_sizeof)(struct my_compiler* my_c,struct my_type* my_t);
-unsigned long( my_unescape)(unsigned char* my_s,unsigned long* my_i,unsigned long my_len,unsigned long* my_ok);
-unsigned long( my_unhex)(unsigned char* my_dest,unsigned char* my_src);
-void( my_unify)(struct my_compiler* my_c,struct my_type* my_a,struct my_type* my_b);
-unsigned long( my_unlink)(unsigned char* my_name);
-unsigned long( my_wait)(unsigned long my_pid,unsigned long* my_status,unsigned long my_flags);
-unsigned long( my_write)(unsigned long my_fd,unsigned char* my_buf,unsigned long my_n);
-void( my_writeout)(struct my_assembler* my_c,struct my_label* my_start,struct my_label* my_kstart);
-void( my_xxd_line)(unsigned char* my_line,unsigned long my_offset,unsigned char* my_data,unsigned long my_len);
-unsigned char*( my_PEG_tag_to_str)(unsigned long my_tag){
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_grammar)))) {
-	return (unsigned char *)"grammar";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_rule)))) {
-	return (unsigned char *)"rule";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_pattern)))) {
-	return (unsigned char *)"pattern";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_alternative)))) {
-	return (unsigned char *)"alternative";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_lookop)))) {
-	return (unsigned char *)"lookop";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_lookahead)))) {
-	return (unsigned char *)"lookahead";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_countop)))) {
-	return (unsigned char *)"countop";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_suffix)))) {
-	return (unsigned char *)"suffix";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_primary)))) {
-	return (unsigned char *)"primary";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_any)))) {
-	return (unsigned char *)"any";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_literal)))) {
-	return (unsigned char *)"literal";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_class)))) {
-	return (unsigned char *)"class";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_call)))) {
-	return (unsigned char *)"call";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_identifier)))) {
-	return (unsigned char *)"identifier";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_PEG_sp)))) {
-	return (unsigned char *)"sp";
-	}
-	(my_die)(((unsigned char *)"invalid tag"));
-}
-unsigned char*( my_P_tag_to_str)(unsigned long my_tag){
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_grammar)))) {
-	return (unsigned char *)"grammar";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_enum_item)))) {
-	return (unsigned char *)"enum_item";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_enum_decl)))) {
-	return (unsigned char *)"enum_decl";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_member_decl)))) {
-	return (unsigned char *)"member_decl";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_struct_decl)))) {
-	return (unsigned char *)"struct_decl";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_func_decl)))) {
-	return (unsigned char *)"func_decl";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_type)))) {
-	return (unsigned char *)"type";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_ptr_type)))) {
-	return (unsigned char *)"ptr_type";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_arg_decl)))) {
-	return (unsigned char *)"arg_decl";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_func_type)))) {
-	return (unsigned char *)"func_type";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_stmt)))) {
-	return (unsigned char *)"stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_elif_stmt)))) {
-	return (unsigned char *)"elif_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_else_stmt)))) {
-	return (unsigned char *)"else_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_if_stmt)))) {
-	return (unsigned char *)"if_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_loop_stmt)))) {
-	return (unsigned char *)"loop_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_break_stmt)))) {
-	return (unsigned char *)"break_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_continue_stmt)))) {
-	return (unsigned char *)"continue_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_return_stmt)))) {
-	return (unsigned char *)"return_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_var_stmt)))) {
-	return (unsigned char *)"var_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_label_stmt)))) {
-	return (unsigned char *)"label_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_goto_stmt)))) {
-	return (unsigned char *)"goto_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_assign_stmt)))) {
-	return (unsigned char *)"assign_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_expr_stmt)))) {
-	return (unsigned char *)"expr_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_empty_stmt)))) {
-	return (unsigned char *)"empty_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_compound_stmt)))) {
-	return (unsigned char *)"compound_stmt";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_expr)))) {
-	return (unsigned char *)"expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_band_op)))) {
-	return (unsigned char *)"band_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_bor_op)))) {
-	return (unsigned char *)"bor_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_bool_expr)))) {
-	return (unsigned char *)"bool_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_le_op)))) {
-	return (unsigned char *)"le_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_ge_op)))) {
-	return (unsigned char *)"ge_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_lt_op)))) {
-	return (unsigned char *)"lt_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_gt_op)))) {
-	return (unsigned char *)"gt_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_eq_op)))) {
-	return (unsigned char *)"eq_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_ne_op)))) {
-	return (unsigned char *)"ne_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_comp_expr)))) {
-	return (unsigned char *)"comp_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_add_op)))) {
-	return (unsigned char *)"add_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_sub_op)))) {
-	return (unsigned char *)"sub_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_or_op)))) {
-	return (unsigned char *)"or_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_xor_op)))) {
-	return (unsigned char *)"xor_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_add_expr)))) {
-	return (unsigned char *)"add_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_mul_op)))) {
-	return (unsigned char *)"mul_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_div_op)))) {
-	return (unsigned char *)"div_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_mod_op)))) {
-	return (unsigned char *)"mod_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_and_op)))) {
-	return (unsigned char *)"and_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_mul_expr)))) {
-	return (unsigned char *)"mul_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_lsh_op)))) {
-	return (unsigned char *)"lsh_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_rsh_op)))) {
-	return (unsigned char *)"rsh_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_shift_expr)))) {
-	return (unsigned char *)"shift_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_ref_op)))) {
-	return (unsigned char *)"ref_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_deref_op)))) {
-	return (unsigned char *)"deref_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_pos_op)))) {
-	return (unsigned char *)"pos_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_neg_op)))) {
-	return (unsigned char *)"neg_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_not_op)))) {
-	return (unsigned char *)"not_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_bnot_op)))) {
-	return (unsigned char *)"bnot_op";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_unary_expr)))) {
-	return (unsigned char *)"unary_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_index_expr)))) {
-	return (unsigned char *)"index_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_call_expr)))) {
-	return (unsigned char *)"call_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_member_expr)))) {
-	return (unsigned char *)"member_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_cast_expr)))) {
-	return (unsigned char *)"cast_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_post_expr)))) {
-	return (unsigned char *)"post_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_primary)))) {
-	return (unsigned char *)"primary";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_sizeof_expr)))) {
-	return (unsigned char *)"sizeof_expr";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_hex)))) {
-	return (unsigned char *)"hex";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_dec)))) {
-	return (unsigned char *)"dec";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_str)))) {
-	return (unsigned char *)"str";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_char)))) {
-	return (unsigned char *)"char";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_reserved)))) {
-	return (unsigned char *)"reserved";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_return)))) {
-	return (unsigned char *)"return";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_break)))) {
-	return (unsigned char *)"break";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_sizeof)))) {
-	return (unsigned char *)"sizeof";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_if)))) {
-	return (unsigned char *)"if";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_else)))) {
-	return (unsigned char *)"else";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_loop)))) {
-	return (unsigned char *)"loop";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_continue)))) {
-	return (unsigned char *)"continue";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_goto)))) {
-	return (unsigned char *)"goto";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_var)))) {
-	return (unsigned char *)"var";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_enum)))) {
-	return (unsigned char *)"enum";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_struct)))) {
-	return (unsigned char *)"struct";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_byte)))) {
-	return (unsigned char *)"byte";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_int)))) {
-	return (unsigned char *)"int";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_void)))) {
-	return (unsigned char *)"void";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_func)))) {
-	return (unsigned char *)"func";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_ident)))) {
-	return (unsigned char *)"ident";
-	}
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_sp)))) {
-	return (unsigned char *)"sp";
-	}
-	(my_die)(((unsigned char *)"invalid tag"));
-}
-void( my__start)(unsigned long my_argc,unsigned char** my_argv,unsigned char** my_envp){
-	(my_main)((my_argc),(my_argv),(my_envp));
-	(my_exit)((0UL));
-}
-unsigned long( my_accept)(unsigned long my_fd,unsigned char* my_addr,unsigned long* my_len){
-	return (my_syscall)((43UL),(my_fd),((unsigned long)my_addr),((unsigned long)my_len),(0UL),(0UL),(0UL));
-}
-void( my_addfixup)(struct my_assembler* my_c,struct my_label* my_l){
-	struct my_fixup* my_f = 0;
-	unsigned char* my_here = 0;
-	if ((unsigned long)(((long)(((my_c)->my_text_end)->my_fill))<((long)(4UL)))) {
-	(my_die)(((unsigned char *)"invalid fixup"));
-	}
-	(my_here)=(&((((my_c)->my_text_end)->my_buf)[(unsigned long)(((unsigned long)(((my_c)->my_text_end)->my_fill))-((unsigned long)(4UL)))]));
-	if ((my_l)->my_fixed) {
-	(my_fixup)((my_c),(my_here),((unsigned long)(((unsigned long)((my_l)->my_at))-((unsigned long)((my_c)->my_at)))));
-	} else {
-	(my_f)=((struct my_fixup*)(my_alloc)(((my_c)->my_a),(24UL)));
-	((my_f)->my_next)=((my_l)->my_fix);
-	((my_f)->my_ptr)=(my_here);
-	((my_f)->my_at)=((my_c)->my_at);
-	((my_l)->my_fix)=(my_f);
-	}
-}
-unsigned char*( my_alloc)(struct my_alloc* my_c,unsigned long my_size){
-	struct my_page* my_page = 0;
-	unsigned long my_mret = 0;
-	unsigned char* my_ret = 0;
-	unsigned long my_psize = 0;
-	if ((unsigned long)(((long)(my_size))<((long)(0UL)))) {
-	(my_die)(((unsigned char *)"invalid alloc"));
-	}
-	if ((unsigned long)(((long)(my_size))>=((long)(2048UL)))) {
-	(my_size)=((unsigned long)(((unsigned long)(my_size))+((unsigned long)(4095UL))));
-	(my_size)=((unsigned long)(((unsigned long)(my_size))&((unsigned long)((unsigned long)(~(unsigned long)(4095UL))))));
-	(my_mret)=((my_mmap)((0UL),(my_size),(3UL),(34UL),((unsigned long)(-(unsigned long)(1UL))),(0UL)));
-	if ((unsigned long)(((long)(my_mret))==((long)((unsigned long)(-(unsigned long)(1UL)))))) {
-	(my_die)(((unsigned char *)"out of memory"));
-	}
-	(my_ret)=((unsigned char*)my_mret);
-	return my_ret;
-	}
-	(my_page)=((my_c)->my_page);
-	if (my_page) {
-	if ((unsigned long)(((long)(my_size))<=((long)((unsigned long)(((unsigned long)((my_page)->my_size))-((unsigned long)((my_page)->my_fill))))))) {
-	(my_mret)=((unsigned long)(((unsigned long)((unsigned long)(my_page)->my_ptr))+((unsigned long)((my_page)->my_fill))));
-	((my_page)->my_fill)=((unsigned long)(((unsigned long)((my_page)->my_fill))+((unsigned long)(my_size))));
-	(my_ret)=((unsigned char*)my_mret);
-	return my_ret;
-	}
-	}
-	(my_psize)=((unsigned long)(((long)(64UL))*((long)(1024UL))));
-	(my_mret)=((my_mmap)((0UL),(my_psize),(3UL),(34UL),((unsigned long)(-(unsigned long)(1UL))),(0UL)));
-	if ((unsigned long)(((long)(my_mret))==((long)((unsigned long)(-(unsigned long)(1UL)))))) {
-	(my_die)(((unsigned char *)"out of memory"));
-	}
-	(my_page)=((struct my_page*)my_mret);
-	((my_page)->my_ptr)=((unsigned char*)&((my_page)[1UL]));
-	(my_ret)=((my_page)->my_ptr);
-	((my_page)->my_size)=((unsigned long)(((unsigned long)(my_psize))-((unsigned long)(24UL))));
-	((my_page)->my_fill)=(my_size);
-	((my_c)->my_page)=(my_page);
-	return my_ret;
-}
-unsigned long( my_any)(struct my_peg* my_c){
-	unsigned long my_ch = 0;
-	(my_ch)=((my_get)((my_c)));
-	if ((unsigned long)(((long)(my_ch))==((long)((unsigned long)(-(unsigned long)(1UL)))))) {
-	(my_fail)((my_c));
-	return 0UL;
-	}
-	return 1UL;
-}
-void( my_as_emit)(struct my_assembler* my_a,unsigned long my_b){
-	(my_emit)((my_a),(my_b));
-}
-void( my_as_jmp)(struct my_assembler* my_a,unsigned long my_op,struct my_label* my_l){
-	(my_reserve)((my_a),(16UL));
-	(my_as_op)((my_a),(my_op));
-	(my_as_emit)((my_a),(0UL));
-	(my_as_emit)((my_a),(0UL));
-	(my_as_emit)((my_a),(0UL));
-	(my_as_emit)((my_a),(0UL));
-	(my_addfixup)((my_a),(my_l));
-}
-void( my_as_modm)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_b,unsigned long my_i,unsigned long my_s,unsigned long my_d){
-	(my_as_modrm)((my_a),((unsigned long)(((unsigned long)(my_op))&((unsigned long)(65535UL)))),((unsigned long)(((unsigned long)(my_op))>>((unsigned long)(16UL)))),(my_b),(my_i),(my_s),(my_d));
-}
-void( my_as_modr)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_b){
-	(my_as_modrr)((my_a),((unsigned long)(((unsigned long)(my_op))&((unsigned long)(65535UL)))),((unsigned long)(((unsigned long)(my_op))>>((unsigned long)(16UL)))),(my_b));
-}
-void( my_as_modra)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_d){
-	(my_as_rex)((my_a),(my_op),(my_r),(0UL),(0UL));
-	(my_as_op)((my_a),(my_op));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_r))<<((unsigned long)(3UL)))))&((unsigned long)(56UL)))))+((unsigned long)(my_R_RSP)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_R_RSP))<<((unsigned long)(3UL)))))+((unsigned long)(my_R_RBP)))));
-	(my_as_emit)((my_a),(my_d));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_d))>>((unsigned long)(8UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_d))>>((unsigned long)(16UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_d))>>((unsigned long)(24UL)))));
-}
-void( my_as_modri)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_x){
-	if ((unsigned long)(((unsigned long)(((long)(my_x))<((long)((unsigned long)(-(unsigned long)((unsigned long)(((unsigned long)(1UL))<<((unsigned long)(31UL)))))))))||((unsigned long)(((long)(my_x))>=((long)((unsigned long)(((unsigned long)(1UL))<<((unsigned long)(31UL))))))))) {
-	(my_die)(((unsigned char *)"immediate too large"));
-	}
-	(my_as_modrr)((my_a),((unsigned long)(((unsigned long)(my_op))&((unsigned long)(65535UL)))),((unsigned long)(((unsigned long)(my_op))>>((unsigned long)(16UL)))),(my_r));
-	(my_as_emit)((my_a),(my_x));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(8UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(16UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(24UL)))));
-}
-void( my_as_modrm)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_b,unsigned long my_i,unsigned long my_s,unsigned long my_d){
-	unsigned long my_sib = 0;
-	unsigned long my_mod = 0;
-	unsigned long my_rm = 0;
-	unsigned long my_dw = 0;
-	if ((unsigned long)(((unsigned long)(((long)(my_r))<((long)(0UL))))||((unsigned long)(((long)(my_r))>((long)(15UL)))))) {
-	(my_die)(((unsigned char *)"invalid reg"));
-	}
-	(my_rm)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_r))<<((unsigned long)(3UL)))))&((unsigned long)(56UL))));
-	if ((unsigned long)(((long)(my_d))!=((long)(0UL)))) {
-	if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)((unsigned long)(-(unsigned long)(128UL))))))&&((unsigned long)(((long)(my_d))<=((long)(127UL)))))) {
-	(my_mod)=(1UL);
-	(my_dw)=(1UL);
-	} else {
-	(my_mod)=(2UL);
-	(my_dw)=(4UL);
-	}
-	} else {
-	(my_mod)=(0UL);
-	(my_dw)=(0UL);
-	}
-	if ((unsigned long)(((long)(my_mod))==((long)(0UL)))) {
-	if ((unsigned long)(((unsigned long)(((long)(my_b))<((long)(0UL))))||((unsigned long)(((long)(my_b))>((long)(16UL)))))) {
-	(my_die)(((unsigned char *)"invalid reg"));
-	}
-	if (my_s) {
-	if ((unsigned long)(((long)(my_b))==((long)(my_R_RIP)))) {
-	(my_die)(((unsigned char *)"invalid base"));
-	}
-	if ((unsigned long)(((long)(my_i))==((long)(my_R_RSP)))) {
-	(my_die)(((unsigned char *)"invalid index"));
-	}
-	(my_rm)=((unsigned long)(((unsigned long)(my_rm))+((unsigned long)(my_R_RSP))));
-	} else {
-	if ((unsigned long)(((long)(my_i))!=((long)(0UL)))) {
-	(my_die)(((unsigned char *)"invalid index"));
-	}
-	if ((unsigned long)(((long)(my_b))==((long)(my_R_RIP)))) {
-	(my_mod)=(0UL);
-	(my_dw)=(4UL);
-	(my_rm)=((unsigned long)(((unsigned long)(my_rm))+((unsigned long)(my_R_RBP))));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_b))==((long)(my_R_RSP))))||((unsigned long)(((long)(my_b))==((long)(my_R_R12)))))) {
-	(my_s)=(1UL);
-	(my_i)=(my_R_RSP);
-	(my_rm)=((unsigned long)(((unsigned long)(my_rm))+((unsigned long)(my_R_RSP))));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_b))==((long)(my_R_RBP))))||((unsigned long)(((long)(my_b))==((long)(my_R_R13)))))) {
-	(my_mod)=(1UL);
-	(my_dw)=(1UL);
-	(my_rm)=((unsigned long)(((unsigned long)(my_rm))+((unsigned long)(my_R_RBP))));
-	} else {
-	(my_rm)=((unsigned long)(((unsigned long)(my_rm))+((unsigned long)((unsigned long)(((unsigned long)(my_b))&((unsigned long)(7UL)))))));
-	}
-	}
-	} else {
-	if ((unsigned long)(((unsigned long)(((long)(my_b))<((long)(0UL))))||((unsigned long)(((unsigned long)(((long)(my_b))>((long)(16UL))))||((unsigned long)(((unsigned long)(((long)(my_i))<((long)(0UL))))||((unsigned long)(((long)(my_i))>((long)(15UL)))))))))) {
-	(my_die)(((unsigned char *)"invalid reg"));
-	}
-	if (my_s) {
-	if ((unsigned long)(((long)(my_b))==((long)(my_R_RIP)))) {
-	(my_die)(((unsigned char *)"invalid base"));
-	}
-	if ((unsigned long)(((long)(my_i))==((long)(my_R_RSP)))) {
-	(my_die)(((unsigned char *)"invalid index"));
-	}
-	(my_rm)=((unsigned long)(((unsigned long)(my_rm))+((unsigned long)(my_R_RSP))));
-	} else {
-	if ((unsigned long)(((long)(my_i))!=((long)(0UL)))) {
-	(my_die)(((unsigned char *)"invalid index"));
-	}
-	if ((unsigned long)(((long)(my_b))==((long)(my_R_RIP)))) {
-	(my_mod)=(0UL);
-	(my_dw)=(4UL);
-	(my_rm)=((unsigned long)(((unsigned long)(my_rm))+((unsigned long)(my_R_RBP))));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_b))==((long)(my_R_RSP))))||((unsigned long)(((long)(my_b))==((long)(my_R_R12)))))) {
-	(my_s)=(1UL);
-	(my_i)=(my_R_RSP);
-	(my_rm)=((unsigned long)(((unsigned long)(my_rm))+((unsigned long)(my_R_RSP))));
-	} else {
-	(my_rm)=((unsigned long)(((unsigned long)(my_rm))+((unsigned long)((unsigned long)(((unsigned long)(my_b))&((unsigned long)(7UL)))))));
-	}
-	}
-	}
-	(my_as_rex)((my_a),(my_op),(my_r),(my_i),(my_b));
-	(my_as_op)((my_a),(my_op));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_mod))<<((unsigned long)(6UL)))))+((unsigned long)(my_rm)))));
-	if (my_s) {
-	(my_sib)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_i))<<((unsigned long)(3UL)))))&((unsigned long)(56UL)))))+((unsigned long)((unsigned long)(((unsigned long)(my_b))&((unsigned long)(7UL)))))));
-	if ((unsigned long)(((long)(my_s))==((long)(2UL)))) {
-	(my_sib)=((unsigned long)(((unsigned long)(my_sib))+((unsigned long)(64UL))));
-	} else if ((unsigned long)(((long)(my_s))==((long)(4UL)))) {
-	(my_sib)=((unsigned long)(((unsigned long)(my_sib))+((unsigned long)(128UL))));
-	} else if ((unsigned long)(((long)(my_s))==((long)(8UL)))) {
-	(my_sib)=((unsigned long)(((unsigned long)(my_sib))+((unsigned long)(192UL))));
-	} else if ((unsigned long)(((long)(my_s))!=((long)(1UL)))) {
-	(my_die)(((unsigned char *)"invalid scale"));
-	}
-	(my_as_emit)((my_a),(my_sib));
-	}
-	if ((unsigned long)(((long)(my_dw))==((long)(1UL)))) {
-	(my_as_emit)((my_a),(my_d));
-	} else if ((unsigned long)(((long)(my_dw))==((long)(4UL)))) {
-	(my_as_emit)((my_a),(my_d));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_d))>>((unsigned long)(8UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_d))>>((unsigned long)(16UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_d))>>((unsigned long)(24UL)))));
-	}
-}
-void( my_as_modrr)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_b){
-	if ((unsigned long)(((unsigned long)(((long)(my_r))<((long)(0UL))))||((unsigned long)(((unsigned long)(((long)(my_r))>((long)(15UL))))||((unsigned long)(((unsigned long)(((long)(my_b))<((long)(0UL))))||((unsigned long)(((long)(my_b))>((long)(15UL)))))))))) {
-	(my_die)(((unsigned char *)"invalid reg"));
-	}
-	(my_as_rex)((my_a),(my_op),(my_r),(0UL),(my_b));
-	(my_as_op)((my_a),(my_op));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(192UL))+((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_r))<<((unsigned long)(3UL)))))&((unsigned long)(56UL))))))))+((unsigned long)((unsigned long)(((unsigned long)(my_b))&((unsigned long)(7UL))))))));
-}
-void( my_as_op)(struct my_assembler* my_a,unsigned long my_op){
-	if ((unsigned long)(((long)(my_op))>((long)(255UL)))) {
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_op))>>((unsigned long)(8UL)))));
-	(my_as_emit)((my_a),(my_op));
-	} else {
-	(my_as_emit)((my_a),(my_op));
-	}
-}
-void( my_as_opr)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r){
-	if ((unsigned long)(((unsigned long)(((long)(my_r))<((long)(0UL))))||((unsigned long)(((long)(my_r))>((long)(15UL)))))) {
-	(my_die)(((unsigned char *)"invalid reg"));
-	}
-	if ((unsigned long)(((unsigned long)(((long)(my_op))!=((long)(my_OP_PUSHR))))&&((unsigned long)(((unsigned long)(((long)(my_op))!=((long)(my_OP_POPR))))||((unsigned long)(((long)(my_r))>((long)(7UL)))))))) {
-	(my_as_rex)((my_a),(my_op),(my_r),(0UL),(0UL));
-	}
-	(my_as_op)((my_a),((unsigned long)(((unsigned long)(my_op))+((unsigned long)((unsigned long)(((unsigned long)(my_r))&((unsigned long)(7UL))))))));
-}
-void( my_as_opri64)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_x){
-	if ((unsigned long)(((long)(my_op))!=((long)(my_OP_MOVABS)))) {
-	(my_die)(((unsigned char *)"only movabs"));
-	}
-	(my_as_opr)((my_a),(my_op),(my_r));
-	(my_as_emit)((my_a),(my_x));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(8UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(16UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(24UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(32UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(40UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(48UL)))));
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(56UL)))));
-}
-void( my_as_rex)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_r,unsigned long my_i,unsigned long my_b){
-	unsigned long my_w = 0;
-	if ((my_a)->my_bits32) {
-	return;
-	}
-	(my_w)=(8UL);
-	if ((unsigned long)(((unsigned long)(((long)(my_op))==((long)(my_OP_LOADB))))||((unsigned long)(((long)(my_op))==((long)(my_OP_STOREB)))))) {
-	(my_w)=(0UL);
-	}
-	(my_as_emit)((my_a),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(64UL))+((unsigned long)(my_w)))))+((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_r))>>((unsigned long)(1UL)))))&((unsigned long)(4UL))))))))+((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_i))>>((unsigned long)(2UL)))))&((unsigned long)(2UL))))))))+((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_b))>>((unsigned long)(3UL)))))&((unsigned long)(1UL))))))));
-}
-void( my_assert)(unsigned long my_x,unsigned char* my_msg){
-	if ((unsigned long)(!(my_x))) {
-	(my_die)((my_msg));
-	}
-}
-unsigned long( my_bind)(unsigned long my_fd,unsigned char* my_addr,unsigned long my_len){
-	return (my_syscall)((49UL),(my_fd),((unsigned long)my_addr),((unsigned long)my_len),(0UL),(0UL),(0UL));
-}
-void( my_bzero)(unsigned char* my_s,unsigned long my_size){
-	unsigned long my_i = 0;
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_size)))) {
-	break;
-	}
-	((my_s)[my_i])=((unsigned char)0UL);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-}
-void( my_cdie)(struct my_compiler* my_c,unsigned char* my_msg){
-	(my_cshow_context)((my_c));
-	(my_fdputs)((2UL),((unsigned char *)"cdie: "));
-	(my_fdputs)((2UL),(my_msg));
-	(my_fdputs)((2UL),((unsigned char *)"\012"));
-	(my_exit)((1UL));
-}
-unsigned long( my_charset)(struct my_peg* my_c,unsigned char* my_s){
-	unsigned long my_i = 0;
-	unsigned long my_ch = 0;
-	(my_ch)=((my_get)((my_c)));
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(!((my_s)[my_i]))) {
-	(my_fail)((my_c));
-	return 0UL;
-	}
-	if ((unsigned long)(((long)(my_ch))==((long)((unsigned long)(my_s)[my_i])))) {
-	break;
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	return 1UL;
-}
-void( my_choice)(struct my_peg* my_c){
-	if ((unsigned long)(((long)((my_c)->my_sp))==((long)((my_c)->my_limit)))) {
-	(my_die)(((unsigned char *)"choice overflow"));
-	}
-	((((my_c)->my_stack)[(my_c)->my_sp]).my_pos)=((my_c)->my_pos);
-	((((my_c)->my_stack)[(my_c)->my_sp]).my_depth)=((my_c)->my_depth);
-	((((my_c)->my_stack)[(my_c)->my_sp]).my_op)=((my_c)->my_op);
-	((((my_c)->my_stack)[(my_c)->my_sp]).my_tag)=((my_c)->my_tag);
-	((((my_c)->my_stack)[(my_c)->my_sp]).my_line)=((my_c)->my_line);
-	((((my_c)->my_stack)[(my_c)->my_sp]).my_col)=((my_c)->my_col);
-	((my_c)->my_sp)=((unsigned long)(((unsigned long)((my_c)->my_sp))+((unsigned long)(1UL))));
-}
-unsigned long( my_close)(unsigned long my_fd){
-	return (my_syscall)((3UL),(my_fd),(0UL),(0UL),(0UL),(0UL),(0UL));
-}
-void( my_commit)(struct my_peg* my_c){
-	if ((unsigned long)(((long)((my_c)->my_sp))==((long)(0UL)))) {
-	(my_die)(((unsigned char *)"commit underflow"));
-	}
-	((my_c)->my_sp)=((unsigned long)(((unsigned long)((my_c)->my_sp))-((unsigned long)(1UL))));
-}
-struct my_compiler*( my_comp_setup)(struct my_alloc* my_a){
-	struct my_compiler* my_c = 0;
-	(my_c)=((struct my_compiler*)(my_alloc)((my_a),(72UL)));
-	((my_c)->my_a)=(my_a);
-	((my_c)->my_p)=((my_setup_parser)((my_a)));
-	((my_c)->my_filename)=((unsigned char*)0UL);
-	((my_c)->my_lineno)=(0UL);
-	((my_c)->my_colno)=(0UL);
-	((my_c)->my_as)=((my_setup_assembler)((my_a)));
-	((my_c)->my_decls)=((struct my_decl*)0UL);
-	((my_c)->my_do_cout)=(0UL);
-	((my_c)->my_cout)=((struct my_file*)0UL);
-	return my_c;
-}
-void( my_compile)(struct my_compiler* my_c,struct my_node* my_p){
-	struct my_node* my_n = 0;
-	struct my_decl* my_d = 0;
-	unsigned long my_kind = 0;
-	(my_n)=(my_p);
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_kind)=(((my_n)->my_a)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_STRUCT)))) {
-	(my_defstruct)((my_c),((my_n)->my_a));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ENUM)))) {
-	(my_defenum)((my_c),((my_n)->my_a));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_N_FUNC))))&&((unsigned long)(((long)(my_kind))!=((long)(my_N_FUNCDECL)))))) {
-	(my_cdie)((my_c),((unsigned char *)"invalid decl"));
-	}
-	(my_n)=((my_n)->my_b);
-	}
-	(my_n)=(my_p);
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_kind)=(((my_n)->my_a)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_FUNCDECL)))) {
-	(my_defextern)((my_c),((my_n)->my_a));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_FUNC)))) {
-	(my_defun)((my_c),((my_n)->my_a));
-	}
-	(my_n)=((my_n)->my_b);
-	}
-	(my_d)=((my_first_decl)((my_c)));
-	while (1) {
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	if ((my_d)->my_struct_defined) {
-	(my_layout_struct)((my_c),(my_d));
-	}
-	(my_d)=((my_next_decl)((my_c),(my_d)));
-	}
-	(my_d)=((my_first_decl)((my_c)));
-	while (1) {
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	if ((my_d)->my_func_defined) {
-	(my_compile_func)((my_c),(my_d));
-	}
-	(my_d)=((my_next_decl)((my_c),(my_d)));
-	}
-}
-void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n,unsigned long my_rhs){
-	struct my_label* my_no = 0;
-	struct my_label* my_out = 0;
-	struct my_decl* my_v = 0;
-	unsigned long my_kind = 0;
-	((my_c)->my_filename)=((my_n)->my_filename);
-	((my_c)->my_lineno)=((my_n)->my_lineno);
-	((my_c)->my_colno)=((my_n)->my_colno);
-	(my_kind)=((my_n)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_STR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"str is not an lexpr"));
-	}
-	(my_emit_str)(((my_c)->my_as),((my_n)->my_s));
-	((my_n)->my_t)=((my_mktype1)((my_c),(my_TY_PTR),((my_mktype0)((my_c),(my_TY_BYTE)))));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NUM)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"num is not an lexpr"));
-	}
-	(my_emit_num)(((my_c)->my_as),((my_n)->my_n));
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CHAR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"char is not an lexpr"));
-	}
-	(my_emit_num)(((my_c)->my_as),((my_n)->my_n));
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_EXPRLIST)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"call is not an lexpr"));
-	}
-	if ((my_n)->my_b) {
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	if ((my_n)->my_b) {
-	((my_n)->my_t)=((my_mktype2)((my_c),(my_TY_ARG),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t)));
-	} else {
-	((my_n)->my_t)=((my_mktype1)((my_c),(my_TY_ARG),(((my_n)->my_a)->my_t)));
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CALL)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"call is not an lexpr"));
-	}
-	if ((my_n)->my_b) {
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	}
-	if ((unsigned long)(((long)(((my_n)->my_a)->my_kind))==((long)(my_N_IDENT)))) {
-	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)((my_v)&&((my_v)->my_enum_defined))) {
-	(my_cdie)((my_c),((unsigned char *)"type error"));
-	}
-	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
-	if ((unsigned long)((my_v)&&((my_v)->my_var_defined))) {
-	(my_emit_lea)(((my_c)->my_as),((my_v)->my_var_offset));
-	(((my_n)->my_a)->my_t)=((my_v)->my_var_type);
-	(my_emit_load)(((my_c)->my_as),(((my_n)->my_a)->my_t));
-	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
-	} else if ((unsigned long)(!((my_strcmp)((((my_n)->my_a)->my_s),((unsigned char *)"_include"))))) {
-	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_func_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no such function"));
-	}
-	(((my_n)->my_a)->my_t)=((my_v)->my_func_type);
-	(my_compile_include)((my_c),(my_n));
-	} else {
-	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_func_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no such function"));
-	}
-	(((my_n)->my_a)->my_t)=((my_v)->my_func_type);
-	(my_emit_lcall)(((my_c)->my_as),((my_v)->my_func_label),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
-	}
-	} else {
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
-	}
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_FUNC)))) {
-	(my_cdie)((my_c),((unsigned char *)"calling not a function"));
-	}
-	if ((my_n)->my_b) {
-	(my_unify)((my_c),((((my_n)->my_a)->my_t)->my_arg),(((my_n)->my_b)->my_t));
-	} else {
-	(my_unify)((my_c),((((my_n)->my_a)->my_t)->my_arg),((struct my_type*)0UL));
-	}
-	((my_n)->my_t)=((((my_n)->my_a)->my_t)->my_val);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DOT)))) {
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))==((long)(my_TY_PTR)))) {
-	if ((unsigned long)(((long)(((((my_n)->my_a)->my_t)->my_val)->my_kind))!=((long)(my_TY_STRUCT)))) {
-	(my_cdie)((my_c),((unsigned char *)"dot not a struct"));
-	}
-	(my_v)=((my_find)((my_c),((((((my_n)->my_a)->my_t)->my_val)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
-	(my_emit_load)(((my_c)->my_as),(((my_n)->my_a)->my_t));
-	} else {
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_STRUCT)))) {
-	(my_cdie)((my_c),((unsigned char *)"dot not a struct"));
-	}
-	(my_v)=((my_find)((my_c),(((((my_n)->my_a)->my_t)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
-	}
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no such member"));
-	}
-	(my_emit_num)(((my_c)->my_as),((my_v)->my_member_offset));
-	(my_emit_add)(((my_c)->my_as));
-	((my_n)->my_t)=((my_v)->my_member_type);
-	if (my_rhs) {
-	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_IDENT)))) {
-	(my_v)=((my_find)((my_c),((my_n)->my_s),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)((my_v)&&((my_v)->my_enum_defined))) {
-	(my_emit_num)(((my_c)->my_as),((my_v)->my_enum_value));
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
-	return;
-	}
-	(my_v)=((my_find)((my_c),((my_d)->my_name),((my_n)->my_s),(0UL)));
-	if ((unsigned long)((my_v)&&((my_v)->my_var_defined))) {
-	(my_emit_lea)(((my_c)->my_as),((my_v)->my_var_offset));
-	((my_n)->my_t)=((my_v)->my_var_type);
-	if (my_rhs) {
-	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
-	}
-	return;
-	}
-	(my_v)=((my_find)((my_c),((my_n)->my_s),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)((my_v)&&((my_v)->my_func_defined))) {
-	(my_emit_ptr)(((my_c)->my_as),((my_v)->my_func_label));
-	((my_n)->my_t)=((my_v)->my_func_type);
-	return;
-	}
-	(my_cdie)((my_c),((unsigned char *)"no such variable"));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ASSIGN)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"assign is not an lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	(my_emit_store)(((my_c)->my_as),((my_n)->my_t));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_SIZEOF)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"sizeof is not an lexpr"));
-	}
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))==((long)(my_TY_BYTE)))) {
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	} else {
-	(my_emit_num)(((my_c)->my_as),((my_type_sizeof)((my_c),(((my_n)->my_a)->my_t))));
-	}
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_REF)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"ref is not an lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
-	((my_n)->my_t)=((my_mktype1)((my_c),(my_TY_PTR),(((my_n)->my_a)->my_t)));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DEREF)))) {
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_PTR)))) {
-	(my_cdie)((my_c),((unsigned char *)"deref not a pointer"));
-	}
-	((my_n)->my_t)=((((my_n)->my_a)->my_t)->my_val);
-	if (my_rhs) {
-	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_INDEX)))) {
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_PTR)))) {
-	(my_cdie)((my_c),((unsigned char *)"not a pointer"));
-	}
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_b)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"index: not an int"));
-	}
-	((my_n)->my_t)=((((my_n)->my_a)->my_t)->my_val);
-	if ((unsigned long)(((long)(((my_n)->my_t)->my_kind))==((long)(my_TY_BYTE)))) {
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	} else {
-	(my_emit_num)(((my_c)->my_as),((my_type_sizeof)((my_c),((my_n)->my_t))));
-	}
-	(my_emit_mul)(((my_c)->my_as));
-	(my_emit_add)(((my_c)->my_as));
-	if (my_rhs) {
-	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LT)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_lt)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"lt: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GT)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_gt)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"gt: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LE)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_le)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"le: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GE)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_ge)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"ge: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_EQ)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_eq)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"eq: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NE)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_ne)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"ne: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BNOT)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(0UL));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	(my_fixup_label)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BOR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	(my_fixup_label)(((my_c)->my_as),(my_no));
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	(my_fixup_label)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(0UL));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_b)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BAND)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	(my_fixup_label)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(0UL));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_b)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_POS)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"pos: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NEG)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_neg)(((my_c)->my_as));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"neg: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NOT)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_not)(((my_c)->my_as));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ADD)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_add)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"add: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_SUB)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_sub)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"sub: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_MUL)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_mul)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"mul: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DIV)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_div)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"div: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_MOD)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_mod)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"mod: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LSH)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_lsh)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"lsh: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_RSH)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_rsh)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"rsh: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_AND)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_and)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"and: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_OR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_or)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"or: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_XOR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_xor)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"xor: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CAST)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not a primitive"));
-	}
-	((my_n)->my_t)=((my_prototype)((my_c),((my_n)->my_b)));
-	} else {
-	(my_cdie)((my_c),((unsigned char *)"not an expression"));
-	}
-}
-void( my_compile_func)(struct my_compiler* my_c,struct my_decl* my_d){
-	unsigned char* my_name = 0;
-	struct my_decl* my_v = 0;
-	struct my_type* my_t = 0;
-	unsigned long my_offset = 0;
-	struct my_node* my_n = 0;
-	unsigned long my_pragma = 0;
-	if ((unsigned long)(!((my_d)->my_func_def))) {
-	return;
-	}
-	(my_n)=(((((my_d)->my_func_def)->my_a)->my_b)->my_a);
-	(my_offset)=(16UL);
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	((my_c)->my_filename)=(((my_n)->my_a)->my_filename);
-	((my_c)->my_lineno)=(((my_n)->my_a)->my_lineno);
-	((my_c)->my_colno)=(((my_n)->my_a)->my_colno);
-	(my_name)=((((my_n)->my_a)->my_a)->my_s);
-	(my_t)=((my_prototype)((my_c),(((my_n)->my_a)->my_b)));
-	(my_v)=((my_find)((my_c),((my_d)->my_name),(my_name),(1UL)));
-	if ((my_v)->my_var_defined) {
-	(my_cdie)((my_c),((unsigned char *)"duplicate argument"));
-	}
-	((my_v)->my_var_defined)=(1UL);
-	((my_v)->my_var_type)=(my_t);
-	((my_v)->my_var_offset)=(my_offset);
-	((my_v)->my_var_def)=((my_n)->my_a);
-	(my_offset)=((unsigned long)(((unsigned long)(my_offset))+((unsigned long)(8UL))));
-	(my_n)=((my_n)->my_b);
-	}
-	(my_offset)=((my_hoist_locals)((my_c),(my_d),(((my_d)->my_func_def)->my_b),(0UL)));
-	if ((unsigned long)(!((my_strcmp)(((my_d)->my_name),((unsigned char *)"_start"))))) {
-	(my_pragma)=(1UL);
-	} else if ((unsigned long)(!((my_strcmp)(((my_d)->my_name),((unsigned char *)"_kstart"))))) {
-	(my_pragma)=(2UL);
-	} else {
-	(my_pragma)=(0UL);
-	}
-	(my_emit_str)(((my_c)->my_as),((my_d)->my_name));
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(my_offset),(my_pragma));
-	(my_compile_stmt)((my_c),(my_d),(((my_d)->my_func_def)->my_b),((struct my_label*)0UL),((struct my_label*)0UL));
-	(my_emit_num)(((my_c)->my_as),(0UL));
-	if (my_pragma) {
-	(my_emit_ud)(((my_c)->my_as));
-	}
-	(my_emit_ret)(((my_c)->my_as));
-}
-void( my_compile_include)(struct my_compiler* my_c,struct my_node* my_n){
-	unsigned char* my_filename = 0;
-	unsigned long my_fd = 0;
-	unsigned char* my_blob = 0;
-	unsigned long my_len = 0;
-	if ((unsigned long)(((long)((((my_n)->my_b)->my_a)->my_kind))!=((long)(my_N_STR)))) {
-	(my_die)(((unsigned char *)"non literal include"));
-	}
-	(my_filename)=((((my_n)->my_b)->my_a)->my_s);
-	(my_fd)=((my_open)((my_filename),(my_O_RDONLY),(0UL)));
-	if ((unsigned long)(((long)(my_fd))<((long)(0UL)))) {
-	(my_die)(((unsigned char *)"failed to open include"));
-	}
-	(my_blob)=((my_readall)((my_fd),(&(my_len)),((my_c)->my_a)));
-	(my_close)((my_fd));
-	(my_as_opr)(((my_c)->my_as),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_POPR),(my_R_RDI));
-	(my_as_opri64)(((my_c)->my_as),(my_OP_MOVABS),(my_R_RAX),(my_len));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_emit_blob)(((my_c)->my_as),(my_blob),(my_len));
-	(my_free)(((my_c)->my_a),(my_blob));
-}
-void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n,struct my_label* my_top,struct my_label* my_out){
-	struct my_label* my_no = 0;
-	struct my_label* my_ifout = 0;
-	struct my_decl* my_v = 0;
-	unsigned long my_kind = 0;
-	if ((unsigned long)(!(my_n))) {
-	return;
-	}
-	((my_c)->my_filename)=((my_n)->my_filename);
-	((my_c)->my_lineno)=((my_n)->my_lineno);
-	((my_c)->my_colno)=((my_n)->my_colno);
-	(my_kind)=((my_n)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONDLIST)))) {
-	(my_ifout)=((my_mklabel)(((my_c)->my_as)));
-	(my_no)=((struct my_label*)0UL);
-	while (1) {
-	if (my_no) {
-	(my_fixup_label)(((my_c)->my_as),(my_no));
-	}
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
-	if (((my_n)->my_a)->my_a) {
-	(my_compile_expr)((my_c),(my_d),(((my_n)->my_a)->my_a),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	}
-	(my_compile_stmt)((my_c),(my_d),(((my_n)->my_a)->my_b),(my_top),(my_out));
-	(my_emit_jmp)(((my_c)->my_as),(my_ifout));
-	(my_n)=((my_n)->my_b);
-	}
-	(my_fixup_label)(((my_c)->my_as),(my_ifout));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_STMTLIST)))) {
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_compile_stmt)((my_c),(my_d),((my_n)->my_a),(my_top),(my_out));
-	(my_n)=((my_n)->my_b);
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LOOP)))) {
-	(my_top)=((my_mklabel)(((my_c)->my_as)));
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
-	(my_fixup_label)(((my_c)->my_as),(my_top));
-	(my_compile_stmt)((my_c),(my_d),((my_n)->my_a),(my_top),(my_out));
-	(my_emit_jmp)(((my_c)->my_as),(my_top));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BREAK)))) {
-	if ((unsigned long)(!(my_out))) {
-	(my_cdie)((my_c),((unsigned char *)"break outside loop"));
-	}
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONTINUE)))) {
-	if ((unsigned long)(!(my_top))) {
-	(my_cdie)((my_c),((unsigned char *)"continue outside loop"));
-	}
-	(my_emit_jmp)(((my_c)->my_as),(my_top));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_RETURN)))) {
-	if ((my_n)->my_a) {
-	if ((unsigned long)(((long)((((my_d)->my_func_type)->my_val)->my_kind))==((long)(my_TY_VOID)))) {
-	(my_cdie)((my_c),((unsigned char *)"returning a value in a void function"));
-	}
-	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_d)->my_func_type)->my_val));
-	} else {
-	if ((unsigned long)(((long)((((my_d)->my_func_type)->my_val)->my_kind))!=((long)(my_TY_VOID)))) {
-	(my_cdie)((my_c),((unsigned char *)"returning void in a non void function"));
-	}
-	(my_emit_num)(((my_c)->my_as),(0UL));
-	}
-	(my_emit_ret)(((my_c)->my_as));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LABEL)))) {
-	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
-	(my_fixup_label)(((my_c)->my_as),((my_v)->my_goto_label));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GOTO)))) {
-	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_goto_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"label not defined"));
-	}
-	(my_emit_jmp)(((my_c)->my_as),((my_v)->my_goto_label));
-	} else if ((unsigned long)(((long)(my_kind))!=((long)(my_N_VARDECL)))) {
-	(my_compile_expr)((my_c),(my_d),(my_n),(1UL));
-	(my_emit_pop)(((my_c)->my_as),(1UL));
-	}
-}
-struct my_node*( my_concat_program)(struct my_node* my_a,struct my_node* my_b){
-	struct my_node* my_ret = 0;
-	if ((unsigned long)(!(my_a))) {
-	return my_b;
-	}
-	if ((unsigned long)(!(my_b))) {
-	return my_a;
-	}
-	(my_ret)=(my_a);
-	while (1) {
-	if ((unsigned long)(!((my_a)->my_b))) {
-	break;
-	}
-	(my_a)=((my_a)->my_b);
-	}
-	((my_a)->my_b)=(my_b);
-	return my_ret;
-}
-struct my_peg_node*( my_construct)(struct my_peg* my_c,unsigned long my_sp){
-	unsigned long my_i = 0;
-	unsigned long my_j = 0;
-	unsigned long my_nargs = 0;
-	struct my_peg_node* my_n = 0;
-	struct my_peg_node** my_link = 0;
-	(((my_c)->my_nstack)[0UL])=((struct my_peg_node*)0UL);
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)((my_c)->my_op)))) {
-	return ((my_c)->my_nstack)[0UL];
-	}
-	if ((unsigned long)(((long)((((my_c)->my_out)[my_i]).my_tag))!=((long)(my_sp)))) {
-	(my_n)=((struct my_peg_node*)(my_alloc)(((my_c)->my_a),(64UL)));
-	((my_n)->my_tag)=((((my_c)->my_out)[my_i]).my_tag);
-	((my_n)->my_next)=((struct my_peg_node*)0UL);
-	((my_n)->my_child)=((struct my_peg_node*)0UL);
-	((my_n)->my_str)=(&(((my_c)->my_src)[(((my_c)->my_out)[my_i]).my_start]));
-	((my_n)->my_len)=((unsigned long)(((unsigned long)((((my_c)->my_out)[my_i]).my_end))-((unsigned long)((((my_c)->my_out)[my_i]).my_start))));
-	((my_n)->my_filename)=((my_c)->my_filename);
-	((my_n)->my_line)=((((my_c)->my_out)[my_i]).my_line);
-	((my_n)->my_col)=((((my_c)->my_out)[my_i]).my_col);
-	(my_nargs)=((((my_c)->my_out)[my_i]).my_nargs);
-	if ((unsigned long)(((long)(my_nargs))>((long)((my_c)->my_np)))) {
-	(my_die)(((unsigned char *)"node underflow"));
-	}
-	(my_link)=(&((my_n)->my_child));
-	(my_j)=((unsigned long)(((unsigned long)((my_c)->my_np))-((unsigned long)(my_nargs))));
-	while (1) {
-	if ((unsigned long)(((long)(my_j))==((long)((my_c)->my_np)))) {
-	break;
-	}
-	if (((my_c)->my_nstack)[my_j]) {
-	(*(my_link))=(((my_c)->my_nstack)[my_j]);
-	(my_link)=(&((((my_c)->my_nstack)[my_j])->my_next));
-	}
-	(my_j)=((unsigned long)(((unsigned long)(my_j))+((unsigned long)(1UL))));
-	}
-	((my_c)->my_np)=((unsigned long)(((unsigned long)((my_c)->my_np))-((unsigned long)(my_nargs))));
-	if ((unsigned long)(((long)((my_c)->my_np))==((long)((my_c)->my_ncap)))) {
-	(my_die)(((unsigned char *)"node overflow"));
-	}
-	} else {
-	(my_n)=((struct my_peg_node*)0UL);
-	}
-	(((my_c)->my_nstack)[(my_c)->my_np])=(my_n);
-	((my_c)->my_np)=((unsigned long)(((unsigned long)((my_c)->my_np))+((unsigned long)(1UL))));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-}
-void( my_copypos)(struct my_node* my_n,struct my_peg_node* my_pn){
-	((my_n)->my_filename)=((my_pn)->my_filename);
-	((my_n)->my_lineno)=((my_pn)->my_line);
-	((my_n)->my_colno)=((my_pn)->my_col);
-}
-unsigned long( my_count_args)(struct my_compiler* my_c,struct my_type* my_t){
-	unsigned long my_nargs = 0;
-	(my_nargs)=(0UL);
-	while (1) {
-	if ((unsigned long)(!(my_t))) {
-	break;
-	}
-	(my_t)=((my_t)->my_arg);
-	(my_nargs)=((unsigned long)(((unsigned long)(my_nargs))+((unsigned long)(1UL))));
-	}
-	return my_nargs;
-}
-void( my_cshow_context)(struct my_compiler* my_c){
-	(my_fdputs)((2UL),((unsigned char *)"on "));
-	if ((my_c)->my_filename) {
-	(my_fdputs)((2UL),((my_c)->my_filename));
-	}
-	(my_fdputs)((2UL),((unsigned char *)":"));
-	(my_fdputd)((2UL),((my_c)->my_lineno));
-	(my_fdputs)((2UL),((unsigned char *)":"));
-	(my_fdputd)((2UL),((my_c)->my_colno));
-	(my_fdputs)((2UL),((unsigned char *)"\012"));
-}
-void( my_ctranslate)(struct my_compiler* my_c){
-	struct my_decl* my_d = 0;
-	unsigned long my_seen = 0;
-	unsigned long my_has_enum = 0;
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"#ifndef my__start\012"));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"#define my__start main\012"));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"#endif\012"));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"#ifndef my_syscall\012"));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"#define my_syscall syscall\012"));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"#endif\012"));
-	(my_d)=((my_first_decl)((my_c)));
-	while (1) {
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	if ((my_d)->my_struct_defined) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"struct my_"));
-	(my_fputs)(((my_c)->my_cout),((my_d)->my_name));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)";\012"));
-	}
-	(my_d)=((my_next_decl)((my_c),(my_d)));
-	}
-	(my_d)=((my_first_decl)((my_c)));
-	while (1) {
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	if ((my_d)->my_struct_defined) {
-	(my_ctranslate_struct)((my_c),(my_d));
-	}
-	(my_d)=((my_next_decl)((my_c),(my_d)));
-	}
-	(my_d)=((my_first_decl)((my_c)));
-	(my_has_enum)=(0UL);
-	(my_seen)=(0UL);
-	while (1) {
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	if ((my_d)->my_enum_defined) {
-	if ((unsigned long)(!(my_has_enum))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"enum {\012"));
-	(my_has_enum)=(1UL);
-	}
-	if (my_seen) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)",\012"));
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011my_"));
-	(my_fputs)(((my_c)->my_cout),((my_d)->my_name));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)" = "));
-	(my_fputd)(((my_c)->my_cout),((my_d)->my_enum_value));
-	(my_seen)=(1UL);
-	}
-	(my_d)=((my_next_decl)((my_c),(my_d)));
-	}
-	if (my_has_enum) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\012};\012"));
-	}
-	(my_d)=((my_first_decl)((my_c)));
-	while (1) {
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	if ((my_d)->my_func_defined) {
-	(my_ctranslate_type)((my_c),((my_d)->my_func_type),((my_d)->my_name),(1UL),((((my_d)->my_func_decl)->my_b)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)";\012"));
-	}
-	(my_d)=((my_next_decl)((my_c),(my_d)));
-	}
-	(my_d)=((my_first_decl)((my_c)));
-	while (1) {
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	if ((my_d)->my_func_defined) {
-	(my_ctranslate_func)((my_c),(my_d));
-	}
-	(my_d)=((my_next_decl)((my_c),(my_d)));
-	}
-	(my_flush_coutput)((my_c));
-}
-void( my_ctranslate_expr)(struct my_compiler* my_c,struct my_node* my_n){
-	if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_STR)))) {
-	(my_ctranslate_str)((my_c),((my_n)->my_s));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_NUM)))) {
-	(my_fputd)(((my_c)->my_cout),((my_n)->my_n));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"UL"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_CHAR)))) {
-	(my_fputd)(((my_c)->my_cout),((my_n)->my_n));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_CALL)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")"));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_n)=((my_n)->my_b);
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")"));
-	(my_n)=((my_n)->my_b);
-	if (my_n) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)","));
-	}
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_DOT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")"));
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))==((long)(my_TY_PTR)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"->"));
-	} else {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"."));
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"my_"));
-	(my_fputs)(((my_c)->my_cout),(((my_n)->my_b)->my_s));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_IDENT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"my_"));
-	(my_fputs)(((my_c)->my_cout),((my_n)->my_s));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_ASSIGN)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")=("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_SIZEOF)))) {
-	(my_fputd)(((my_c)->my_cout),((my_type_sizeof)((my_c),(((my_n)->my_a)->my_t))));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"UL"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_REF)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"&("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_DEREF)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"*("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_INDEX)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")["));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"]"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_LT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned long)(((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))<((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_LE)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned long)(((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))<=((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_GT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned long)(((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))>((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_GE)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned long)(((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))>=((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_EQ)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned long)(((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))==((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_NE)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned long)(((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))!=((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_BNOT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned long)(!("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_BOR)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned long)(("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")||("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_BAND)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned long)(("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")&&("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_POS)))) {
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_NEG)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(-(unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_NOT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(~(unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_ADD)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))+((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_SUB)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))-((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_MUL)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))*((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_DIV)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))/((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_MOD)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))%((long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_LSH)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))<<((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_RSH)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))>>((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_AND)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))&((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_OR)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))|((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_XOR)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")(((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"))^((unsigned long)("));
-	(my_ctranslate_expr)((my_c),((my_n)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")))"));
-	} else if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_CAST)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")"));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	} else {
-	(my_fdputd)((2UL),((my_n)->my_kind));
-	(my_die)(((unsigned char *)"invalid expr"));
-	}
-}
-void( my_ctranslate_func)(struct my_compiler* my_c,struct my_decl* my_d){
-	struct my_node* my_n = 0;
-	struct my_type* my_ty = 0;
-	if ((my_d)->my_func_def) {
-	(my_ctranslate_type)((my_c),((my_d)->my_func_type),((my_d)->my_name),(1UL),(((((my_d)->my_func_def)->my_a)->my_b)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"{\012"));
-	(my_ctranslate_vars)((my_c),(((my_d)->my_func_def)->my_b));
-	(my_ctranslate_stmt)((my_c),(((my_d)->my_func_def)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"}\012"));
-	}
-}
-void( my_ctranslate_stmt)(struct my_compiler* my_c,struct my_node* my_n){
-	unsigned long my_kind = 0;
-	struct my_node* my_child = 0;
-	if ((unsigned long)(!(my_n))) {
-	return;
-	}
-	(my_kind)=((my_n)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONDLIST)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011"));
-	while (1) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"if ("));
-	(my_ctranslate_expr)((my_c),(((my_n)->my_a)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)") {\012"));
-	(my_ctranslate_stmt)((my_c),(((my_n)->my_a)->my_b));
-	(my_n)=((my_n)->my_b);
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011}"));
-	if ((unsigned long)(!(my_n))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\012"));
-	break;
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)" else "));
-	if ((unsigned long)(!(((my_n)->my_a)->my_a))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"{\012"));
-	(my_ctranslate_stmt)((my_c),(((my_n)->my_a)->my_b));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011}\012"));
-	break;
-	}
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_STMTLIST)))) {
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_ctranslate_stmt)((my_c),((my_n)->my_a));
-	(my_n)=((my_n)->my_b);
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LOOP)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011while (1) {\012"));
-	(my_ctranslate_stmt)((my_c),((my_n)->my_a));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011}\012"));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BREAK)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011break;\012"));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONTINUE)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011continue;\012"));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_RETURN)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011return"));
-	if ((my_n)->my_a) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)" "));
-	(my_ctranslate_expr)((my_c),((my_n)->my_a));
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)";\012"));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LABEL)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"my_"));
-	(my_fputs)(((my_c)->my_cout),(((my_n)->my_a)->my_s));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)":\012"));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GOTO)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011goto "));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"my_"));
-	(my_fputs)(((my_c)->my_cout),(((my_n)->my_a)->my_s));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)";\012"));
-	} else if ((unsigned long)(((long)(my_kind))!=((long)(my_N_VARDECL)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011"));
-	(my_ctranslate_expr)((my_c),(my_n));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)";\012"));
-	}
-}
-void( my_ctranslate_str)(struct my_compiler* my_c,unsigned char* my_s){
-	unsigned long my_i = 0;
-	unsigned long my_ch = 0;
-	(my_i)=(0UL);
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"(unsigned char *)\042"));
-	while (1) {
-	if ((unsigned long)(!((my_s)[my_i]))) {
-	break;
-	}
-	(my_ch)=((unsigned long)(my_s)[my_i]);
-	if ((unsigned long)(((unsigned long)(((long)(my_ch))<((long)(32UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))>((long)(127UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))==((long)(92))))||((unsigned long)(((long)(my_ch))==((long)(34)))))))))) {
-	(my_fputc)(((my_c)->my_cout),(92));
-	(my_fputc)(((my_c)->my_cout),((unsigned long)(((unsigned long)(48))+((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_ch))>>((unsigned long)(6UL)))))&((unsigned long)(7UL))))))));
-	(my_fputc)(((my_c)->my_cout),((unsigned long)(((unsigned long)(48))+((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_ch))>>((unsigned long)(3UL)))))&((unsigned long)(7UL))))))));
-	(my_fputc)(((my_c)->my_cout),((unsigned long)(((unsigned long)(48))+((unsigned long)((unsigned long)(((unsigned long)(my_ch))&((unsigned long)(7UL))))))));
-	} else {
-	(my_fputc)(((my_c)->my_cout),(my_ch));
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\042"));
-}
-void( my_ctranslate_struct)(struct my_compiler* my_c,struct my_decl* my_d){
-	struct my_decl* my_v = 0;
-	struct my_node* my_n = 0;
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"struct my_"));
-	(my_fputs)(((my_c)->my_cout),((my_d)->my_name));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)" {\012"));
-	(my_n)=(((my_d)->my_struct_def)->my_b);
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_v)=((my_find)((my_c),((my_d)->my_name),((((my_n)->my_a)->my_a)->my_s),(0UL)));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011"));
-	(my_ctranslate_type)((my_c),((my_v)->my_member_type),((((my_n)->my_a)->my_a)->my_s),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)";\012"));
-	(my_n)=((my_n)->my_b);
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"};\012"));
-}
-void( my_ctranslate_type)(struct my_compiler* my_c,struct my_type* my_ty,unsigned char* my_name,unsigned long my_decl,struct my_node* my_args){
-	(my_ctranslate_type1)((my_c),(my_ty),(my_name),(my_decl));
-	(my_ctranslate_type2)((my_c),(my_ty),(my_name),(my_args));
-}
-void( my_ctranslate_type1)(struct my_compiler* my_c,struct my_type* my_ty,unsigned char* my_name,unsigned long my_decl){
-	if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_VOID)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"void"));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_INT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"unsigned long"));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_BYTE)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"unsigned char"));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_PTR)))) {
-	(my_ctranslate_type1)((my_c),((my_ty)->my_val),((unsigned char *)""),(my_decl));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"*"));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_FUNC)))) {
-	(my_ctranslate_type1)((my_c),((my_ty)->my_val),((unsigned char *)""),(0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"("));
-	if ((unsigned long)(!(my_decl))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"*"));
-	}
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_STRUCT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"struct my_"));
-	(my_fputs)(((my_c)->my_cout),(((my_ty)->my_st)->my_name));
-	} else {
-	(my_die)(((unsigned char *)"invalid type"));
-	}
-}
-void( my_ctranslate_type2)(struct my_compiler* my_c,struct my_type* my_ty,unsigned char* my_name,struct my_node* my_args){
-	struct my_type* my_arg = 0;
-	if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_PTR)))) {
-	(my_ctranslate_type2)((my_c),((my_ty)->my_val),(my_name),(my_args));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_FUNC)))) {
-	(my_ctranslate_type2)((my_c),((my_ty)->my_val),(my_name),(my_args));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")("));
-	(my_arg)=((my_ty)->my_arg);
-	if (my_arg) {
-	while (1) {
-	if (my_args) {
-	(my_ctranslate_type)((my_c),((my_arg)->my_val),((((my_args)->my_a)->my_a)->my_s),(0UL),((struct my_node*)0UL));
-	} else {
-	(my_ctranslate_type)((my_c),((my_arg)->my_val),((unsigned char *)""),(0UL),((struct my_node*)0UL));
-	}
-	(my_arg)=((my_arg)->my_arg);
-	if (my_arg) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)","));
-	} else {
-	break;
-	}
-	if (my_args) {
-	(my_args)=((my_args)->my_b);
-	}
-	}
-	} else {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"void"));
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)")"));
-	} else {
-	if ((unsigned long)((my_name)&&((my_name)[0UL]))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)" my_"));
-	(my_fputs)(((my_c)->my_cout),(my_name));
-	}
-	}
-}
-void( my_ctranslate_vars)(struct my_compiler* my_c,struct my_node* my_n){
-	unsigned long my_kind = 0;
-	struct my_node* my_child = 0;
-	if ((unsigned long)(!(my_n))) {
-	return;
-	}
-	(my_kind)=((my_n)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONDLIST)))) {
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_ctranslate_vars)((my_c),(((my_n)->my_a)->my_b));
-	(my_n)=((my_n)->my_b);
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_STMTLIST)))) {
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_ctranslate_vars)((my_c),((my_n)->my_a));
-	(my_n)=((my_n)->my_b);
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LOOP)))) {
-	(my_ctranslate_vars)((my_c),((my_n)->my_a));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_VARDECL)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"\011"));
-	(my_ctranslate_type)((my_c),((my_n)->my_t),(((my_n)->my_a)->my_s),(0UL),((struct my_node*)0UL));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)" = "));
-	(my_ctranslate_zero)((my_c),((my_n)->my_t));
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)";\012"));
-	}
-}
-void( my_ctranslate_zero)(struct my_compiler* my_c,struct my_type* my_ty){
-	struct my_node* my_n = 0;
-	struct my_decl* my_v = 0;
-	struct my_type* my_arg = 0;
-	if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_VOID)))) {
-	(my_die)(((unsigned char *)"invalid zero void"));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_INT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"0"));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_BYTE)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"0"));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_PTR)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"0"));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_FUNC)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"0"));
-	} else if ((unsigned long)(((long)((my_ty)->my_kind))==((long)(my_TY_STRUCT)))) {
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"{"));
-	(my_n)=((((my_ty)->my_st)->my_struct_def)->my_b);
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_v)=((my_find)((my_c),(((my_ty)->my_st)->my_name),((((my_n)->my_a)->my_a)->my_s),(0UL)));
-	(my_ctranslate_zero)((my_c),((my_v)->my_member_type));
-	(my_n)=((my_n)->my_b);
-	}
-	(my_fputs)(((my_c)->my_cout),((unsigned char *)"}"));
-	} else {
-	(my_die)(((unsigned char *)"invalid type"));
-	}
-}
-unsigned long( my_dec2int)(unsigned char* my_s,unsigned long my_len,unsigned long* my_ok){
-	unsigned long my_x = 0;
-	unsigned long my_d = 0;
-	unsigned long my_i = 0;
-	(my_x)=(0UL);
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_len)))) {
-	break;
-	}
-	(my_d)=((unsigned long)(my_s)[my_i]);
-	if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)(48))))&&((unsigned long)(((long)(my_d))<=((long)(57)))))) {
-	(my_d)=((unsigned long)(((unsigned long)(my_d))-((unsigned long)(48))));
-	} else {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-	(my_x)=((unsigned long)(((long)(my_x))*((long)(10UL))));
-	(my_x)=((unsigned long)(((unsigned long)(my_x))+((unsigned long)(my_d))));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_x))>((long)(2147483647UL)))) {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-	}
-	(*(my_ok))=(1UL);
-	return my_x;
-}
-unsigned long( my_decode_count)(struct my_peg_node* my_n){
-	unsigned long my_ret = 0;
-	(my_ret)=(my_EXACTLY_ONE);
-	(my_n)=((my_n)->my_child);
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	return my_ret;
-	}
-	if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_countop)))) {
-	if ((unsigned long)(((long)(((my_n)->my_str)[0UL]))==((long)((unsigned char)63)))) {
-	if ((unsigned long)(((long)(my_ret))==((long)(my_EXACTLY_ONE)))) {
-	(my_ret)=(my_ZERO_OR_ONE);
-	} else if ((unsigned long)(((long)(my_ret))==((long)(my_ONE_OR_MORE)))) {
-	(my_ret)=(my_ZERO_OR_MORE);
-	}
-	} else if ((unsigned long)(((long)(((my_n)->my_str)[0UL]))==((long)((unsigned char)42)))) {
-	(my_ret)=(my_ZERO_OR_MORE);
-	} else if ((unsigned long)(((long)(((my_n)->my_str)[0UL]))==((long)((unsigned char)43)))) {
-	if ((unsigned long)(((long)(my_ret))==((long)(my_ZERO_OR_ONE)))) {
-	(my_ret)=(my_ZERO_OR_MORE);
-	} else if ((unsigned long)(((long)(my_ret))==((long)(my_EXACTLY_ONE)))) {
-	(my_ret)=(my_ONE_OR_MORE);
-	} else if ((unsigned long)(((long)(my_ret))==((long)(my_ZERO_OR_MORE)))) {
-	(my_ret)=(my_ZERO_OR_MORE);
-	}
-	} else {
-	(my_die)(((unsigned char *)"invalid countop"));
-	}
-	}
-	(my_n)=((my_n)->my_next);
-	}
-}
-unsigned long( my_decode_look)(struct my_peg_node* my_n){
-	unsigned long my_ret = 0;
-	(my_ret)=(my_LOOK_NORMAL);
-	if ((unsigned long)(((long)(((my_n)->my_child)->my_tag))==((long)(my_PEG_lookop)))) {
-	if ((unsigned long)(((long)((((my_n)->my_child)->my_str)[0UL]))==((long)((unsigned char)33)))) {
-	(my_ret)=(my_LOOK_NOT);
-	} else if ((unsigned long)(((long)((((my_n)->my_child)->my_str)[0UL]))==((long)((unsigned char)38)))) {
-	(my_ret)=(my_LOOK_AND);
-	}
-	}
-	return my_ret;
-}
-void( my_defenum)(struct my_compiler* my_c,struct my_node* my_n){
-	struct my_decl* my_d = 0;
-	unsigned long my_i = 0;
-	unsigned char* my_name = 0;
-	(my_n)=((my_n)->my_b);
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	((my_c)->my_filename)=(((my_n)->my_a)->my_filename);
-	((my_c)->my_lineno)=(((my_n)->my_a)->my_lineno);
-	((my_c)->my_colno)=(((my_n)->my_a)->my_colno);
-	(my_name)=((((my_n)->my_a)->my_a)->my_s);
-	(my_d)=((my_find)((my_c),(my_name),((unsigned char*)0UL),(1UL)));
-	if ((my_d)->my_enum_defined) {
-	(my_cdie)((my_c),((unsigned char *)"duplicate enum"));
-	}
-	if (((my_n)->my_a)->my_b) {
-	(my_i)=((((my_n)->my_a)->my_b)->my_n);
-	}
-	((my_d)->my_enum_defined)=(1UL);
-	((my_d)->my_enum_value)=(my_i);
-	((my_d)->my_enum_def)=(my_n);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	(my_n)=((my_n)->my_b);
-	}
-}
-struct my_decl*( my_defextern)(struct my_compiler* my_c,struct my_node* my_n){
-	struct my_decl* my_d = 0;
-	unsigned char* my_name = 0;
-	struct my_type* my_t = 0;
-	((my_c)->my_filename)=((my_n)->my_filename);
-	((my_c)->my_lineno)=((my_n)->my_lineno);
-	((my_c)->my_colno)=((my_n)->my_colno);
-	(my_name)=(((my_n)->my_a)->my_s);
-	(my_t)=((my_prototype)((my_c),((my_n)->my_b)));
-	(my_d)=((my_find)((my_c),(my_name),((unsigned char*)0UL),(1UL)));
-	if ((my_d)->my_func_defined) {
-	(my_cdie)((my_c),((unsigned char *)"duplicate function"));
-	}
-	((my_d)->my_func_defined)=(1UL);
-	((my_d)->my_func_type)=(my_t);
-	((my_d)->my_func_decl)=(my_n);
-	return my_d;
-}
-void( my_defstruct)(struct my_compiler* my_c,struct my_node* my_n){
-	unsigned char* my_name = 0;
-	struct my_decl* my_d = 0;
-	(my_name)=(((my_n)->my_a)->my_s);
-	((my_c)->my_filename)=((my_n)->my_filename);
-	((my_c)->my_lineno)=((my_n)->my_lineno);
-	((my_c)->my_colno)=((my_n)->my_colno);
-	if ((unsigned long)(((unsigned long)(!((my_strcmp)((my_name),((unsigned char *)"int")))))||((unsigned long)(((unsigned long)(!((my_strcmp)((my_name),((unsigned char *)"byte")))))||((unsigned long)(!((my_strcmp)((my_name),((unsigned char *)"func"))))))))) {
-	(my_cdie)((my_c),((unsigned char *)"reserved word"));
-	}
-	(my_d)=((my_find)((my_c),(my_name),((unsigned char*)0UL),(1UL)));
-	if ((my_d)->my_struct_defined) {
-	(my_cdie)((my_c),((unsigned char *)"duplicate struct"));
-	}
-	((my_d)->my_struct_defined)=(1UL);
-	((my_d)->my_struct_def)=(my_n);
-}
-void( my_defun)(struct my_compiler* my_c,struct my_node* my_n){
-	struct my_decl* my_d = 0;
-	(my_d)=((my_defextern)((my_c),((my_n)->my_a)));
-	((my_d)->my_func_def)=(my_n);
-}
-void( my_die)(unsigned char* my_msg){
-	(my_fdputs)((2UL),(my_msg));
-	(my_fdputs)((2UL),((unsigned char *)"\012"));
-	(my_exit)((1UL));
-}
-unsigned long( my_dup2)(unsigned long my_old,unsigned long my_new){
-	return (my_syscall)((33UL),(my_old),(my_new),(0UL),(0UL),(0UL),(0UL));
-}
-void( my_emit)(struct my_assembler* my_c,unsigned long my_x){
-	(my_reserve)((my_c),(1UL));
-	((((my_c)->my_text_end)->my_buf)[((my_c)->my_text_end)->my_fill])=((unsigned char)my_x);
-	(((my_c)->my_text_end)->my_fill)=((unsigned long)(((unsigned long)(((my_c)->my_text_end)->my_fill))+((unsigned long)(1UL))));
-	((my_c)->my_at)=((unsigned long)(((unsigned long)((my_c)->my_at))+((unsigned long)(1UL))));
-}
-void( my_emit_add)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_modrr)((my_c),(my_OP_ADDRM),(my_R_RAX),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_and)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_modrr)((my_c),(my_OP_ANDRM),(my_R_RAX),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_blob)(struct my_assembler* my_c,unsigned char* my_s,unsigned long my_n){
-	struct my_label* my_a = 0;
-	struct my_label* my_b = 0;
-	unsigned long my_i = 0;
-	(my_a)=((my_mklabel)((my_c)));
-	(my_b)=((my_mklabel)((my_c)));
-	(my_as_jmp)((my_c),(my_OP_JMP),(my_b));
-	(my_fixup_label)((my_c),(my_a));
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_n)))) {
-	break;
-	}
-	(my_as_emit)((my_c),((unsigned long)(my_s)[my_i]));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(my_as_emit)((my_c),(0UL));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_fixup_label)((my_c),(my_b));
-	(my_emit_ptr)((my_c),(my_a));
-}
-void( my_emit_builtin)(struct my_compiler* my_c){
-	struct my_decl* my_d = 0;
-	(my_d)=((my_find)((my_c),((unsigned char *)"syscall"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_emit_syscall)(((my_c)->my_as));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_restorer"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_restorer)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_include"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_UD2));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"ud2"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_UD2));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"cpuid"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_CPUID));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RCX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"inb"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_IN));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"outb"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_OUT));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"inw"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_emit)(((my_c)->my_as),(my_OP_OS));
-	(my_as_op)(((my_c)->my_as),(my_OP_IND));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"outw"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_emit)(((my_c)->my_as),(my_OP_OS));
-	(my_as_op)(((my_c)->my_as),(my_OP_OUTD));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"ind"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_IND));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"outd"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_OUTD));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"rdmsr"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_RDMSR));
-	(my_as_modri)(((my_c)->my_as),(my_OP_MOVI),(my_R_RCX),(32UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_SHLM),(my_R_RDX));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_ORRM),(my_R_RAX),(my_R_RDX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"wrmsr"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_MOVE),(my_R_RDX),(my_R_RAX));
-	(my_as_modri)(((my_c)->my_as),(my_OP_MOVI),(my_R_RCX),(32UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_SHRM),(my_R_RDX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_WRMSR));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr0"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR0),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr0"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR0),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr2"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR2),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr2"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR2),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr3"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR3),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr3"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR3),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr4"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR4),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr4"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR4),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"lgdt"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RSP),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RAX),(1UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(2UL));
-	(my_as_modm)(((my_c)->my_as),(my_OP_LGDTM),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),(16UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"lidt"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RSP),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RAX),(1UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(2UL));
-	(my_as_modm)(((my_c)->my_as),(my_OP_LIDTM),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),(16UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"lldt"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_LLDTM),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"ltr"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_LTRM),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"lseg"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRSR),(my_R_ES),(my_R_RAX));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRSR),(my_R_DS),(my_R_RAX));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRSR),(my_R_FS),(my_R_RAX));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRSR),(my_R_GS),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_op)(((my_c)->my_as),(my_OP_CALL));
-	(my_as_emit)(((my_c)->my_as),(5UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_JMP));
-	(my_as_emit)(((my_c)->my_as),(2UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_IRETQ));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"hlt"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_HLT));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"cli"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_CLI));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"sti"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_STI));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"rdflags"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"wrflags"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_op)(((my_c)->my_as),(my_OP_POPF));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"wbinvld"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modm)(((my_c)->my_as),(my_OP_WBINVD),(my_R_RAX),(0UL),(0UL),(0UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"invlpg"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modm)(((my_c)->my_as),(my_OP_INVLPGM),(my_R_RAX),(0UL),(0UL),(0UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_ssr0"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_ssr)((my_c));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_isr0"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_isr)((my_c));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_rgs"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_emit)(((my_c)->my_as),(my_OP_GS));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSI),(0UL),(0UL),(0UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_r32"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(((my_c)->my_as)->my_bits32)=(1UL);
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSI),(0UL),(0UL),(0UL));
-	(((my_c)->my_as)->my_bits32)=(0UL);
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_w32"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(((my_c)->my_as)->my_bits32)=(1UL);
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(((my_c)->my_as)->my_bits32)=(0UL);
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_r16"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(((my_c)->my_as)->my_bits32)=(1UL);
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD16),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(((my_c)->my_as)->my_bits32)=(0UL);
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_w16"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(((my_c)->my_as)->my_bits32)=(1UL);
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE16),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(((my_c)->my_as)->my_bits32)=(0UL);
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"_rdrand"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_RDRAND),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
-	}
-	(my_d)=((my_find)((my_c),((unsigned char *)"taskswitch"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LEA),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDSR),(my_R_CS),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDSR),(my_R_SS),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_IRETQ));
-	}
-}
-void( my_emit_call)(struct my_assembler* my_c,unsigned long my_n){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_modr)((my_c),(my_OP_ICALLM),(my_R_RAX));
-	(my_emit_pop)((my_c),(my_n));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_div)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RDX),(my_R_RDX));
-	(my_as_modrr)((my_c),(my_OP_TESTRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrr)((my_c),((unsigned long)(((unsigned long)(my_OP_SETCC))+((unsigned long)(my_CC_S)))),(0UL),(my_R_RDX));
-	(my_as_modr)((my_c),(my_OP_NEGM),(my_R_RDX));
-	(my_as_modr)((my_c),(my_OP_IDIVM),(my_R_RCX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_eq)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_CMPRM),(my_R_RDX),(my_R_RCX));
-	(my_as_modrr)((my_c),((unsigned long)(((unsigned long)(my_OP_SETCC))+((unsigned long)(my_CC_E)))),(0UL),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_ge)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_CMPRM),(my_R_RDX),(my_R_RCX));
-	(my_as_modrr)((my_c),((unsigned long)(((unsigned long)(my_OP_SETCC))+((unsigned long)(my_CC_GE)))),(0UL),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_gt)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_CMPRM),(my_R_RDX),(my_R_RCX));
-	(my_as_modrr)((my_c),((unsigned long)(((unsigned long)(my_OP_SETCC))+((unsigned long)(my_CC_G)))),(0UL),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_isr)(struct my_compiler* my_c){
-	struct my_decl* my_d = 0;
-	struct my_label* my_out = 0;
-	unsigned long my_i = 0;
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(256UL)))) {
-	break;
-	}
-	(my_reserve)(((my_c)->my_as),(16UL));
-	if ((unsigned long)(((unsigned long)(((long)(my_i))==((long)(8UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(10UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(11UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(12UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(13UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(14UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(17UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(21UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(29UL))))||((unsigned long)(((long)(my_i))==((long)(30UL)))))))))))))))))))))) {
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	} else {
-	(my_as_emit)(((my_c)->my_as),(106UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	}
-	(my_as_emit)(((my_c)->my_as),(104UL));
-	(my_as_emit)(((my_c)->my_as),(my_i));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(233UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_addfixup)(((my_c)->my_as),(my_out));
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(my_fixup_label)(((my_c)->my_as),(my_out));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RSP),(176UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(40UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_MOVE),(my_R_RBP),(my_R_RSP));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(0UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(160UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(8UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(168UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(16UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(24UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(32UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(40UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(48UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
-	(my_d)=((my_find)((my_c),((unsigned char *)"_isr"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&(((my_d)->my_func_label)->my_fixed))) {
-	(my_as_jmp)(((my_c)->my_as),(my_OP_CALL),((my_d)->my_func_label));
-	}
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(16UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(24UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(32UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(40UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(48UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((unsigned long)(176UL))+((unsigned long)((unsigned long)(((long)(3UL))*((long)(8UL))))))));
-	(my_as_op)(((my_c)->my_as),(my_OP_IRETQ));
-}
-void( my_emit_jmp)(struct my_assembler* my_c,struct my_label* my_l){
-	(my_as_jmp)((my_c),(my_OP_JMP),(my_l));
-}
-void( my_emit_jz)(struct my_assembler* my_c,struct my_label* my_l){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_TESTRM),(my_R_RAX),(my_R_RAX));
-	(my_as_jmp)((my_c),((unsigned long)(((unsigned long)(my_OP_JCC))+((unsigned long)(my_CC_E)))),(my_l));
-}
-void( my_emit_kstart)(struct my_assembler* my_c){
-	struct my_label* my_hang = 0;
-	struct my_label* my_do_iret = 0;
-	struct my_label* my_do_ret = 0;
-	struct my_label* my_done = 0;
-	((my_c)->my_bits32)=(1UL);
-	(my_hang)=((my_mklabel)((my_c)));
-	(my_do_iret)=((my_mklabel)((my_c)));
-	(my_do_ret)=((my_mklabel)((my_c)));
-	(my_done)=((my_mklabel)((my_c)));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RDX),(732803074UL));
-	(my_as_modrr)((my_c),(my_OP_CMPRM),(my_R_RAX),(my_R_RDX));
-	(my_as_jmp)((my_c),((unsigned long)(((unsigned long)(my_OP_JCC))+((unsigned long)(my_CC_NE)))),(my_hang));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RSP),(3145728UL));
-	(my_as_modri)((my_c),(my_OP_ANDI),(my_R_RSP),((unsigned long)(-(unsigned long)(4096UL))));
-	(my_as_modri)((my_c),(my_OP_SUBI),(my_R_RSP),(4096UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(131UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RDX),(0UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RDX),(my_R_RSP),(0UL),(0UL),(4UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),((unsigned long)(((unsigned long)((unsigned long)(((long)(510UL))*((long)(8UL)))))+((unsigned long)(0UL)))));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RDX),(my_R_RSP),(0UL),(0UL),((unsigned long)(((unsigned long)((unsigned long)(((long)(510UL))*((long)(8UL)))))+((unsigned long)(4UL)))));
-	(my_as_modrr)((my_c),(my_OP_MOVE),(my_R_RAX),(my_R_RSP));
-	(my_as_modri)((my_c),(my_OP_SUBI),(my_R_RSP),(4096UL));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RAX),(3UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RDX),(0UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RDX),(my_R_RSP),(0UL),(0UL),(4UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),((unsigned long)(((unsigned long)((unsigned long)(((long)(511UL))*((long)(8UL)))))+((unsigned long)(0UL)))));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RDX),(my_R_RSP),(0UL),(0UL),((unsigned long)(((unsigned long)((unsigned long)(((long)(511UL))*((long)(8UL)))))+((unsigned long)(4UL)))));
-	(my_as_modrr)((my_c),(my_OP_WRCRR),(my_R_CR3),(my_R_RSP));
-	(my_as_modri)((my_c),(my_OP_SUBI),(my_R_RSP),(64UL));
-	(my_as_modrr)((my_c),(my_OP_MOVE),(my_R_RBP),(my_R_RSP));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(0UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(0UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(12UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(0UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(2136064UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(20UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(0UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(37376UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(28UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(23UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)((my_c),(my_OP_LEA),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(2UL));
-	(my_as_modm)((my_c),(my_OP_LGDTM),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(0UL));
-	(my_as_modr)((my_c),(my_OP_LLDTM),(my_R_RAX));
-	(my_as_modm)((my_c),(my_OP_LIDTM),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(160UL));
-	(my_as_modrr)((my_c),(my_OP_WRCRR),(my_R_CR4),(my_R_RAX));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RCX),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(1UL))))<<((unsigned long)(32UL)))))+((unsigned long)((unsigned long)(((unsigned long)(192UL))<<((unsigned long)(24UL))))))))+((unsigned long)(128UL)))));
-	(my_as_op)((my_c),(my_OP_RDMSR));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RAX),(256UL));
-	(my_as_op)((my_c),(my_OP_WRMSR));
-	(my_as_modrr)((my_c),(my_OP_RDCRR),(my_R_CR0),(my_R_RAX));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RAX),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(32768UL))))<<((unsigned long)(16UL)))))|((unsigned long)(1UL)))));
-	(my_as_modrr)((my_c),(my_OP_WRCRR),(my_R_CR0),(my_R_RAX));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(0UL));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(8UL));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_jmp)((my_c),(my_OP_CALL),(my_do_iret));
-	((my_c)->my_bits32)=(0UL);
-	(my_as_jmp)((my_c),(my_OP_CALL),(my_do_ret));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RBP),((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(32768UL))))<<((unsigned long)(16UL)))));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(23UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)((my_c),(my_OP_LEA),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(2UL));
-	(my_as_modm)((my_c),(my_OP_LGDTM),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(16UL));
-	(my_as_modrr)((my_c),(my_OP_WRSR),(my_R_ES),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_WRSR),(my_R_DS),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_WRSR),(my_R_FS),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_WRSR),(my_R_GS),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_WRSR),(my_R_SS),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_MOVE),(my_R_RSP),(my_R_RSP));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RSP),((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(32768UL))))<<((unsigned long)(16UL)))));
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(0UL));
-	(my_as_modrm)((my_c),(my_OP_LEA),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(4096UL));
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modri)((my_c),(my_OP_ANDI),(my_R_RDI),(2147483647UL));
-	(my_as_modrr)((my_c),(my_OP_WRCRR),(my_R_CR3),(my_R_RDI));
-	(my_as_jmp)((my_c),(my_OP_JMP),(my_done));
-	(my_fixup_label)((my_c),(my_hang));
-	(my_as_op)((my_c),(my_OP_CLI));
-	(my_as_op)((my_c),(my_OP_HLT));
-	(my_as_jmp)((my_c),(my_OP_JMP),(my_hang));
-	(my_fixup_label)((my_c),(my_do_iret));
-	(my_as_op)((my_c),(my_OP_IRET));
-	(my_fixup_label)((my_c),(my_do_ret));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RAX),((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(32768UL))))<<((unsigned long)(16UL)))));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_op)((my_c),(my_OP_RET));
-	(my_fixup_label)((my_c),(my_done));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RBP),(my_R_RBP));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RBX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RBP));
-}
-void( my_emit_lcall)(struct my_assembler* my_c,struct my_label* my_l,unsigned long my_n){
-	(my_as_jmp)((my_c),(my_OP_CALL),(my_l));
-	(my_emit_pop)((my_c),(my_n));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_le)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_CMPRM),(my_R_RDX),(my_R_RCX));
-	(my_as_modrr)((my_c),((unsigned long)(((unsigned long)(my_OP_SETCC))+((unsigned long)(my_CC_LE)))),(0UL),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_lea)(struct my_assembler* my_c,unsigned long my_offset){
-	(my_as_modrm)((my_c),(my_OP_LEA),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(my_offset));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_load)(struct my_assembler* my_c,struct my_type* my_t){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDI));
-	if ((unsigned long)(((long)((my_t)->my_kind))==((long)(my_TY_BYTE)))) {
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrm)((my_c),(my_OP_LOADB),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	} else if ((my_type_isprim)((my_t))) {
-	(my_as_modrm)((my_c),(my_OP_LOAD),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	} else {
-	(my_die)(((unsigned char *)"invalid load"));
-	}
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_lsh)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modr)((my_c),(my_OP_SHLM),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_lt)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_CMPRM),(my_R_RDX),(my_R_RCX));
-	(my_as_modrr)((my_c),((unsigned long)(((unsigned long)(my_OP_SETCC))+((unsigned long)(my_CC_L)))),(0UL),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_mod)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RDX),(my_R_RDX));
-	(my_as_modrr)((my_c),(my_OP_TESTRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrr)((my_c),((unsigned long)(((unsigned long)(my_OP_SETCC))+((unsigned long)(my_CC_S)))),(0UL),(my_R_RDX));
-	(my_as_modr)((my_c),(my_OP_NEGM),(my_R_RDX));
-	(my_as_modr)((my_c),(my_OP_IDIVM),(my_R_RCX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RDX));
-}
-void( my_emit_mul)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modr)((my_c),(my_OP_IMULM),(my_R_RCX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_ne)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_CMPRM),(my_R_RDX),(my_R_RCX));
-	(my_as_modrr)((my_c),((unsigned long)(((unsigned long)(my_OP_SETCC))+((unsigned long)(my_CC_NE)))),(0UL),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_neg)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_modr)((my_c),(my_OP_NEGM),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_not)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_modr)((my_c),(my_OP_NOTM),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_num)(struct my_assembler* my_c,unsigned long my_x){
-	(my_as_opri64)((my_c),(my_OP_MOVABS),(my_R_RDX),(my_x));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RDX));
-}
-void( my_emit_or)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_modrr)((my_c),(my_OP_ORRM),(my_R_RAX),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_pop)(struct my_assembler* my_c,unsigned long my_n){
-	(my_as_modri)((my_c),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((unsigned long)(my_n))<<((unsigned long)(3UL)))));
-}
-void( my_emit_preamble)(struct my_assembler* my_c,unsigned long my_n,unsigned long my_pragma){
-	unsigned long my_i = 0;
-	if ((unsigned long)(((long)(my_pragma))==((long)(1UL)))) {
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RBP),(my_R_RBP));
-	(my_as_modrm)((my_c),(my_OP_LOAD),(my_R_RDI),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)((my_c),(my_OP_LEA),(my_R_RSI),(my_R_RSP),(0UL),(0UL),(8UL));
-	(my_as_modrm)((my_c),(my_OP_LEA),(my_R_RDX),(my_R_RSI),(my_R_RDI),(8UL),(8UL));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RSI));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RDI));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RBP));
-	} else if ((unsigned long)(((long)(my_pragma))>((long)(1UL)))) {
-	(my_emit_kstart)((my_c));
-	}
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_modrr)((my_c),(my_OP_MOVE),(my_R_RBP),(my_R_RSP));
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))>=((long)(my_n)))) {
-	break;
-	}
-	(my_emit_num)((my_c),(0UL));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(8UL))));
-	}
-}
-void( my_emit_ptr)(struct my_assembler* my_c,struct my_label* my_l){
-	(my_reserve)((my_c),(16UL));
-	(my_as_modrm)((my_c),(my_OP_LEA),(my_R_RAX),(my_R_RIP),(0UL),(0UL),(128UL));
-	(my_addfixup)((my_c),(my_l));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_restorer)(struct my_assembler* my_c){
-	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(15UL));
-	(my_as_op)((my_c),(my_OP_SYSCALL));
-}
-void( my_emit_ret)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_modrr)((my_c),(my_OP_MOVE),(my_R_RSP),(my_R_RBP));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RBP));
-	(my_as_op)((my_c),(my_OP_RET));
-}
-void( my_emit_rsh)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RCX));
-	(my_as_modr)((my_c),(my_OP_SHRM),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_ssr)(struct my_compiler* my_c){
-	struct my_decl* my_d = 0;
-	struct my_decl* my_v = 0;
-	(my_v)=((my_find)((my_c),((unsigned char *)"global"),((unsigned char *)"_save"),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no _save"));
-	}
-	(my_as_emit)(((my_c)->my_as),(my_OP_GS));
-	(my_as_modra)(((my_c)->my_as),(my_OP_STORE),(my_R_RSP),((my_v)->my_member_offset));
-	(my_v)=((my_find)((my_c),((unsigned char *)"global"),((unsigned char *)"curtask"),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no global.curtask"));
-	}
-	(my_as_emit)(((my_c)->my_as),(my_OP_GS));
-	(my_as_modra)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSP),((my_v)->my_member_offset));
-	(my_v)=((my_find)((my_c),((unsigned char *)"task"),((unsigned char *)"stack"),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no task.stack"));
-	}
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSP),(my_R_RSP),(0UL),(0UL),((my_v)->my_member_offset));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((unsigned long)(4096UL))-((unsigned long)(176UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDX),(my_R_RSP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBX),(my_R_RSP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RSI),(my_R_RSP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDI),(my_R_RSP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R8),(my_R_RSP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R9),(my_R_RSP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R10),(my_R_RSP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R12),(my_R_RSP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R13),(my_R_RSP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R14),(my_R_RSP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R15),(my_R_RSP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RCX),(my_R_RSP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R11),(my_R_RSP),(0UL),(0UL),(136UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(160UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(168UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_MOVI),(my_R_RAX),(43UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(144UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_MOVI),(my_R_RAX),(35UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(152UL));
-	(my_v)=((my_find)((my_c),((unsigned char *)"global"),((unsigned char *)"_save"),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no _save"));
-	}
-	(my_as_emit)(((my_c)->my_as),(my_OP_GS));
-	(my_as_modra)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),((my_v)->my_member_offset));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(32UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_MOVE),(my_R_RAX),(my_R_RSP));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_XORRM),(my_R_RBP),(my_R_RBP));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_MOVE),(my_R_RBP),(my_R_RSP));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_d)=((my_find)((my_c),((unsigned char *)"_ssr"),((unsigned char*)0UL),(1UL)));
-	if ((unsigned long)(((my_d)->my_func_defined)&&(((my_d)->my_func_label)->my_fixed))) {
-	(my_as_jmp)(((my_c)->my_as),(my_OP_CALL),((my_d)->my_func_label));
-	}
-	(my_as_op)(((my_c)->my_as),(my_OP_CLI));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((long)(3UL))*((long)(8UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RSP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBX),(my_R_RSP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RSP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RSP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R8),(my_R_RSP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R9),(my_R_RSP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R10),(my_R_RSP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R12),(my_R_RSP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R13),(my_R_RSP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R14),(my_R_RSP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R15),(my_R_RSP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RSP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R11),(my_R_RSP),(0UL),(0UL),(136UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSP),(my_R_RSP),(0UL),(0UL),(32UL));
-	(my_as_rex)(((my_c)->my_as),(my_OP_SYSRET),(0UL),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_SYSRET));
-}
-void( my_emit_store)(struct my_assembler* my_c,struct my_type* my_t){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDI));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	if ((unsigned long)(((long)((my_t)->my_kind))==((long)(my_TY_BYTE)))) {
-	(my_as_modrm)((my_c),(my_OP_STOREB),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	} else if ((my_type_isprim)((my_t))) {
-	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	} else {
-	(my_die)(((unsigned char *)"invalid store"));
-	}
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_str)(struct my_assembler* my_c,unsigned char* my_s){
-	struct my_label* my_a = 0;
-	struct my_label* my_b = 0;
-	unsigned long my_i = 0;
-	(my_a)=((my_mklabel)((my_c)));
-	(my_b)=((my_mklabel)((my_c)));
-	(my_as_jmp)((my_c),(my_OP_JMP),(my_b));
-	(my_fixup_label)((my_c),(my_a));
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(!((my_s)[my_i]))) {
-	break;
-	}
-	(my_as_emit)((my_c),((unsigned long)(my_s)[my_i]));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(my_as_emit)((my_c),(0UL));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_as_op)((my_c),(my_OP_NOP));
-	(my_fixup_label)((my_c),(my_b));
-	(my_emit_ptr)((my_c),(my_a));
-}
-void( my_emit_sub)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_modrr)((my_c),(my_OP_SUBRM),(my_R_RAX),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_syscall)(struct my_assembler* my_c){
-	(my_as_modrm)((my_c),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)((my_c),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)((my_c),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)((my_c),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_modrm)((my_c),(my_OP_LOAD),(my_R_R10),(my_R_RBP),(0UL),(0UL),(48UL));
-	(my_as_modrm)((my_c),(my_OP_LOAD),(my_R_R8),(my_R_RBP),(0UL),(0UL),(56UL));
-	(my_as_modrm)((my_c),(my_OP_LOAD),(my_R_R9),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_op)((my_c),(my_OP_SYSCALL));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_emit_ud)(struct my_assembler* my_c){
-	(my_as_op)((my_c),(my_OP_UD2));
-}
-void( my_emit_xor)(struct my_assembler* my_c){
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
-	(my_as_modrr)((my_c),(my_OP_XORRM),(my_R_RAX),(my_R_RDX));
-	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
-}
-void( my_enter)(struct my_peg* my_c,unsigned long my_tag){
-	(my_choice)((my_c));
-	((my_c)->my_tag)=(my_tag);
-}
-unsigned long( my_exec)(unsigned char* my_cmd,unsigned char** my_argv,unsigned char** my_envp){
-	return (my_syscall)((59UL),((unsigned long)my_cmd),((unsigned long)my_argv),((unsigned long)my_envp),(0UL),(0UL),(0UL));
-}
-void( my_exit)(unsigned long my_n){
-	(my_syscall)((60UL),(my_n),(0UL),(0UL),(0UL),(0UL),(0UL));
-}
-void( my_fail)(struct my_peg* my_c){
-	if ((unsigned long)(((long)((my_c)->my_sp))==((long)(0UL)))) {
-	(my_die)(((unsigned char *)"fail underflow"));
-	}
-	if ((unsigned long)(((long)((my_c)->my_depth))>((long)((my_c)->my_fail_depth)))) {
-	((my_c)->my_fail_depth)=((my_c)->my_depth);
-	((my_c)->my_fail_tag)=((my_c)->my_tag);
-	((my_c)->my_fail_line)=((my_c)->my_line);
-	((my_c)->my_fail_col)=((my_c)->my_col);
-	((my_c)->my_fail_literal)=((unsigned char*)0UL);
-	}
-	((my_c)->my_sp)=((unsigned long)(((unsigned long)((my_c)->my_sp))-((unsigned long)(1UL))));
-	((my_c)->my_pos)=((((my_c)->my_stack)[(my_c)->my_sp]).my_pos);
-	((my_c)->my_depth)=((((my_c)->my_stack)[(my_c)->my_sp]).my_depth);
-	((my_c)->my_op)=((((my_c)->my_stack)[(my_c)->my_sp]).my_op);
-	((my_c)->my_tag)=((((my_c)->my_stack)[(my_c)->my_sp]).my_tag);
-	((my_c)->my_line)=((((my_c)->my_stack)[(my_c)->my_sp]).my_line);
-	((my_c)->my_col)=((((my_c)->my_stack)[(my_c)->my_sp]).my_col);
-}
-void( my_fclose)(struct my_file* my_f){
-	(my_fflush)((my_f));
-	if ((unsigned long)(((long)((my_close)(((my_f)->my_fd))))!=((long)(0UL)))) {
-	(my_die)(((unsigned char *)"write failed"));
-	}
-	(my_free)(((my_f)->my_a),((my_f)->my_buf));
-	(my_free)(((my_f)->my_a),((unsigned char*)my_f));
-}
-unsigned long( my_fdgetc)(unsigned long my_fd){
-	unsigned char my_b = 0;
-	unsigned long my_ret = 0;
-	(my_ret)=((my_read)((my_fd),(&(my_b)),(1UL)));
-	if ((unsigned long)(((long)(my_ret))==((long)(1UL)))) {
-	return (unsigned long)my_b;
-	} else if ((unsigned long)(((long)(my_ret))==((long)(0UL)))) {
-	return (unsigned long)(-(unsigned long)(1UL));
-	} else {
-	(my_exit)((3UL));
-	}
-}
-void( my_fdputc)(unsigned long my_fd,unsigned long my_ch){
-	unsigned char my_b = 0;
-	unsigned long my_ret = 0;
-	(my_b)=((unsigned char)my_ch);
-	(my_ret)=((my_write)((my_fd),(&(my_b)),(1UL)));
-	if ((unsigned long)(((long)(my_ret))!=((long)(1UL)))) {
-	(my_exit)((3UL));
-	}
-}
-void( my_fdputd)(unsigned long my_fd,unsigned long my_n){
-	unsigned long my_a = 0;
-	if ((unsigned long)(((long)(my_n))<((long)(0UL)))) {
-	(my_fdputc)((my_fd),(45));
-	(my_a)=((unsigned long)(-(unsigned long)((unsigned long)(((long)(my_n))%((long)(10UL))))));
-	(my_n)=((unsigned long)(((long)(my_n))/((long)((unsigned long)(-(unsigned long)(10UL))))));
-	} else {
-	(my_a)=((unsigned long)(((long)(my_n))%((long)(10UL))));
-	(my_n)=((unsigned long)(((long)(my_n))/((long)(10UL))));
-	}
-	if ((unsigned long)(((long)(my_n))!=((long)(0UL)))) {
-	(my_fdputd)((my_fd),(my_n));
-	}
-	(my_fdputc)((my_fd),((unsigned long)(((unsigned long)(48))+((unsigned long)(my_a)))));
-}
-void( my_fdputh)(unsigned long my_fd,unsigned long my_n){
-	unsigned long my_c = 0;
-	unsigned long my_r = 0;
-	(my_r)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_n))==((long)(0UL)))) {
-	break;
-	}
-	(my_r)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_r))<<((unsigned long)(4UL)))))+((unsigned long)((unsigned long)(((unsigned long)(my_n))&((unsigned long)(15UL)))))));
-	(my_n)=((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(4UL))));
-	}
-	(my_n)=(my_r);
-	while (1) {
-	(my_c)=((unsigned long)(((unsigned long)(my_n))&((unsigned long)(15UL))));
-	(my_n)=((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(4UL))));
-	if ((unsigned long)(((long)(my_c))<((long)(10UL)))) {
-	(my_fdputc)((my_fd),((unsigned long)(((unsigned long)(my_c))+((unsigned long)(48)))));
-	} else {
-	(my_fdputc)((my_fd),((unsigned long)(((unsigned long)(my_c))+((unsigned long)((unsigned long)(((unsigned long)(97))-((unsigned long)(10UL))))))));
-	}
-	if ((unsigned long)(((long)(my_n))==((long)(0UL)))) {
-	break;
-	}
-	}
-}
-void( my_fdputh16)(unsigned long my_fd,unsigned long my_x){
-	(my_fdputhn)((my_fd),(my_x),(16UL));
-}
-void( my_fdputh32)(unsigned long my_fd,unsigned long my_x){
-	(my_fdputhn)((my_fd),(my_x),(32UL));
-}
-void( my_fdputh64)(unsigned long my_fd,unsigned long my_x){
-	(my_fdputhn)((my_fd),(my_x),(64UL));
-}
-void( my_fdputh8)(unsigned long my_fd,unsigned long my_x){
-	(my_fdputhn)((my_fd),(my_x),(8UL));
-}
-void( my_fdputhn)(unsigned long my_fd,unsigned long my_x,unsigned long my_d){
-	while (1) {
-	if ((unsigned long)(((long)(my_d))==((long)(0UL)))) {
-	break;
-	}
-	(my_d)=((unsigned long)(((unsigned long)(my_d))-((unsigned long)(4UL))));
-	(my_fdputc)((my_fd),((unsigned long)((unsigned char *)"0123456789abcdef")[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_x))>>((unsigned long)(my_d)))))&((unsigned long)(15UL)))]));
-	}
-}
-void( my_fdputs)(unsigned long my_fd,unsigned char* my_msg){
-	unsigned long my_len = 0;
-	unsigned long my_ret = 0;
-	unsigned long my_off = 0;
-	(my_len)=((my_strlen)((my_msg)));
-	(my_off)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_off))==((long)(my_len)))) {
-	break;
-	}
-	(my_ret)=((my_write)((my_fd),(my_msg),((unsigned long)(((unsigned long)(my_len))-((unsigned long)(my_off))))));
-	if ((unsigned long)(((long)(my_ret))<((long)(0UL)))) {
-	(my_exit)((3UL));
-	}
-	(my_off)=((unsigned long)(((unsigned long)(my_off))+((unsigned long)(my_ret))));
-	}
-}
-void( my_fdxxd)(unsigned long my_fd,unsigned char* my_data,unsigned long my_len){
-	unsigned long my_i = 0;
-	unsigned long my_j = 0;
-	while (1) {
-	if ((unsigned long)(((long)(my_i))>=((long)(my_len)))) {
-	break;
-	}
-	(my_fdputh32)((my_fd),(my_i));
-	(my_fdputc)((my_fd),(58));
-	(my_fdputc)((my_fd),(32));
-	(my_j)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_j))==((long)(16UL)))) {
-	break;
-	}
-	if ((unsigned long)(((long)((unsigned long)(((unsigned long)(my_i))+((unsigned long)(my_j)))))<((long)(my_len)))) {
-	(my_fdputh8)((my_fd),((unsigned long)(my_data)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(my_j)))]));
-	} else {
-	(my_fdputc)((my_fd),(32));
-	(my_fdputc)((my_fd),(32));
-	}
-	if ((unsigned long)(((long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_i))+((unsigned long)(my_j)))))+((unsigned long)(1UL)))))<((long)(my_len)))) {
-	(my_fdputh8)((my_fd),((unsigned long)(my_data)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_i))+((unsigned long)(my_j)))))+((unsigned long)(1UL)))]));
-	} else {
-	(my_fdputc)((my_fd),(32));
-	(my_fdputc)((my_fd),(32));
-	}
-	(my_fdputc)((my_fd),(32));
-	(my_j)=((unsigned long)(((unsigned long)(my_j))+((unsigned long)(2UL))));
-	}
-	(my_fdputc)((my_fd),(32));
-	(my_j)=(0UL);
-	while (1) {
-	if ((unsigned long)(((unsigned long)(((long)(my_j))==((long)(16UL))))||((unsigned long)(((long)((unsigned long)(((unsigned long)(my_i))+((unsigned long)(my_j)))))>=((long)(my_len)))))) {
-	break;
-	}
-	if ((unsigned long)(((unsigned long)(((long)((unsigned long)(my_data)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(my_j)))]))>=((long)(32UL))))&&((unsigned long)(((long)((unsigned long)(my_data)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(my_j)))]))<((long)(128UL)))))) {
-	(my_fdputc)((my_fd),((unsigned long)(my_data)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(my_j)))]));
-	} else {
-	(my_fdputc)((my_fd),(46));
-	}
-	(my_j)=((unsigned long)(((unsigned long)(my_j))+((unsigned long)(1UL))));
-	}
-	(my_fdputc)((my_fd),(10));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(16UL))));
-	}
-}
-void( my_ffill)(struct my_file* my_f){
-	unsigned long my_ret = 0;
-	if ((my_f)->my_eof) {
-	return;
-	}
-	if ((unsigned long)(((long)((my_f)->my_r))==((long)((my_f)->my_w)))) {
-	((my_f)->my_r)=(0UL);
-	((my_f)->my_w)=(0UL);
-	}
-	if ((unsigned long)(((long)((my_f)->my_w))==((long)((my_f)->my_cap)))) {
-	(my_die)(((unsigned char *)"out of space"));
-	}
-	(my_ret)=((my_read)(((my_f)->my_fd),(&(((my_f)->my_buf)[(my_f)->my_w])),((unsigned long)(((unsigned long)((my_f)->my_cap))-((unsigned long)((my_f)->my_w))))));
-	if ((unsigned long)(((long)(my_ret))<((long)(0UL)))) {
-	(my_die)(((unsigned char *)"read failed"));
-	}
-	if ((unsigned long)(((long)(my_ret))==((long)(0UL)))) {
-	((my_f)->my_eof)=(1UL);
-	}
-	((my_f)->my_w)=((unsigned long)(((unsigned long)((my_f)->my_w))+((unsigned long)(my_ret))));
-}
-void( my_fflush)(struct my_file* my_f){
-	unsigned long my_ret = 0;
-	while (1) {
-	if ((unsigned long)(((long)((my_f)->my_r))==((long)((my_f)->my_w)))) {
-	((my_f)->my_r)=(0UL);
-	((my_f)->my_w)=(0UL);
-	return;
-	}
-	(my_ret)=((my_write)(((my_f)->my_fd),(&(((my_f)->my_buf)[(my_f)->my_r])),((unsigned long)(((unsigned long)((my_f)->my_w))-((unsigned long)((my_f)->my_r))))));
-	if ((unsigned long)(((long)(my_ret))<((long)(0UL)))) {
-	(my_die)(((unsigned char *)"write failed"));
-	}
-	((my_f)->my_r)=((unsigned long)(((unsigned long)((my_f)->my_r))+((unsigned long)(my_ret))));
-	}
-}
-unsigned long( my_fgetc)(struct my_file* my_f){
-	unsigned long my_ch = 0;
-	if ((unsigned long)(((long)((my_f)->my_r))==((long)((my_f)->my_w)))) {
-	(my_ffill)((my_f));
-	}
-	if ((my_f)->my_eof) {
-	return (unsigned long)(-(unsigned long)(1UL));
-	}
-	(my_ch)=((unsigned long)((my_f)->my_buf)[(my_f)->my_r]);
-	((my_f)->my_r)=((unsigned long)(((unsigned long)((my_f)->my_r))+((unsigned long)(1UL))));
-	return my_ch;
-}
-unsigned long( my_fgets)(struct my_file* my_f,unsigned char* my_buf,unsigned long my_len){
-	unsigned long my_i = 0;
-	unsigned long my_c = 0;
-	if ((unsigned long)(((long)(my_len))==((long)(1UL)))) {
-	((my_buf)[0UL])=((unsigned char)0UL);
-	return 0UL;
-	}
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL)))))==((long)(my_len)))) {
-	((my_buf)[my_i])=((unsigned char)0UL);
-	return my_i;
-	}
-	(my_c)=((my_fgetc)((my_f)));
-	if ((unsigned long)(((unsigned long)(((long)(my_c))==((long)((unsigned long)(-(unsigned long)(1UL))))))||((unsigned long)(((long)(my_c))==((long)(10)))))) {
-	((my_buf)[my_i])=((unsigned char)0UL);
-	return my_i;
-	}
-	((my_buf)[my_i])=((unsigned char)my_c);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-}
-void( my_fillpos)(struct my_parser* my_c,struct my_node* my_n){
-}
-struct my_decl*( my_find)(struct my_compiler* my_c,unsigned char* my_name,unsigned char* my_member_name,unsigned long my_make){
-	struct my_decl* my_p = 0;
-	struct my_decl* my_d = 0;
-	struct my_decl** my_link = 0;
-	unsigned long my_dir = 0;
-	(my_p)=((struct my_decl*)0UL);
-	(my_link)=(&((my_c)->my_decls));
-	while (1) {
-	(my_d)=(*(my_link));
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	(my_dir)=((my_strcmp)((my_name),((my_d)->my_name)));
-	if ((unsigned long)(((long)(my_dir))==((long)(0UL)))) {
-	if ((unsigned long)(((unsigned long)(!(my_member_name)))&&((unsigned long)(!((my_d)->my_member_name))))) {
-	(my_dir)=(0UL);
-	} else if ((unsigned long)(!(my_member_name))) {
-	(my_dir)=((unsigned long)(-(unsigned long)(1UL)));
-	} else if ((unsigned long)(!((my_d)->my_member_name))) {
-	(my_dir)=(1UL);
-	} else {
-	(my_dir)=((my_strcmp)((my_member_name),((my_d)->my_member_name)));
-	}
-	}
-	if ((unsigned long)(((long)(my_dir))<((long)(0UL)))) {
-	(my_p)=(my_d);
-	(my_link)=(&((my_d)->my_l));
-	} else if ((unsigned long)(((long)(my_dir))>((long)(0UL)))) {
-	(my_p)=(my_d);
-	(my_link)=(&((my_d)->my_r));
-	} else {
-	return my_d;
-	}
-	}
-	if ((unsigned long)(!(my_make))) {
-	return (struct my_decl*)0UL;
-	}
-	(my_d)=((struct my_decl*)(my_alloc)(((my_c)->my_a),(216UL)));
-	((my_d)->my_name)=(my_name);
-	((my_d)->my_member_name)=(my_member_name);
-	((my_d)->my_p)=(my_p);
-	((my_d)->my_l)=((struct my_decl*)0UL);
-	((my_d)->my_r)=((struct my_decl*)0UL);
-	((my_d)->my_func_defined)=(0UL);
-	((my_d)->my_func_type)=((struct my_type*)0UL);
-	((my_d)->my_func_label)=((my_mklabel)(((my_c)->my_as)));
-	((my_d)->my_func_def)=((struct my_node*)0UL);
-	((my_d)->my_struct_defined)=(0UL);
-	((my_d)->my_struct_size)=(0UL);
-	((my_d)->my_struct_layout_done)=(0UL);
-	((my_d)->my_struct_def)=((struct my_node*)0UL);
-	((my_d)->my_member_defined)=(0UL);
-	((my_d)->my_member_type)=((struct my_type*)0UL);
-	((my_d)->my_member_offset)=(0UL);
-	((my_d)->my_member_def)=((struct my_node*)0UL);
-	((my_d)->my_enum_defined)=(0UL);
-	((my_d)->my_enum_value)=(0UL);
-	((my_d)->my_enum_def)=((struct my_node*)0UL);
-	((my_d)->my_var_defined)=(0UL);
-	((my_d)->my_var_type)=((struct my_type*)0UL);
-	((my_d)->my_var_offset)=(0UL);
-	((my_d)->my_var_def)=((struct my_node*)0UL);
-	((my_d)->my_goto_defined)=(0UL);
-	((my_d)->my_goto_label)=((my_mklabel)(((my_c)->my_as)));
-	(*(my_link))=(my_d);
-	return my_d;
-}
-struct my_decl*( my_first_decl)(struct my_compiler* my_c){
-	struct my_decl* my_d = 0;
-	(my_d)=((my_c)->my_decls);
-	if ((unsigned long)(!(my_d))) {
-	return (struct my_decl*)0UL;
-	}
-	while (1) {
-	if ((unsigned long)(!((my_d)->my_l))) {
-	return my_d;
-	}
-	(my_d)=((my_d)->my_l);
-	}
-}
-void( my_fixup)(struct my_assembler* my_c,unsigned char* my_here,unsigned long my_delta){
-	((my_here)[0UL])=((unsigned char)my_delta);
-	((my_here)[1UL])=((unsigned char)(unsigned long)(((unsigned long)(my_delta))>>((unsigned long)(8UL))));
-	((my_here)[2UL])=((unsigned char)(unsigned long)(((unsigned long)(my_delta))>>((unsigned long)(16UL))));
-	((my_here)[3UL])=((unsigned char)(unsigned long)(((unsigned long)(my_delta))>>((unsigned long)(24UL))));
-}
-void( my_fixup_label)(struct my_assembler* my_c,struct my_label* my_l){
-	struct my_fixup* my_f = 0;
-	if ((my_l)->my_fixed) {
-	(my_die)(((unsigned char *)"already fixed"));
-	}
-	((my_l)->my_at)=((my_c)->my_at);
-	((my_l)->my_fixed)=(1UL);
-	(my_f)=((my_l)->my_fix);
-	while (1) {
-	if ((unsigned long)(!(my_f))) {
-	break;
-	}
-	(my_fixup)((my_c),((my_f)->my_ptr),((unsigned long)(((unsigned long)((my_l)->my_at))-((unsigned long)((my_f)->my_at)))));
-	(my_f)=((my_f)->my_next);
-	}
-}
-void( my_flush_coutput)(struct my_compiler* my_c){
-	(my_fflush)(((my_c)->my_cout));
-}
-struct my_file*( my_fopen)(unsigned long my_fd,struct my_alloc* my_a){
-	struct my_file* my_f = 0;
-	(my_f)=((struct my_file*)(my_alloc)((my_a),(56UL)));
-	((my_f)->my_fd)=(my_fd);
-	((my_f)->my_a)=(my_a);
-	((my_f)->my_r)=(0UL);
-	((my_f)->my_w)=(0UL);
-	((my_f)->my_cap)=(4096UL);
-	((my_f)->my_eof)=(0UL);
-	((my_f)->my_buf)=((my_alloc)((my_a),((my_f)->my_cap)));
-	return my_f;
-}
-unsigned long( my_fork)(void){
-	return (my_syscall)((57UL),(0UL),(0UL),(0UL),(0UL),(0UL),(0UL));
-}
-void( my_fputb)(struct my_file* my_f,unsigned char* my_s,unsigned long my_n){
-	unsigned long my_i = 0;
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))>=((long)(my_n)))) {
-	break;
-	}
-	(my_fputc)((my_f),((unsigned long)(my_s)[my_i]));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-}
-void( my_fputc)(struct my_file* my_f,unsigned long my_ch){
-	if ((unsigned long)(((long)((my_f)->my_w))==((long)((my_f)->my_cap)))) {
-	(my_fflush)((my_f));
-	}
-	(((my_f)->my_buf)[(my_f)->my_w])=((unsigned char)my_ch);
-	((my_f)->my_w)=((unsigned long)(((unsigned long)((my_f)->my_w))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_ch))==((long)(10)))) {
-	(my_fflush)((my_f));
-	}
-}
-void( my_fputd)(struct my_file* my_out,unsigned long my_n){
-	unsigned long my_a = 0;
-	if ((unsigned long)(((long)(my_n))<((long)(0UL)))) {
-	(my_fputc)((my_out),(45));
-	(my_a)=((unsigned long)(-(unsigned long)((unsigned long)(((long)(my_n))%((long)(10UL))))));
-	(my_n)=((unsigned long)(((long)(my_n))/((long)((unsigned long)(-(unsigned long)(10UL))))));
-	} else {
-	(my_a)=((unsigned long)(((long)(my_n))%((long)(10UL))));
-	(my_n)=((unsigned long)(((long)(my_n))/((long)(10UL))));
-	}
-	if ((unsigned long)(((long)(my_n))!=((long)(0UL)))) {
-	(my_fputd)((my_out),(my_n));
-	}
-	(my_fputc)((my_out),((unsigned long)(((unsigned long)(48))+((unsigned long)(my_a)))));
-}
-void( my_fputs)(struct my_file* my_f,unsigned char* my_s){
-	unsigned long my_i = 0;
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(!((my_s)[my_i]))) {
-	break;
-	}
-	(my_fputc)((my_f),((unsigned long)(my_s)[my_i]));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-}
-unsigned char*( my_freadall)(struct my_file* my_f,unsigned long* my_size){
-	unsigned long my_i = 0;
-	unsigned long my_cap = 0;
-	unsigned char* my_ret = 0;
-	unsigned char* my_tmp = 0;
-	unsigned long my_ch = 0;
-	(my_i)=(0UL);
-	(my_cap)=(0UL);
-	while (1) {
-	(my_ch)=((my_fgetc)((my_f)));
-	if ((unsigned long)(((long)(my_ch))==((long)((unsigned long)(-(unsigned long)(1UL)))))) {
-	(*(my_size))=(my_i);
-	return my_ret;
-	}
-	if ((unsigned long)(((long)(my_i))==((long)(my_cap)))) {
-	if ((unsigned long)(((long)(my_cap))==((long)(0UL)))) {
-	(my_cap)=(4096UL);
-	(my_ret)=((my_alloc)(((my_f)->my_a),(my_cap)));
-	} else {
-	(my_cap)=((unsigned long)(((long)(my_cap))*((long)(2UL))));
-	(my_tmp)=((my_alloc)(((my_f)->my_a),(my_cap)));
-	(my_memcpy)((my_tmp),(my_ret),(my_i));
-	(my_free)(((my_f)->my_a),(my_ret));
-	(my_ret)=(my_tmp);
-	}
-	}
-	((my_ret)[my_i])=((unsigned char)my_ch);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-}
-void( my_free)(struct my_alloc* my_a,unsigned char* my_p){
-}
-void( my_fseek)(struct my_file* my_f,unsigned long my_off){
-	((my_f)->my_r)=(0UL);
-	((my_f)->my_w)=(0UL);
-	((my_f)->my_eof)=(0UL);
-	if ((unsigned long)(((long)((my_lseek)(((my_f)->my_fd),(my_off),(0UL))))!=((long)(my_off)))) {
-	(my_die)(((unsigned char *)"invalid seek"));
-	}
-}
-unsigned long( my_fstat)(unsigned long my_fd,unsigned char* my_buf){
-	return (my_syscall)((5UL),(my_fd),((unsigned long)my_buf),(0UL),(0UL),(0UL),(0UL));
-}
-unsigned long( my_get)(struct my_peg* my_c){
-	unsigned long my_ch = 0;
-	if ((unsigned long)(((long)((my_c)->my_pos))==((long)((my_c)->my_size)))) {
-	return (unsigned long)(-(unsigned long)(1UL));
-	}
-	(my_ch)=((unsigned long)((my_c)->my_src)[(my_c)->my_pos]);
-	((my_c)->my_pos)=((unsigned long)(((unsigned long)((my_c)->my_pos))+((unsigned long)(1UL))));
-	((my_c)->my_col)=((unsigned long)(((unsigned long)((my_c)->my_col))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_ch))==((long)(10)))) {
-	((my_c)->my_col)=(1UL);
-	((my_c)->my_line)=((unsigned long)(((unsigned long)((my_c)->my_line))+((unsigned long)(1UL))));
-	}
-	if ((unsigned long)(((long)(my_ch))==((long)(0UL)))) {
-	(my_die)(((unsigned char *)"invalid nul in source"));
-	}
-	return my_ch;
-}
-unsigned long( my_getdirents)(unsigned long my_fd,unsigned char* my_buf,unsigned long my_len){
-	return (my_syscall)((217UL),(my_fd),((unsigned long)my_buf),(my_len),(0UL),(0UL),(0UL));
-}
-unsigned long( my_hex2int)(unsigned char* my_s,unsigned long my_len,unsigned long* my_ok){
-	unsigned long my_i = 0;
-	unsigned long my_x = 0;
-	unsigned long my_d = 0;
-	(my_x)=(0UL);
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_len)))) {
-	break;
-	}
-	(my_d)=((unsigned long)(my_s)[my_i]);
-	if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)(48))))&&((unsigned long)(((long)(my_d))<=((long)(57)))))) {
-	(my_d)=((unsigned long)(((unsigned long)(my_d))-((unsigned long)(48))));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)(97))))&&((unsigned long)(((long)(my_d))<=((long)(102)))))) {
-	(my_d)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_d))-((unsigned long)(97)))))+((unsigned long)(10UL))));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)(65))))&&((unsigned long)(((long)(my_d))<=((long)(70)))))) {
-	(my_d)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_d))-((unsigned long)(65)))))+((unsigned long)(10UL))));
-	} else {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-	(my_x)=((unsigned long)(((long)(my_x))*((long)(16UL))));
-	(my_x)=((unsigned long)(((unsigned long)(my_x))+((unsigned long)(my_d))));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_x))>((long)(2147483647UL)))) {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-	}
-	(*(my_ok))=(1UL);
-	return my_x;
-}
-unsigned long( my_hexdig)(unsigned long my_ch,unsigned long* my_ok){
-	if ((unsigned long)(((unsigned long)(((long)(my_ch))>=((long)(48))))&&((unsigned long)(((long)(my_ch))<=((long)(57)))))) {
-	(*(my_ok))=(1UL);
-	return (unsigned long)(((unsigned long)(my_ch))-((unsigned long)(48)));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_ch))>=((long)(65))))&&((unsigned long)(((long)(my_ch))<=((long)(70)))))) {
-	(*(my_ok))=(1UL);
-	return (unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_ch))-((unsigned long)(70)))))+((unsigned long)(10UL)));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_ch))>=((long)(97))))&&((unsigned long)(((long)(my_ch))<=((long)(102)))))) {
-	(*(my_ok))=(1UL);
-	return (unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_ch))-((unsigned long)(97)))))+((unsigned long)(10UL)));
-	} else {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-}
-unsigned long( my_hoist_locals)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n,unsigned long my_offset){
-	unsigned long my_kind = 0;
-	unsigned char* my_name = 0;
-	struct my_type* my_t = 0;
-	struct my_decl* my_v = 0;
-	if ((unsigned long)(!(my_n))) {
-	return my_offset;
-	}
-	(my_kind)=((my_n)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONDLIST)))) {
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	return my_offset;
-	}
-	(my_hoist_locals)((my_c),(my_d),(((my_n)->my_a)->my_b),(my_offset));
-	(my_n)=((my_n)->my_b);
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_STMTLIST)))) {
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	return my_offset;
-	}
-	(my_offset)=((my_hoist_locals)((my_c),(my_d),((my_n)->my_a),(my_offset)));
-	(my_n)=((my_n)->my_b);
-	}
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LOOP)))) {
-	return (my_hoist_locals)((my_c),(my_d),((my_n)->my_a),(my_offset));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LABEL)))) {
-	(my_name)=(((my_n)->my_a)->my_s);
-	(my_v)=((my_find)((my_c),((my_d)->my_name),(my_name),(1UL)));
-	if ((my_v)->my_goto_defined) {
-	(my_cdie)((my_c),((unsigned char *)"duplicate goto"));
-	}
-	((my_v)->my_goto_defined)=(1UL);
-	return my_offset;
-	} else if ((unsigned long)(((long)(my_kind))!=((long)(my_N_VARDECL)))) {
-	return my_offset;
-	}
-	(my_name)=(((my_n)->my_a)->my_s);
-	(my_t)=((my_prototype)((my_c),((my_n)->my_b)));
-	((my_n)->my_t)=(my_t);
-	(my_v)=((my_find)((my_c),((my_d)->my_name),(my_name),(1UL)));
-	if ((my_v)->my_var_defined) {
-	(my_cdie)((my_c),((unsigned char *)"duplicate variable"));
-	}
-	((my_v)->my_var_type)=(my_t);
-	((my_v)->my_var_defined)=(1UL);
-	(my_offset)=((unsigned long)(((unsigned long)(my_offset))+((unsigned long)((my_type_sizeof)((my_c),(my_t))))));
-	((my_v)->my_var_offset)=((unsigned long)(-(unsigned long)(my_offset)));
-	return my_offset;
-}
-void( my_layout_struct)(struct my_compiler* my_c,struct my_decl* my_d){
-	struct my_node* my_m = 0;
-	unsigned long my_offset = 0;
-	unsigned char* my_name = 0;
-	struct my_decl* my_md = 0;
-	struct my_type* my_t = 0;
-	if ((my_d)->my_struct_layout_done) {
-	if ((unsigned long)(((long)((my_d)->my_struct_layout_done))==((long)(2UL)))) {
-	(my_cdie)((my_c),((unsigned char *)"circular struct definition"));
-	}
-	return;
-	}
-	((my_d)->my_struct_layout_done)=(2UL);
-	(my_m)=(((my_d)->my_struct_def)->my_b);
-	(my_offset)=(0UL);
-	while (1) {
-	if ((unsigned long)(!(my_m))) {
-	break;
-	}
-	((my_c)->my_filename)=(((my_m)->my_a)->my_filename);
-	((my_c)->my_lineno)=(((my_m)->my_a)->my_lineno);
-	((my_c)->my_colno)=(((my_m)->my_a)->my_colno);
-	(my_name)=((((my_m)->my_a)->my_a)->my_s);
-	(my_t)=((my_prototype)((my_c),(((my_m)->my_a)->my_b)));
-	(my_md)=((my_find)((my_c),((my_d)->my_name),(my_name),(1UL)));
-	if ((my_d)->my_member_defined) {
-	(my_cdie)((my_c),((unsigned char *)"duplicate member"));
-	}
-	((my_md)->my_member_defined)=(1UL);
-	((my_md)->my_member_type)=(my_t);
-	((my_md)->my_member_offset)=(my_offset);
-	((my_md)->my_member_def)=(my_m);
-	(my_offset)=((unsigned long)(((unsigned long)(my_offset))+((unsigned long)((my_type_sizeof)((my_c),(my_t))))));
-	(my_m)=((my_m)->my_b);
-	}
-	((my_d)->my_struct_size)=(my_offset);
-	((my_d)->my_struct_layout_done)=(1UL);
-}
-void( my_leave)(struct my_peg* my_c,unsigned long my_tag){
-	unsigned long my_nargs = 0;
-	unsigned long my_start = 0;
-	unsigned long my_line = 0;
-	unsigned long my_col = 0;
-	unsigned long my_end = 0;
-	unsigned char* my_tmp = 0;
-	(my_commit)((my_c));
-	((my_c)->my_fail_depth)=(0UL);
-	(my_nargs)=((unsigned long)(((unsigned long)((my_c)->my_depth))-((unsigned long)((((my_c)->my_stack)[(my_c)->my_sp]).my_depth))));
-	(my_line)=((((my_c)->my_stack)[(my_c)->my_sp]).my_line);
-	(my_col)=((((my_c)->my_stack)[(my_c)->my_sp]).my_col);
-	(my_start)=((((my_c)->my_stack)[(my_c)->my_sp]).my_pos);
-	(my_end)=((my_c)->my_pos);
-	if ((unsigned long)(((long)((my_c)->my_op))==((long)((my_c)->my_cap)))) {
-	if ((unsigned long)(((long)((my_c)->my_cap))==((long)(0UL)))) {
-	((my_c)->my_cap)=(1024UL);
-	((my_c)->my_out)=((struct my_peg_op*)(my_alloc)(((my_c)->my_a),((unsigned long)(((long)((my_c)->my_cap))*((long)(48UL))))));
-	} else {
-	((my_c)->my_cap)=((unsigned long)(((long)((my_c)->my_cap))*((long)(2UL))));
-	(my_tmp)=((my_alloc)(((my_c)->my_a),((unsigned long)(((long)((my_c)->my_cap))*((long)(48UL))))));
-	(my_memcpy)((my_tmp),((unsigned char*)(my_c)->my_out),((unsigned long)(((long)((my_c)->my_op))*((long)(48UL)))));
-	(my_free)(((my_c)->my_a),((unsigned char*)(my_c)->my_out));
-	((my_c)->my_out)=((struct my_peg_op*)my_tmp);
-	}
-	}
-	((((my_c)->my_out)[(my_c)->my_op]).my_tag)=(my_tag);
-	((((my_c)->my_out)[(my_c)->my_op]).my_nargs)=(my_nargs);
-	((((my_c)->my_out)[(my_c)->my_op]).my_start)=(my_start);
-	((((my_c)->my_out)[(my_c)->my_op]).my_end)=(my_end);
-	((((my_c)->my_out)[(my_c)->my_op]).my_line)=(my_line);
-	((((my_c)->my_out)[(my_c)->my_op]).my_col)=(my_col);
-	((my_c)->my_op)=((unsigned long)(((unsigned long)((my_c)->my_op))+((unsigned long)(1UL))));
-	((my_c)->my_depth)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((my_c)->my_depth))-((unsigned long)(my_nargs)))))+((unsigned long)(1UL))));
-}
-unsigned long( my_listen)(unsigned long my_fd,unsigned long my_backlog){
-	return (my_syscall)((50UL),(my_fd),(my_backlog),(0UL),(0UL),(0UL),(0UL));
-}
-unsigned long( my_literal)(struct my_peg* my_c,unsigned char* my_s){
-	unsigned long my_i = 0;
-	unsigned long my_ch = 0;
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(!((my_s)[my_i]))) {
-	break;
-	}
-	(my_ch)=((my_get)((my_c)));
-	if ((unsigned long)(((long)(my_ch))!=((long)((unsigned long)(my_s)[my_i])))) {
-	(my_fail)((my_c));
-	((my_c)->my_fail_literal)=(my_s);
-	return 0UL;
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	return 1UL;
-}
-unsigned long( my_lseek)(unsigned long my_fd,unsigned long my_off,unsigned long my_whence){
-	return (my_syscall)((8UL),(my_fd),(my_off),(my_whence),(0UL),(0UL),(0UL));
-}
-void( my_main)(unsigned long my_argc,unsigned char** my_argv,unsigned char** my_envp){
-	struct my_alloc my_a = {0};
-	struct my_compiler* my_c = 0;
-	struct my_node* my_p = 0;
-	struct my_decl* my_d = 0;
-	struct my_label* my_start = 0;
-	struct my_label* my_kstart = 0;
-	unsigned long my_i = 0;
-	unsigned long my_show = 0;
-	unsigned char* my_filename = 0;
-	struct my_file* my_err = 0;
-	struct my_name_node* my_input = 0;
-	struct my_name_node* my_tmp = 0;
-	struct my_name_node** my_link = 0;
-	struct my_peg_compiler* my_peg = 0;
-	(my_link)=(&(my_input));
-	(my_setup_alloc)((&(my_a)));
-	(my_c)=((my_comp_setup)((&(my_a))));
-	(my_show)=(0UL);
-	(my_filename)=((unsigned char *)"a.out");
-	(my_i)=(1UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))>=((long)(my_argc)))) {
-	break;
-	}
-	if ((unsigned long)(!((my_strcmp)(((my_argv)[my_i]),((unsigned char *)"-o"))))) {
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_i))>=((long)(my_argc)))) {
-	(my_die)(((unsigned char *)"invalid -o at end of argument list"));
-	}
-	(my_filename)=((my_argv)[my_i]);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	continue;
-	}
-	if ((unsigned long)(!((my_strcmp)(((my_argv)[my_i]),((unsigned char *)"-fdump"))))) {
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	(my_show)=(1UL);
-	continue;
-	}
-	if ((unsigned long)(!((my_strcmp)(((my_argv)[my_i]),((unsigned char *)"-C"))))) {
-	((my_c)->my_do_cout)=(1UL);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	continue;
-	}
-	if ((unsigned long)(!((my_strcmp)(((my_argv)[my_i]),((unsigned char *)"-P"))))) {
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_i))>=((long)(my_argc)))) {
-	(my_die)(((unsigned char *)"invalid -P at end of argument list"));
-	}
-	(my_peg)=((my_setup_peg)((&(my_a)),((my_argv)[my_i])));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	continue;
-	}
-	if ((unsigned long)(((long)(((my_argv)[my_i])[0UL]))==((long)((unsigned char)45)))) {
-	(my_die)(((unsigned char *)"invalid argument"));
-	}
-	(my_tmp)=((struct my_name_node*)(my_alloc)((&(my_a)),(16UL)));
-	((my_tmp)->my_next)=((struct my_name_node*)0UL);
-	((my_tmp)->my_name)=((my_argv)[my_i]);
-	(*(my_link))=(my_tmp);
-	(my_link)=(&((my_tmp)->my_next));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	if (my_peg) {
-	if ((unsigned long)(!(my_input))) {
-	(my_die)(((unsigned char *)"expected input"));
-	}
-	(my_peg_open_output)((my_peg),(my_filename));
-	(my_tmp)=(my_input);
-	while (1) {
-	if ((unsigned long)(!(my_tmp))) {
-	break;
-	}
-	(my_peg_compile)((my_peg),((my_tmp)->my_name));
-	(my_tmp)=((my_tmp)->my_next);
-	}
-	return;
-	}
-	(my_tmp)=(my_input);
-	while (1) {
-	if ((unsigned long)(!(my_tmp))) {
-	break;
-	}
-	(my_p)=((my_concat_program)((my_p),((my_parse)(((my_c)->my_p),((my_tmp)->my_name)))));
-	(my_tmp)=((my_tmp)->my_next);
-	}
-	if (my_show) {
-	(my_err)=((my_fopen)((2UL),(&(my_a))));
-	(my_show_node)((my_err),(my_p));
-	(my_fflush)((my_err));
-	return;
-	}
-	(my_compile)((my_c),(my_p));
-	if ((my_c)->my_do_cout) {
-	(my_open_coutput)((my_c),(my_filename));
-	(my_ctranslate)((my_c));
-	return;
-	}
-	(my_emit_builtin)((my_c));
-	(my_start)=((struct my_label*)0UL);
-	(my_d)=((my_find)((my_c),((unsigned char *)"_start"),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)((my_d)&&((my_d)->my_func_defined))) {
-	(my_start)=((my_d)->my_func_label);
-	}
-	(my_kstart)=((struct my_label*)0UL);
-	(my_d)=((my_find)((my_c),((unsigned char *)"_kstart"),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)((my_d)&&((my_d)->my_func_defined))) {
-	(my_kstart)=((my_d)->my_func_label);
-	}
-	(my_open_output)(((my_c)->my_as),(my_filename));
-	(my_writeout)(((my_c)->my_as),(my_start),(my_kstart));
-}
-unsigned long( my_memcmp)(unsigned char* my_a,unsigned char* my_b,unsigned long my_n){
-	unsigned long my_i = 0;
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_n)))) {
-	return 0UL;
-	}
-	if ((unsigned long)(((long)((my_a)[my_i]))>((long)((my_b)[my_i])))) {
-	return 1UL;
-	}
-	if ((unsigned long)(((long)((my_a)[my_i]))<((long)((my_b)[my_i])))) {
-	return (unsigned long)(-(unsigned long)(1UL));
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-}
-void( my_memcpy)(unsigned char* my_dest,unsigned char* my_src,unsigned long my_size){
-	unsigned long my_i = 0;
-	if ((unsigned long)(((long)(my_size))<((long)(0UL)))) {
-	return;
-	}
-	if ((unsigned long)(((long)(my_src))>((long)(my_dest)))) {
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_size)))) {
-	break;
-	}
-	((my_dest)[my_i])=((my_src)[my_i]);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	} else if ((unsigned long)(((long)(my_src))<((long)(my_dest)))) {
-	(my_i)=(my_size);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(0UL)))) {
-	break;
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))-((unsigned long)(1UL))));
-	((my_dest)[my_i])=((my_src)[my_i]);
-	}
-	}
-}
-void( my_memset)(unsigned char* my_dest,unsigned long my_c,unsigned long my_size){
-	unsigned long my_i = 0;
-	if ((unsigned long)(((long)(my_size))<((long)(0UL)))) {
-	return;
-	}
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_size)))) {
-	break;
-	}
-	((my_dest)[my_i])=((unsigned char)my_c);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-}
-unsigned long( my_mkdir)(unsigned char* my_name){
-	return (my_syscall)((83UL),((unsigned long)my_name),(0UL),(0UL),(0UL),(0UL),(0UL));
-}
-struct my_label*( my_mklabel)(struct my_assembler* my_c){
-	struct my_label* my_l = 0;
-	(my_l)=((struct my_label*)(my_alloc)(((my_c)->my_a),(24UL)));
-	((my_l)->my_fix)=((struct my_fixup*)0UL);
-	((my_l)->my_at)=(0UL);
-	((my_l)->my_fixed)=(0UL);
-	return my_l;
-}
-struct my_node*( my_mknode)(struct my_parser* my_c,unsigned long my_kind,struct my_node* my_a,struct my_node* my_b){
-	struct my_node* my_ret = 0;
-	(my_ret)=((struct my_node*)(my_alloc)(((my_c)->my_a),(72UL)));
-	((my_ret)->my_kind)=(my_kind);
-	((my_ret)->my_a)=(my_a);
-	((my_ret)->my_b)=(my_b);
-	((my_ret)->my_filename)=((unsigned char*)0UL);
-	((my_ret)->my_lineno)=(0UL);
-	((my_ret)->my_colno)=(0UL);
-	((my_ret)->my_n)=(0UL);
-	((my_ret)->my_s)=((unsigned char*)0UL);
-	((my_ret)->my_t)=((struct my_type*)0UL);
-	(my_fillpos)((my_c),(my_ret));
-	return my_ret;
-}
-struct my_node*( my_mknode0)(struct my_parser* my_c,unsigned long my_kind){
-	return (my_mknode)((my_c),(my_kind),((struct my_node*)0UL),((struct my_node*)0UL));
-}
-struct my_node*( my_mknode1)(struct my_parser* my_c,unsigned long my_kind,struct my_node* my_a){
-	return (my_mknode)((my_c),(my_kind),(my_a),((struct my_node*)0UL));
-}
-struct my_type*( my_mktype)(struct my_compiler* my_c,unsigned long my_kind,struct my_type* my_a,struct my_type* my_b,struct my_decl* my_st){
-	struct my_type* my_t = 0;
-	(my_t)=((struct my_type*)(my_alloc)(((my_c)->my_a),(32UL)));
-	((my_t)->my_kind)=(my_kind);
-	((my_t)->my_st)=(my_st);
-	((my_t)->my_val)=(my_a);
-	((my_t)->my_arg)=(my_b);
-	return my_t;
-}
-struct my_type*( my_mktype0)(struct my_compiler* my_c,unsigned long my_kind){
-	return (my_mktype)((my_c),(my_kind),((struct my_type*)0UL),((struct my_type*)0UL),((struct my_decl*)0UL));
-}
-struct my_type*( my_mktype1)(struct my_compiler* my_c,unsigned long my_kind,struct my_type* my_a){
-	return (my_mktype)((my_c),(my_kind),(my_a),((struct my_type*)0UL),((struct my_decl*)0UL));
-}
-struct my_type*( my_mktype2)(struct my_compiler* my_c,unsigned long my_kind,struct my_type* my_a,struct my_type* my_b){
-	return (my_mktype)((my_c),(my_kind),(my_a),(my_b),((struct my_decl*)0UL));
-}
-struct my_type*( my_mktype_struct)(struct my_compiler* my_c,struct my_decl* my_st){
-	return (my_mktype)((my_c),(my_TY_STRUCT),((struct my_type*)0UL),((struct my_type*)0UL),(my_st));
-}
-unsigned long( my_mmap)(unsigned long my_addr,unsigned long my_len,unsigned long my_prot,unsigned long my_flags,unsigned long my_fd,unsigned long my_off){
-	return (my_syscall)((9UL),(my_addr),(my_len),(my_prot),(my_flags),(my_fd),(my_off));
-}
-unsigned long( my_munmap)(unsigned long my_addr,unsigned long my_len){
-	return (my_syscall)((11UL),(my_addr),(my_len),(0UL),(0UL),(0UL),(0UL));
-}
-struct my_decl*( my_next_decl)(struct my_compiler* my_c,struct my_decl* my_d){
-	if ((unsigned long)(!(my_d))) {
-	return (struct my_decl*)0UL;
-	}
-	if ((my_d)->my_r) {
-	(my_d)=((my_d)->my_r);
-	while (1) {
-	if ((unsigned long)(!((my_d)->my_l))) {
-	return my_d;
-	}
-	(my_d)=((my_d)->my_l);
-	}
-	}
-	while (1) {
-	if ((unsigned long)(!((my_d)->my_p))) {
-	return (struct my_decl*)0UL;
-	}
-	if ((unsigned long)(((long)(((my_d)->my_p)->my_l))==((long)(my_d)))) {
-	return (my_d)->my_p;
-	}
-	(my_d)=((my_d)->my_p);
-	}
-}
-unsigned char*( my_node_to_str)(unsigned long my_kind){
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_IDENT)))) {
-	return (unsigned char *)"N_IDENT";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_NUM)))) {
-	return (unsigned char *)"N_NUM";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CHAR)))) {
-	return (unsigned char *)"N_CHAR";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_STR)))) {
-	return (unsigned char *)"N_STR";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_STMTLIST)))) {
-	return (unsigned char *)"N_STMTLIST";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_EXPRLIST)))) {
-	return (unsigned char *)"N_EXPRLIST";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CALL)))) {
-	return (unsigned char *)"N_CALL";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_DOT)))) {
-	return (unsigned char *)"N_DOT";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_ARGLIST)))) {
-	return (unsigned char *)"N_ARGLIST";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_FUNC)))) {
-	return (unsigned char *)"N_FUNC";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_ARGDECL)))) {
-	return (unsigned char *)"N_ARGDECL";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_FUNCDECL)))) {
-	return (unsigned char *)"N_FUNCDECL";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_PROGRAM)))) {
-	return (unsigned char *)"N_PROGRAM";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_FUNCTYPE)))) {
-	return (unsigned char *)"N_FUNCTYPE";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_PTRTYPE)))) {
-	return (unsigned char *)"N_PTRTYPE";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_STRUCT)))) {
-	return (unsigned char *)"N_STRUCT";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_MEMBERDECL)))) {
-	return (unsigned char *)"N_MEMBERDECL";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_MEMBERLIST)))) {
-	return (unsigned char *)"N_MEMBERLIST";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONDLIST)))) {
-	return (unsigned char *)"N_CONDLIST";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_COND)))) {
-	return (unsigned char *)"N_COND";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_ENUM)))) {
-	return (unsigned char *)"N_ENUM";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_ENUMITEM)))) {
-	return (unsigned char *)"N_ENUMITEM";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_ENUMLIST)))) {
-	return (unsigned char *)"N_ENUMLIST";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_LOOP)))) {
-	return (unsigned char *)"N_LOOP";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_BREAK)))) {
-	return (unsigned char *)"N_BREAK";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONTINUE)))) {
-	return (unsigned char *)"N_CONTINUE";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_RETURN)))) {
-	return (unsigned char *)"N_RETURN";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_VARDECL)))) {
-	return (unsigned char *)"N_VARDECL";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_LABEL)))) {
-	return (unsigned char *)"N_LABEL";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_GOTO)))) {
-	return (unsigned char *)"N_GOTO";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_ASSIGN)))) {
-	return (unsigned char *)"N_ASSIGN";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_SIZEOF)))) {
-	return (unsigned char *)"N_SIZEOF";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_REF)))) {
-	return (unsigned char *)"N_REF";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_DEREF)))) {
-	return (unsigned char *)"N_DEREF";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CAST)))) {
-	return (unsigned char *)"N_CAST";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_INDEX)))) {
-	return (unsigned char *)"N_INDEX";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_LT)))) {
-	return (unsigned char *)"N_LT";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_GT)))) {
-	return (unsigned char *)"N_GT";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_LE)))) {
-	return (unsigned char *)"N_LE";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_GE)))) {
-	return (unsigned char *)"N_GE";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_EQ)))) {
-	return (unsigned char *)"N_EQ";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_NE)))) {
-	return (unsigned char *)"N_NE";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_ADD)))) {
-	return (unsigned char *)"N_ADD";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_SUB)))) {
-	return (unsigned char *)"N_SUB";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_MUL)))) {
-	return (unsigned char *)"N_MUL";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_LSH)))) {
-	return (unsigned char *)"N_LSH";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_RSH)))) {
-	return (unsigned char *)"N_RSH";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_BNOT)))) {
-	return (unsigned char *)"N_BNOT";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_BOR)))) {
-	return (unsigned char *)"N_BOR";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_BAND)))) {
-	return (unsigned char *)"N_BAND";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_AND)))) {
-	return (unsigned char *)"N_AND";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_OR)))) {
-	return (unsigned char *)"N_OR";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_XOR)))) {
-	return (unsigned char *)"N_XOR";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_NOT)))) {
-	return (unsigned char *)"N_NOT";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_POS)))) {
-	return (unsigned char *)"N_POS";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_NEG)))) {
-	return (unsigned char *)"N_NEG";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_DIV)))) {
-	return (unsigned char *)"N_DIV";
-	}
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_MOD)))) {
-	return (unsigned char *)"N_MOD";
-	}
-	return (unsigned char *)"(invalid)";
-}
-unsigned long( my_open)(unsigned char* my_name,unsigned long my_flags,unsigned long my_mode){
-	return (my_syscall)((2UL),((unsigned long)my_name),(my_flags),(my_mode),(0UL),(0UL),(0UL));
-}
-void( my_open_coutput)(struct my_compiler* my_c,unsigned char* my_filename){
-	unsigned long my_fd = 0;
-	if ((my_c)->my_cout) {
-	(my_die)(((unsigned char *)"multiple output files"));
-	}
-	(my_unlink)((my_filename));
-	(my_fd)=((my_open)((my_filename),((unsigned long)(((unsigned long)(my_O_CREAT))|((unsigned long)(my_O_WRONLY)))),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(6UL))<<((unsigned long)(6UL)))))+((unsigned long)((unsigned long)(((unsigned long)(6UL))<<((unsigned long)(3UL))))))))+((unsigned long)(6UL))))));
-	if ((unsigned long)(((long)(my_fd))<((long)(0UL)))) {
-	(my_die)(((unsigned char *)"failed to open output"));
-	}
-	((my_c)->my_cout)=((my_fopen)((my_fd),((my_c)->my_a)));
-}
-void( my_open_output)(struct my_assembler* my_c,unsigned char* my_filename){
-	unsigned long my_fd = 0;
-	if ((my_c)->my_out) {
-	(my_die)(((unsigned char *)"multiple output files"));
-	}
-	(my_unlink)((my_filename));
-	(my_fd)=((my_open)((my_filename),((unsigned long)(((unsigned long)(my_O_CREAT))|((unsigned long)(my_O_WRONLY)))),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(7UL))<<((unsigned long)(6UL)))))+((unsigned long)((unsigned long)(((unsigned long)(7UL))<<((unsigned long)(3UL))))))))+((unsigned long)(7UL))))));
-	if ((unsigned long)(((long)(my_fd))<((long)(0UL)))) {
-	(my_die)(((unsigned char *)"failed to open output"));
-	}
-	((my_c)->my_out)=((my_fopen)((my_fd),((my_c)->my_a)));
-}
-struct my_node*( my_parse)(struct my_parser* my_c,unsigned char* my_filename){
-	struct my_file* my_f = 0;
-	unsigned long my_fd = 0;
-	unsigned long my_len = 0;
-	unsigned char* my_src = 0;
-	struct my_peg_node* my_pn = 0;
-	(my_fd)=((my_open)((my_filename),(0UL),(0UL)));
-	if ((unsigned long)(((long)(my_fd))<((long)(0UL)))) {
-	(my_fdputs)((2UL),((unsigned char *)"failed to open "));
-	(my_fdputs)((2UL),(my_filename));
-	(my_fdputs)((2UL),((unsigned char *)"\012"));
-	(my_exit)((1UL));
-	}
-	(my_f)=((my_fopen)((my_fd),((my_c)->my_a)));
-	(my_src)=((my_freadall)((my_f),(&(my_len))));
-	(my_fclose)((my_f));
-	(my_peg_reset)(((my_c)->my_p),(my_filename),(my_src),(my_len));
-	(my_pn)=((my_peg_parse)(((my_c)->my_p),(my_P_sp),(my_peg_P_grammar)));
-	return (my_reconstruct)((my_c),(my_pn));
-}
-unsigned long( my_parse_escape)(unsigned char* my_s,unsigned long* my_i,unsigned long my_n){
-	unsigned long my_nc = 0;
-	unsigned long my_ok = 0;
-	if ((unsigned long)(((long)(*(my_i)))==((long)(my_n)))) {
-	(my_die)(((unsigned char *)"invalid escape"));
-	}
-	(my_nc)=((unsigned long)(my_s)[*(my_i)]);
-	(*(my_i))=((unsigned long)(((unsigned long)(*(my_i)))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_nc))==((long)(116)))) {
-	return 9;
-	} else if ((unsigned long)(((long)(my_nc))==((long)(114)))) {
-	return 13;
-	} else if ((unsigned long)(((long)(my_nc))==((long)(110)))) {
-	return 10;
-	} else if ((unsigned long)(((long)(my_nc))==((long)(92)))) {
-	return 92;
-	} else if ((unsigned long)(((long)(my_nc))==((long)(39)))) {
-	return 39;
-	} else if ((unsigned long)(((long)(my_nc))==((long)(34)))) {
-	return 34;
-	} else if ((unsigned long)(((long)(my_nc))==((long)(45)))) {
-	return 45;
-	} else if ((unsigned long)(((long)(my_nc))==((long)(91)))) {
-	return 91;
-	} else if ((unsigned long)(((long)(my_nc))==((long)(93)))) {
-	return 93;
-	} else if ((unsigned long)(((long)(my_nc))==((long)(120)))) {
-	if ((unsigned long)(((long)((unsigned long)(((unsigned long)(my_n))-((unsigned long)(*(my_i))))))<((long)(2UL)))) {
-	(my_die)(((unsigned char *)"invalid escape"));
-	}
-	(my_nc)=((unsigned long)(((long)((my_hexdig)(((unsigned long)(my_s)[*(my_i)]),(&(my_ok)))))*((long)(16UL))));
-	if ((unsigned long)(!(my_ok))) {
-	(my_die)(((unsigned char *)"invalid hex"));
-	}
-	(my_nc)=((unsigned long)(((unsigned long)(my_nc))+((unsigned long)((my_hexdig)(((unsigned long)(my_s)[(unsigned long)(((unsigned long)(*(my_i)))+((unsigned long)(1UL)))]),(&(my_ok)))))));
-	if ((unsigned long)(!(my_ok))) {
-	(my_die)(((unsigned char *)"invalid hex"));
-	}
-	(*(my_i))=((unsigned long)(((unsigned long)(*(my_i)))+((unsigned long)(2UL))));
-	return my_nc;
-	} else {
-	(my_die)(((unsigned char *)"invalid escape"));
-	}
-}
-unsigned long( my_peg_PEG_alternative)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_alternative));
-	(my_ok)=((my_peg_PEG_lookahead)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_PEG_lookahead)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_alternative));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_any)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_any));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)".")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_any));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_call)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_call));
-	(my_ok)=((my_peg_PEG_identifier)((my_c)));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_PEG_sp)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"<-")));
-	}
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_call));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_class)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_class));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"[")));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"]")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_any)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"-")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_any)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"]")));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_class));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_countop)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_countop));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"*+?")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_countop));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_grammar)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_grammar));
-	(my_ok)=((my_peg_PEG_sp)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_rule)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_PEG_rule)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_any)((my_c)));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_grammar));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_identifier)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_identifier));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_identifier));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_literal)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_literal));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"'")));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"'")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"'")));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_literal));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_lookahead)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_lookahead));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_PEG_lookop)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_suffix)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_lookahead));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_lookop)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_lookop));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"!&")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_lookop));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_pattern)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_pattern));
-	(my_ok)=((my_peg_PEG_alternative)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"/")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"/")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_alternative)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_pattern));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_primary)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_primary));
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"(")));
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_pattern)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)")")));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_PEG_any)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_PEG_literal)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_PEG_class)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_PEG_call)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_primary));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_rule)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_rule));
-	(my_ok)=((my_peg_PEG_identifier)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"<-")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_pattern)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_rule));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_sp)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_sp));
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"\011\012\015 ")));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"//")));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"\012\015")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_sp));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_PEG_suffix)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_PEG_suffix));
-	(my_ok)=((my_peg_PEG_primary)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_PEG_countop)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_PEG_sp)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_PEG_suffix));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_add_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_add_expr));
-	(my_ok)=((my_peg_P_mul_expr)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_add_op)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_sub_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_or_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_xor_op)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_mul_expr)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_add_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_add_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_add_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"+")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_add_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_and_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_and_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"&")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"&")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_and_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_arg_decl)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_arg_decl));
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)":")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_type)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_arg_decl));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_assign_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_assign_stmt));
-	(my_ok)=((my_peg_P_unary_expr)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"=")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_assign_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_band_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_band_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"&&")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_band_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_bnot_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_bnot_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"!")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"=")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_bnot_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_bool_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_bool_expr));
-	(my_ok)=((my_peg_P_comp_expr)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_band_op)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_bor_op)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_comp_expr)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_bool_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_bor_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_bor_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"||")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_bor_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_break)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_break));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"break")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_break));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_break_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_break_stmt));
-	(my_ok)=((my_peg_P_break)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_break_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_byte)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_byte));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"byte")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_byte));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_call_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_call_expr));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"(")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)",")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)",")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)")")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_call_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_cast_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_cast_expr));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)":")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_type)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_cast_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_char)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_char));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"'")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"\134")));
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"'")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"\134")));
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"'")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"'")));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_char));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_comp_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_comp_expr));
-	(my_ok)=((my_peg_P_add_expr)((my_c)));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_le_op)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_ge_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_lt_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_gt_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_eq_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_ne_op)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_add_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_comp_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_compound_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_compound_stmt));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"{")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_stmt)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"}")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_compound_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_continue)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_continue));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"continue")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_continue));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_continue_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_continue_stmt));
-	(my_ok)=((my_peg_P_continue)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_continue_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_dec)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_dec));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789")));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789")));
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_dec));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_deref_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_deref_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"*")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_deref_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_div_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_div_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"/")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"/")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_div_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_elif_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_elif_stmt));
-	(my_ok)=((my_peg_P_else)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_if)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_compound_stmt)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_elif_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_else)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_else));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"else")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_else));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_else_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_else_stmt));
-	(my_ok)=((my_peg_P_else)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_compound_stmt)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_else_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_empty_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_empty_stmt));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_empty_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_enum)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_enum));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"enum")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_enum));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_enum_decl)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_enum_decl));
-	(my_ok)=((my_peg_P_enum)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"{")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_enum_item)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)",")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_enum_item)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)",")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"}")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_enum_decl));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_enum_item)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_enum_item));
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"=")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_enum_item));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_eq_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_eq_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"==")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_eq_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_expr));
-	(my_ok)=((my_peg_P_bool_expr)((my_c)));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_expr_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_expr_stmt));
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_expr_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_func)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_func));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"func")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_func));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_func_decl)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_func_decl));
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_func_type)((my_c)));
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_compound_stmt)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_func_decl));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_func_type)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_func_type));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"(")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_arg_decl)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)",")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_arg_decl)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)",")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)")")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)":")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_type)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_func_type));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_ge_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_ge_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)">=")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_ge_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_goto)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_goto));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"goto")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_goto));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_goto_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_goto_stmt));
-	(my_ok)=((my_peg_P_goto)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_goto_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_grammar)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_grammar));
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_enum_decl)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_struct_decl)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_func_decl)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_any)((my_c)));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_grammar));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_gt_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_gt_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)">")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"=")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)">")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_gt_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_hex)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_hex));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"0x")));
-	if (my_ok) {
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFabcdef")));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFabcdef")));
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_hex));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_ident)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_ident));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_reserved)((my_c)));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	if (my_ok) {
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	}
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_ident));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_if)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_if));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"if")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_if));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_if_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_if_stmt));
-	(my_ok)=((my_peg_P_if)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_compound_stmt)((my_c)));
-	}
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_elif_stmt)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_else_stmt)((my_c)));
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_if_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_index_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_index_expr));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"[")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"]")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_index_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_int)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_int));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"int")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_int));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_label_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_label_stmt));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)":")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_label_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_le_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_le_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"<=")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_le_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_loop)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_loop));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"loop")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_loop));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_loop_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_loop_stmt));
-	(my_ok)=((my_peg_P_loop)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_compound_stmt)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_loop_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_lsh_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_lsh_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"<<")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_lsh_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_lt_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_lt_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"<")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"=")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"<")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_lt_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_member_decl)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_member_decl));
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)":")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_type)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_member_decl));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_member_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_member_expr));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)".")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_member_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_mod_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_mod_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"%")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_mod_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_mul_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_mul_expr));
-	(my_ok)=((my_peg_P_shift_expr)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_mul_op)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_div_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_mod_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_and_op)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_shift_expr)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_mul_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_mul_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_mul_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"*")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_mul_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_ne_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_ne_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"!=")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_ne_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_neg_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_neg_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"-")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_neg_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_not_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_not_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"~")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_not_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_or_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_or_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"|")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"|")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_or_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_pos_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_pos_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"+")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_pos_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_post_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_post_expr));
-	(my_ok)=((my_peg_P_primary)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_index_expr)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_call_expr)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_member_expr)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_cast_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_post_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_primary)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_primary));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_hex)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_dec)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_str)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_char)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_sizeof_expr)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"(")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)")")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_primary));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_ptr_type)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_ptr_type));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"*")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_type)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_ptr_type));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_ref_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_ref_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"&")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"&")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_ref_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_reserved)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_reserved));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_return)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_break)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_sizeof)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_if)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_else)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_loop)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_continue)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_goto)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_var)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_enum)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_struct)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_byte)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_int)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_void)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_func)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_reserved));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_return)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_return));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"return")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_return));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_return_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_return_stmt));
-	(my_ok)=((my_peg_P_return)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_return_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_rsh_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_rsh_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)">>")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_rsh_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_shift_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_shift_expr));
-	(my_ok)=((my_peg_P_unary_expr)((my_c)));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_lsh_op)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_rsh_op)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_unary_expr)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_shift_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_sizeof)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_sizeof));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"sizeof")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_sizeof));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_sizeof_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_sizeof_expr));
-	(my_ok)=((my_peg_P_sizeof)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"(")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)")")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_sizeof_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_sp)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_sp));
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"\011\012\015 ")));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"//")));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"\012\015")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_sp));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_stmt));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_if_stmt)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_loop_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_break_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_continue_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_return_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_var_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_label_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_goto_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_assign_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_expr_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_empty_stmt)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_compound_stmt)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_str)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_str));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"\042")));
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"\134")));
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"\042")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	if (my_ok) {
-	(my_ok)=((my_any)((my_c)));
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"\042")));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_str));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_struct)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_struct));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"struct")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_struct));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_struct_decl)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_struct_decl));
-	(my_ok)=((my_peg_P_struct)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"{")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	while (1) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_member_decl)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"}")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_struct_decl));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_sub_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_sub_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"-")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_sub_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_type)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_type));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_byte)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_int)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_void)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_func)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_func_type)((my_c)));
-	}
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_ptr_type)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"(")));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_type)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)")")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_type));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_unary_expr)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_unary_expr));
-	while (1) {
-	(my_choice)((my_c));
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_ref_op)((my_c)));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_deref_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_pos_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_neg_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_not_op)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
-	(my_ok)=((my_peg_P_bnot_op)((my_c)));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if ((unsigned long)(!(my_ok))) {
-	(my_ok)=(1UL);
-	break;
-	}
-	(my_commit)((my_c));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_post_expr)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_unary_expr));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_var)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_var));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"var")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_var));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_var_stmt)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_var_stmt));
-	(my_ok)=((my_peg_P_var)((my_c)));
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_ident)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)":")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_type)((my_c)));
-	}
-	if (my_ok) {
-	(my_ok)=((my_literal)((my_c),((unsigned char *)";")));
-	}
-	if (my_ok) {
-	(my_ok)=((my_peg_P_sp)((my_c)));
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_var_stmt));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_void)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_void));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"void")));
-	if (my_ok) {
-	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
-	if (my_ok) {
-	(my_fail)((my_c));
-	(my_fail)((my_c));
-	(my_ok)=(0UL);
-	} else {
-	(my_ok)=(1UL);
-	}
-	}
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_void));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-unsigned long( my_peg_P_xor_op)(struct my_peg* my_c){
-	unsigned long my_ok = 0;
-	(my_enter)((my_c),(my_P_xor_op));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)"^")));
-	if (my_ok) {
-	(my_leave)((my_c),(my_P_xor_op));
-	} else {
-	(my_fail)((my_c));
-	}
-	return my_ok;
-}
-void( my_peg_compile)(struct my_peg_compiler* my_c,unsigned char* my_filename){
-	unsigned long my_fd = 0;
-	struct my_file* my_f = 0;
-	unsigned char* my_src = 0;
-	unsigned long my_len = 0;
-	struct my_peg_node* my_node = 0;
-	if ((unsigned long)(((long)((my_strcmp)((my_filename),((unsigned char *)"-"))))==((long)(0UL)))) {
-	(my_fd)=(0UL);
-	} else {
-	(my_fd)=((my_open)((my_filename),(my_O_RDONLY),(0UL)));
-	if ((unsigned long)(((long)(my_fd))<((long)(0UL)))) {
-	(my_die)(((unsigned char *)"failed to open output"));
-	}
-	}
-	(my_f)=((my_fopen)((my_fd),((my_c)->my_a)));
-	(my_src)=((my_freadall)((my_f),(&(my_len))));
-	(my_fclose)((my_f));
-	((my_c)->my_p)=((my_peg_new)((my_filename),(my_src),(my_len),((my_c)->my_a)));
-	(my_node)=((my_peg_parse)(((my_c)->my_p),(my_PEG_sp),(my_peg_PEG_grammar)));
-	(my_translate)((my_c),(my_node));
-	(my_fflush)(((my_c)->my_out));
-}
-void( my_peg_free)(struct my_peg* my_c){
-	(my_free)(((my_c)->my_a),((unsigned char*)(my_c)->my_stack));
-	(my_free)(((my_c)->my_a),((unsigned char*)(my_c)->my_nstack));
-	(my_free)(((my_c)->my_a),((unsigned char*)(my_c)->my_out));
-	(my_free)(((my_c)->my_a),((unsigned char*)my_c));
-}
-struct my_peg*( my_peg_new)(unsigned char* my_filename,unsigned char* my_src,unsigned long my_len,struct my_alloc* my_a){
-	struct my_peg* my_c = 0;
-	(my_c)=((struct my_peg*)(my_alloc)((my_a),(184UL)));
-	((my_c)->my_a)=(my_a);
-	((my_c)->my_filename)=(my_filename);
-	((my_c)->my_src)=(my_src);
-	((my_c)->my_size)=(my_len);
-	((my_c)->my_pos)=(0UL);
-	((my_c)->my_tag)=(0UL);
-	((my_c)->my_line)=(1UL);
-	((my_c)->my_col)=(1UL);
-	((my_c)->my_tag)=(0UL);
-	((my_c)->my_fail_depth)=(0UL);
-	((my_c)->my_fail_tag)=(0UL);
-	((my_c)->my_fail_line)=(0UL);
-	((my_c)->my_fail_col)=(0UL);
-	((my_c)->my_fail_literal)=((unsigned char*)0UL);
-	((my_c)->my_limit)=(1024UL);
-	((my_c)->my_stack)=((struct my_peg_frame*)(my_alloc)((my_a),((unsigned long)(((long)((my_c)->my_limit))*((long)(48UL))))));
-	((my_c)->my_sp)=(0UL);
-	((my_c)->my_depth)=(0UL);
-	((my_c)->my_op)=(0UL);
-	((my_c)->my_out)=((struct my_peg_op*)0UL);
-	((my_c)->my_cap)=(0UL);
-	((my_c)->my_ncap)=(1024UL);
-	((my_c)->my_nstack)=((struct my_peg_node**)(my_alloc)((my_a),((unsigned long)(((long)((my_c)->my_ncap))*((long)(8UL))))));
-	((my_c)->my_np)=(0UL);
-	return my_c;
-}
-void( my_peg_open_output)(struct my_peg_compiler* my_c,unsigned char* my_filename){
-	unsigned long my_fd = 0;
-	struct my_file* my_f = 0;
-	(my_unlink)((my_filename));
-	(my_fd)=((my_open)((my_filename),((unsigned long)(((unsigned long)(my_O_CREAT))|((unsigned long)(my_O_WRONLY)))),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(6UL))<<((unsigned long)(6UL)))))+((unsigned long)((unsigned long)(((unsigned long)(6UL))<<((unsigned long)(3UL))))))))+((unsigned long)(6UL))))));
-	if ((unsigned long)(((long)(my_fd))<((long)(0UL)))) {
-	(my_die)(((unsigned char *)"failed to open output"));
-	}
-	(my_f)=((my_fopen)((my_fd),((my_c)->my_a)));
-	((my_c)->my_out)=(my_f);
-}
-struct my_peg_node*( my_peg_parse)(struct my_peg* my_c,unsigned long my_sp,unsigned long(* my_grammar)(struct my_peg*)){
-	(my_choice)((my_c));
-	if ((unsigned long)(!((my_grammar)((my_c))))) {
-	(my_fdputs)((2UL),((unsigned char *)"syntax error at "));
-	(my_fdputs)((2UL),((my_c)->my_filename));
-	(my_fdputs)((2UL),((unsigned char *)":"));
-	(my_fdputd)((2UL),((my_c)->my_fail_line));
-	(my_fdputs)((2UL),((unsigned char *)":"));
-	(my_fdputd)((2UL),((my_c)->my_fail_col));
-	(my_fdputs)((2UL),((unsigned char *)" expected "));
-	(my_fdputs)((2UL),((my_P_tag_to_str)(((my_c)->my_fail_tag))));
-	if ((my_c)->my_fail_literal) {
-	(my_fdputs)((2UL),((unsigned char *)" '"));
-	(my_fdputs)((2UL),((my_c)->my_fail_literal));
-	(my_fdputs)((2UL),((unsigned char *)"'"));
-	}
-	(my_fdputs)((2UL),((unsigned char *)"\012"));
-	(my_exit)((1UL));
-	}
-	(my_commit)((my_c));
-	return (my_construct)((my_c),(my_sp));
-}
-void( my_peg_reset)(struct my_peg* my_c,unsigned char* my_filename,unsigned char* my_src,unsigned long my_len){
-	((my_c)->my_filename)=(my_filename);
-	((my_c)->my_src)=(my_src);
-	((my_c)->my_size)=(my_len);
-	((my_c)->my_pos)=(0UL);
-	((my_c)->my_tag)=(0UL);
-	((my_c)->my_line)=(1UL);
-	((my_c)->my_col)=(1UL);
-	((my_c)->my_tag)=(0UL);
-	((my_c)->my_fail_depth)=(0UL);
-	((my_c)->my_fail_tag)=(0UL);
-	((my_c)->my_fail_line)=(0UL);
-	((my_c)->my_fail_col)=(0UL);
-	((my_c)->my_fail_literal)=((unsigned char*)0UL);
-	((my_c)->my_depth)=(0UL);
-	((my_c)->my_sp)=(0UL);
-	((my_c)->my_op)=(0UL);
-	((my_c)->my_np)=(0UL);
-}
-void( my_peg_show)(struct my_file* my_out,struct my_peg_node* my_n){
-	unsigned long my_i = 0;
-	unsigned long my_ch = 0;
-	unsigned char* my_hex = 0;
-	(my_hex)=((unsigned char *)"0123456789abcdef");
-	(my_fputs)((my_out),((unsigned char *)"("));
-	(my_fputs)((my_out),((my_P_tag_to_str)(((my_n)->my_tag))));
-	if ((my_n)->my_child) {
-	(my_n)=((my_n)->my_child);
-	while (1) {
-	if ((unsigned long)(!(my_n))) {
-	break;
-	}
-	(my_fputc)((my_out),(32));
-	(my_peg_show)((my_out),(my_n));
-	(my_n)=((my_n)->my_next);
-	}
-	} else {
-	(my_fputc)((my_out),(32));
-	(my_fputc)((my_out),(34));
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)((my_n)->my_len)))) {
-	break;
-	}
-	(my_ch)=((unsigned long)((my_n)->my_str)[my_i]);
-	if ((unsigned long)(((unsigned long)(((long)(my_ch))<((long)(32UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))>((long)(127UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))==((long)(92))))||((unsigned long)(((long)(my_ch))==((long)(34)))))))))) {
-	(my_fputc)((my_out),(92));
-	(my_fputc)((my_out),(120));
-	(my_fputc)((my_out),((unsigned long)(my_hex)[(unsigned long)(((unsigned long)(my_ch))>>((unsigned long)(4UL)))]));
-	(my_fputc)((my_out),((unsigned long)(my_hex)[(unsigned long)(((unsigned long)(my_ch))&((unsigned long)(15UL)))]));
-	} else {
-	(my_fputc)((my_out),(my_ch));
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(my_fputc)((my_out),(34));
-	}
-	(my_fputs)((my_out),((unsigned char *)")"));
-}
-unsigned long( my_pipe)(unsigned long* my_rfd,unsigned long* my_wfd){
-	unsigned long my_buf = 0;
-	unsigned long my_ret = 0;
-	(my_ret)=((my_syscall)((22UL),((unsigned long)&(my_buf)),(0UL),(0UL),(0UL),(0UL),(0UL)));
-	if ((unsigned long)(((long)(my_ret))==((long)(0UL)))) {
-	(*(my_rfd))=((unsigned long)(((unsigned long)(my_buf))&((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(1UL))))>>((unsigned long)(32UL)))))));
-	(*(my_wfd))=((unsigned long)(((unsigned long)(my_buf))>>((unsigned long)(32UL))));
-	}
-	return my_ret;
-}
-unsigned long( my_poll)(unsigned long* my_pfd,unsigned long my_nfd,unsigned long my_timeout){
-	return (my_syscall)((7UL),((unsigned long)my_pfd),(my_nfd),(my_timeout),(0UL),(0UL),(0UL));
-}
-struct my_type*( my_prototype)(struct my_compiler* my_c,struct my_node* my_n){
-	struct my_type* my_a = 0;
-	struct my_type* my_b = 0;
-	struct my_decl* my_st = 0;
-	unsigned long my_kind = 0;
-	if ((unsigned long)(!(my_n))) {
-	return (struct my_type*)0UL;
-	}
-	((my_c)->my_lineno)=((my_n)->my_lineno);
-	((my_c)->my_colno)=(0UL);
-	(my_kind)=((my_n)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_N_IDENT)))) {
-	if ((unsigned long)(!((my_strcmp)(((my_n)->my_s),((unsigned char *)"void"))))) {
-	return (my_mktype0)((my_c),(my_TY_VOID));
-	}
-	if ((unsigned long)(!((my_strcmp)(((my_n)->my_s),((unsigned char *)"int"))))) {
-	return (my_mktype0)((my_c),(my_TY_INT));
-	}
-	if ((unsigned long)(!((my_strcmp)(((my_n)->my_s),((unsigned char *)"byte"))))) {
-	return (my_mktype0)((my_c),(my_TY_BYTE));
-	}
-	(my_st)=((my_find)((my_c),((my_n)->my_s),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_st)))||((unsigned long)(!((my_st)->my_struct_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"unknown struct"));
-	}
-	return (my_mktype_struct)((my_c),(my_st));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ARGLIST)))) {
-	(my_a)=((my_prototype)((my_c),(((my_n)->my_a)->my_b)));
-	(my_b)=((my_prototype)((my_c),((my_n)->my_b)));
-	(my_kind)=((my_a)->my_kind);
-	if ((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_TY_INT))))&&((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_TY_BYTE))))&&((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_TY_PTR))))&&((unsigned long)(((long)(my_kind))!=((long)(my_TY_FUNC)))))))))) {
-	(my_cdie)((my_c),((unsigned char *)"not a ptr arg"));
-	}
-	return (my_mktype2)((my_c),(my_TY_ARG),(my_a),(my_b));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_FUNCTYPE)))) {
-	if ((my_n)->my_b) {
-	(my_a)=((my_prototype)((my_c),((my_n)->my_b)));
-	} else {
-	(my_a)=((my_mktype0)((my_c),(my_TY_VOID)));
-	}
-	(my_b)=((my_prototype)((my_c),((my_n)->my_a)));
-	(my_kind)=((my_a)->my_kind);
-	if ((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_TY_VOID))))&&((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_TY_INT))))&&((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_TY_BYTE))))&&((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_TY_PTR))))&&((unsigned long)(((long)(my_kind))!=((long)(my_TY_FUNC)))))))))))) {
-	(my_cdie)((my_c),((unsigned char *)"not a ptr return"));
-	}
-	return (my_mktype2)((my_c),(my_TY_FUNC),(my_a),(my_b));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_PTRTYPE)))) {
-	return (my_mktype1)((my_c),(my_TY_PTR),((my_prototype)((my_c),((my_n)->my_a))));
-	} else {
-	(my_cdie)((my_c),((unsigned char *)"prototype: invalid type"));
-	}
-}
-void( my_putchar)(struct my_assembler* my_c,unsigned long my_ch){
-	(my_fputc)(((my_c)->my_out),(my_ch));
-}
-unsigned long( my_read)(unsigned long my_fd,unsigned char* my_buf,unsigned long my_n){
-	return (my_syscall)((0UL),(my_fd),((unsigned long)my_buf),(my_n),(0UL),(0UL),(0UL));
-}
-unsigned char*( my_readall)(unsigned long my_fd,unsigned long* my_len,struct my_alloc* my_a){
-	unsigned char* my_buf = 0;
-	unsigned char* my_tmp = 0;
-	unsigned long my_cap = 0;
-	unsigned long my_newcap = 0;
-	unsigned long my_ret = 0;
-	unsigned long my_n = 0;
-	(my_cap)=(0UL);
-	(my_n)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_n))==((long)(my_cap)))) {
-	if ((unsigned long)(((long)(my_cap))==((long)(0UL)))) {
-	(my_newcap)=(4096UL);
-	} else {
-	(my_newcap)=((unsigned long)(((long)(my_cap))*((long)(2UL))));
-	}
-	(my_tmp)=((my_alloc)((my_a),(my_newcap)));
-	(my_memcpy)((my_tmp),(my_buf),(my_n));
-	(my_free)((my_a),(my_buf));
-	(my_buf)=(my_tmp);
-	(my_cap)=(my_newcap);
-	}
-	(my_ret)=((my_read)((my_fd),(&((my_buf)[my_n])),((unsigned long)(((unsigned long)(my_cap))-((unsigned long)(my_n))))));
-	if ((unsigned long)(((long)(my_ret))<((long)(0UL)))) {
-	(my_die)(((unsigned char *)"readall failed"));
-	}
-	if ((unsigned long)(((long)(my_ret))==((long)(0UL)))) {
-	break;
-	}
-	(my_n)=((unsigned long)(((unsigned long)(my_n))+((unsigned long)(my_ret))));
-	}
-	(*(my_len))=(my_n);
-	return my_buf;
-}
-struct my_node*( my_reconstruct)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_ret = 0;
-	struct my_node** my_link = 0;
-	struct my_node* my_n = 0;
-	struct my_node* my_p = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_grammar)))),((unsigned char *)"grammar"));
-	(my_ret)=((struct my_node*)0UL);
-	(my_link)=(&(my_ret));
-	(my_pn)=((my_pn)->my_child);
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_enum_decl)))) {
-	(my_n)=((my_reconstruct_enum)((my_c),(my_pn)));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_struct_decl)))) {
-	(my_n)=((my_reconstruct_struct)((my_c),(my_pn)));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_func_decl)))) {
-	(my_n)=((my_reconstruct_func)((my_c),(my_pn)));
-	} else {
-	(my_die)(((unsigned char *)"invalid decl"));
-	}
-	(my_p)=((my_mknode1)((my_c),(my_N_PROGRAM),(my_n)));
-	(my_copypos)((my_p),(my_pn));
-	(*(my_link))=(my_p);
-	(my_link)=(&((my_p)->my_b));
-	(my_pn)=((my_pn)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_add)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_ret = 0;
-	struct my_node* my_n = 0;
-	struct my_node** my_link = 0;
-	unsigned long my_kind = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_add_expr)))),((unsigned char *)"add_expr"));
-	(my_ret)=((my_reconstruct_mul)((my_c),((my_pn)->my_child)));
-	(my_link)=(&(my_ret));
-	(my_pn)=(((my_pn)->my_child)->my_next);
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_add_op)))) {
-	(my_kind)=(my_N_ADD);
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_sub_op)))) {
-	(my_kind)=(my_N_SUB);
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_or_op)))) {
-	(my_kind)=(my_N_OR);
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_xor_op)))) {
-	(my_kind)=(my_N_XOR);
-	} else {
-	(my_die)(((unsigned char *)"invalid addop"));
-	}
-	(my_n)=((my_reconstruct_mul)((my_c),((my_pn)->my_next)));
-	(*(my_link))=((my_mknode)((my_c),(my_kind),(*(my_link)),(my_n)));
-	(my_copypos)((*(my_link)),(my_pn));
-	(my_pn)=(((my_pn)->my_next)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_arg_decl)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_arg_decl)))),((unsigned char *)"arg_decl"));
-	(my_a)=((my_reconstruct_ident)((my_c),((my_pn)->my_child)));
-	(my_b)=((my_reconstruct_type)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_n)=((my_mknode)((my_c),(my_N_ARGDECL),(my_a),(my_b)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_args)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_ret = 0;
-	struct my_node** my_link = 0;
-	struct my_node* my_a = 0;
-	struct my_node* my_n = 0;
-	(my_ret)=((struct my_node*)0UL);
-	(my_link)=(&(my_ret));
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	(my_a)=((my_reconstruct_expr)((my_c),(my_pn)));
-	(my_n)=((my_mknode1)((my_c),(my_N_EXPRLIST),(my_a)));
-	(my_copypos)((my_n),(my_pn));
-	(*(my_link))=(my_n);
-	(my_link)=(&((my_n)->my_b));
-	(my_pn)=((my_pn)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_assign)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_assign_stmt)))),((unsigned char *)"assign_stmt"));
-	(my_a)=((my_reconstruct_unary)((my_c),((my_pn)->my_child)));
-	(my_b)=((my_reconstruct_expr)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_n)=((my_mknode)((my_c),(my_N_ASSIGN),(my_a),(my_b)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_bool)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_ret = 0;
-	struct my_node* my_n = 0;
-	struct my_node** my_link = 0;
-	unsigned long my_kind = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_bool_expr)))),((unsigned char *)"bool_expr"));
-	(my_ret)=((my_reconstruct_comp)((my_c),((my_pn)->my_child)));
-	(my_link)=(&(my_ret));
-	(my_pn)=(((my_pn)->my_child)->my_next);
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_band_op)))) {
-	(my_kind)=(my_N_BAND);
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_bor_op)))) {
-	(my_kind)=(my_N_BOR);
-	} else {
-	(my_die)(((unsigned char *)"invalid boolop"));
-	}
-	(my_n)=((my_reconstruct_comp)((my_c),((my_pn)->my_next)));
-	(*(my_link))=((my_mknode)((my_c),(my_kind),(*(my_link)),(my_n)));
-	(my_copypos)((*(my_link)),(my_pn));
-	(my_link)=(&((*(my_link))->my_b));
-	(my_pn)=(((my_pn)->my_next)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_break)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_break_stmt)))),((unsigned char *)"break_stmt"));
-	(my_n)=((my_mknode0)((my_c),(my_N_BREAK)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_char)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	unsigned long my_i = 0;
-	unsigned long my_x = 0;
-	unsigned long my_ok = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_char)))),((unsigned char *)"char"));
-	(my_i)=(1UL);
-	(my_x)=((my_unescape)(((my_pn)->my_str),(&(my_i)),((unsigned long)(((unsigned long)((my_pn)->my_len))-((unsigned long)(1UL)))),(&(my_ok))));
-	if ((unsigned long)(((unsigned long)(!(my_ok)))||((unsigned long)(((long)(my_i))!=((long)((unsigned long)(((unsigned long)((my_pn)->my_len))-((unsigned long)(1UL))))))))) {
-	(my_die)(((unsigned char *)"invalid character"));
-	}
-	(my_n)=((my_mknode0)((my_c),(my_N_CHAR)));
-	(my_copypos)((my_n),(my_pn));
-	((my_n)->my_n)=(my_x);
-	return my_n;
-}
-struct my_node*( my_reconstruct_comp)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	struct my_node* my_n = 0;
-	unsigned long my_kind = 0;
-	unsigned long my_tag = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_comp_expr)))),((unsigned char *)"comp_expr"));
-	(my_a)=((my_reconstruct_add)((my_c),((my_pn)->my_child)));
-	if ((unsigned long)(!(((my_pn)->my_child)->my_next))) {
-	return my_a;
-	}
-	(my_tag)=((((my_pn)->my_child)->my_next)->my_tag);
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_le_op)))) {
-	(my_kind)=(my_N_LE);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_ge_op)))) {
-	(my_kind)=(my_N_GE);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_lt_op)))) {
-	(my_kind)=(my_N_LT);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_gt_op)))) {
-	(my_kind)=(my_N_GT);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_eq_op)))) {
-	(my_kind)=(my_N_EQ);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_ne_op)))) {
-	(my_kind)=(my_N_NE);
-	} else {
-	(my_die)(((unsigned char *)"invalid compop"));
-	}
-	(my_b)=((my_reconstruct_add)((my_c),((((my_pn)->my_child)->my_next)->my_next)));
-	(my_n)=((my_mknode)((my_c),(my_kind),(my_a),(my_b)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_compound)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_ret = 0;
-	struct my_node* my_n = 0;
-	struct my_node* my_a = 0;
-	struct my_node** my_link = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_compound_stmt)))),((unsigned char *)"compound_stmt"));
-	(my_pn)=((my_pn)->my_child);
-	(my_ret)=((struct my_node*)0UL);
-	(my_link)=(&(my_ret));
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	(my_a)=((my_reconstruct_stmt)((my_c),(my_pn)));
-	if (my_a) {
-	(my_n)=((my_mknode1)((my_c),(my_N_STMTLIST),(my_a)));
-	(my_copypos)((my_n),(my_pn));
-	(*(my_link))=(my_n);
-	(my_link)=(&((my_n)->my_b));
-	}
-	(my_pn)=((my_pn)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_continue)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_continue_stmt)))),((unsigned char *)"continue_stmt"));
-	(my_n)=((my_mknode0)((my_c),(my_N_CONTINUE)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_dec)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	unsigned long my_x = 0;
-	struct my_node* my_n = 0;
-	unsigned long my_ok = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_dec)))),((unsigned char *)"dec"));
-	(my_x)=((my_dec2int)(((my_pn)->my_str),((my_pn)->my_len),(&(my_ok))));
-	if ((unsigned long)(!(my_ok))) {
-	(my_die)(((unsigned char *)"invalid dec"));
-	}
-	(my_n)=((my_mknode0)((my_c),(my_N_NUM)));
-	(my_copypos)((my_n),(my_pn));
-	((my_n)->my_n)=(my_x);
-	return my_n;
-}
-struct my_node*( my_reconstruct_empty)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_empty_stmt)))),((unsigned char *)"empty_stmt"));
-	return (struct my_node*)0UL;
-}
-struct my_node*( my_reconstruct_enum)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node** my_link = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_enum_decl)))),((unsigned char *)"enum_decl"));
-	(my_n)=((my_mknode)((my_c),(my_N_ENUM),((struct my_node*)0UL),((struct my_node*)0UL)));
-	(my_copypos)((my_n),(my_pn));
-	(my_pn)=(((my_pn)->my_child)->my_next);
-	(my_link)=(&((my_n)->my_b));
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	(my_a)=((my_mknode1)((my_c),(my_N_ENUMLIST),((my_reconstruct_enum_item)((my_c),(my_pn)))));
-	(my_copypos)((my_a),(my_pn));
-	(*(my_link))=(my_a);
-	(my_link)=(&((my_a)->my_b));
-	(my_pn)=((my_pn)->my_next);
-	}
-	return my_n;
-}
-struct my_node*( my_reconstruct_enum_item)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_enum_item)))),((unsigned char *)"enum_item"));
-	(my_a)=((my_reconstruct_ident)((my_c),((my_pn)->my_child)));
-	(my_b)=((struct my_node*)0UL);
-	if (((my_pn)->my_child)->my_next) {
-	(my_b)=((my_reconstruct_expr)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_assert)(((unsigned long)(((long)((my_b)->my_kind))==((long)(my_N_NUM)))),((unsigned char *)"enum must be num"));
-	}
-	(my_n)=((my_mknode)((my_c),(my_N_ENUMITEM),(my_a),(my_b)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_expr)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_expr)))),((unsigned char *)"expr"));
-	return (my_reconstruct_bool)((my_c),((my_pn)->my_child));
-}
-struct my_node*( my_reconstruct_expr_stmt)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_expr_stmt)))),((unsigned char *)"expr_stmt"));
-	return (my_reconstruct_expr)((my_c),((my_pn)->my_child));
-}
-struct my_node*( my_reconstruct_func)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	struct my_node* my_d = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_func_decl)))),((unsigned char *)"func_def"));
-	(my_a)=((my_reconstruct_ident)((my_c),((my_pn)->my_child)));
-	(my_b)=((my_reconstruct_func_type)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_d)=((my_mknode)((my_c),(my_N_FUNCDECL),(my_a),(my_b)));
-	(my_copypos)((my_d),(my_pn));
-	if ((unsigned long)(!((((my_pn)->my_child)->my_next)->my_next))) {
-	return my_d;
-	}
-	(my_b)=((my_reconstruct_compound)((my_c),((((my_pn)->my_child)->my_next)->my_next)));
-	(my_n)=((my_mknode)((my_c),(my_N_FUNC),(my_d),(my_b)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_func_type)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	struct my_node* my_n = 0;
-	struct my_node** my_link = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_func_type)))),((unsigned char *)"func_type"));
-	(my_n)=((my_mknode)((my_c),(my_N_FUNCTYPE),((struct my_node*)0UL),((struct my_node*)0UL)));
-	(my_copypos)((my_n),(my_pn));
-	(my_pn)=((my_pn)->my_child);
-	(my_link)=(&((my_n)->my_a));
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_arg_decl)))) {
-	(my_a)=((my_mknode1)((my_c),(my_N_ARGLIST),((my_reconstruct_arg_decl)((my_c),(my_pn)))));
-	(my_copypos)((my_a),(my_pn));
-	(*(my_link))=(my_a);
-	(my_link)=(&((my_a)->my_b));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_type)))) {
-	((my_n)->my_b)=((my_reconstruct_type)((my_c),(my_pn)));
-	} else {
-	(my_die)(((unsigned char *)"invalid func_type"));
-	}
-	(my_pn)=((my_pn)->my_next);
-	}
-	return my_n;
-}
-struct my_node*( my_reconstruct_goto)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_goto_stmt)))),((unsigned char *)"goto_stmt"));
-	(my_a)=((my_reconstruct_ident)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_n)=((my_mknode1)((my_c),(my_N_GOTO),(my_a)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_hex)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	unsigned long my_x = 0;
-	struct my_node* my_n = 0;
-	unsigned long my_ok = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_hex)))),((unsigned char *)"hex"));
-	(my_x)=((my_hex2int)((&(((my_pn)->my_str)[2UL])),((unsigned long)(((unsigned long)((my_pn)->my_len))-((unsigned long)(2UL)))),(&(my_ok))));
-	if ((unsigned long)(!(my_ok))) {
-	(my_die)(((unsigned char *)"invalid hex"));
-	}
-	(my_n)=((my_mknode0)((my_c),(my_N_NUM)));
-	(my_copypos)((my_n),(my_pn));
-	((my_n)->my_n)=(my_x);
-	return my_n;
-}
-struct my_node*( my_reconstruct_ident)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_ident)))),((unsigned char *)"ident"));
-	return (my_reconstruct_intern)((my_c),(my_pn),((my_pn)->my_str),((my_pn)->my_len));
-}
-struct my_node*( my_reconstruct_if)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_ret = 0;
-	struct my_node** my_link = 0;
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_if_stmt)))),((unsigned char *)"if_stmt"));
-	(my_a)=((my_reconstruct_expr)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_b)=((my_reconstruct_compound)((my_c),((((my_pn)->my_child)->my_next)->my_next)));
-	(my_ret)=((my_mknode1)((my_c),(my_N_CONDLIST),((my_mknode)((my_c),(my_N_COND),(my_a),(my_b)))));
-	(my_copypos)((my_ret),(my_pn));
-	(my_copypos)(((my_ret)->my_a),(my_pn));
-	(my_link)=(&((my_ret)->my_b));
-	(my_pn)=(((((my_pn)->my_child)->my_next)->my_next)->my_next);
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_elif_stmt)))) {
-	(my_a)=((my_reconstruct_expr)((my_c),((((my_pn)->my_child)->my_next)->my_next)));
-	(my_b)=((my_reconstruct_compound)((my_c),(((((my_pn)->my_child)->my_next)->my_next)->my_next)));
-	(my_n)=((my_mknode1)((my_c),(my_N_CONDLIST),((my_mknode)((my_c),(my_N_COND),(my_a),(my_b)))));
-	(my_copypos)((my_n),(my_pn));
-	(my_copypos)(((my_n)->my_a),(my_pn));
-	(*(my_link))=(my_n);
-	(my_link)=(&((my_n)->my_b));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_else_stmt)))) {
-	(my_a)=((struct my_node*)0UL);
-	(my_b)=((my_reconstruct_compound)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_n)=((my_mknode1)((my_c),(my_N_CONDLIST),((my_mknode)((my_c),(my_N_COND),(my_a),(my_b)))));
-	(my_copypos)((my_n),(my_pn));
-	(my_copypos)(((my_n)->my_a),(my_pn));
-	(*(my_link))=(my_n);
-	(my_link)=(&((my_n)->my_b));
-	break;
-	} else {
-	(my_die)(((unsigned char *)"invalid if_stmt"));
-	}
-	(my_pn)=((my_pn)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_intern)(struct my_parser* my_c,struct my_peg_node* my_pn,unsigned char* my_s,unsigned long my_len){
-	struct my_node* my_n = 0;
-	unsigned long my_i = 0;
-	(my_n)=((my_mknode0)((my_c),(my_N_IDENT)));
-	(my_copypos)((my_n),(my_pn));
-	(my_i)=(0UL);
-	((my_n)->my_s)=((my_alloc)(((my_c)->my_a),((unsigned long)(((unsigned long)(my_len))+((unsigned long)(1UL))))));
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_len)))) {
-	break;
-	}
-	(((my_n)->my_s)[my_i])=((my_s)[my_i]);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(((my_n)->my_s)[my_i])=((unsigned char)0UL);
-	return my_n;
-}
-struct my_node*( my_reconstruct_label)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_label_stmt)))),((unsigned char *)"label_stmt"));
-	(my_a)=((my_reconstruct_ident)((my_c),((my_pn)->my_child)));
-	(my_n)=((my_mknode1)((my_c),(my_N_LABEL),(my_a)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_loop)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_n = 0;
-	struct my_node* my_a = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_loop_stmt)))),((unsigned char *)"loop_stmt"));
-	(my_a)=((my_reconstruct_compound)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_n)=((my_mknode1)((my_c),(my_N_LOOP),(my_a)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_member_decl)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_member_decl)))),((unsigned char *)"member_decl"));
-	(my_a)=((my_reconstruct_ident)((my_c),((my_pn)->my_child)));
-	(my_b)=((my_reconstruct_type)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_n)=((my_mknode)((my_c),(my_N_MEMBERDECL),(my_a),(my_b)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_member_list)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_n = 0;
-	struct my_node* my_a = 0;
-	struct my_node* my_ret = 0;
-	struct my_node** my_link = 0;
-	(my_ret)=((struct my_node*)0UL);
-	(my_link)=(&(my_ret));
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	(my_a)=((my_reconstruct_member_decl)((my_c),(my_pn)));
-	(my_n)=((my_mknode1)((my_c),(my_N_MEMBERLIST),(my_a)));
-	(my_copypos)((my_n),(my_pn));
-	(*(my_link))=(my_n);
-	(my_link)=(&((my_n)->my_b));
-	(my_pn)=((my_pn)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_mul)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_ret = 0;
-	struct my_node* my_n = 0;
-	struct my_node** my_link = 0;
-	unsigned long my_kind = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_mul_expr)))),((unsigned char *)"mul_expr"));
-	(my_ret)=((my_reconstruct_shift)((my_c),((my_pn)->my_child)));
-	(my_link)=(&(my_ret));
-	(my_pn)=(((my_pn)->my_child)->my_next);
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_mul_op)))) {
-	(my_kind)=(my_N_MUL);
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_div_op)))) {
-	(my_kind)=(my_N_DIV);
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_mod_op)))) {
-	(my_kind)=(my_N_MOD);
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_and_op)))) {
-	(my_kind)=(my_N_AND);
-	} else {
-	(my_die)(((unsigned char *)"invalid mulop"));
-	}
-	(my_n)=((my_reconstruct_shift)((my_c),((my_pn)->my_next)));
-	(*(my_link))=((my_mknode)((my_c),(my_kind),(*(my_link)),(my_n)));
-	(my_copypos)((*(my_link)),(my_pn));
-	(my_pn)=(((my_pn)->my_next)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_post)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_ret = 0;
-	struct my_node* my_n = 0;
-	unsigned long my_tag = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_post_expr)))),((unsigned char *)"post_expr"));
-	(my_ret)=((my_reconstruct_primary)((my_c),((my_pn)->my_child)));
-	(my_pn)=(((my_pn)->my_child)->my_next);
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	(my_tag)=((my_pn)->my_tag);
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_index_expr)))) {
-	(my_n)=((my_reconstruct_expr)((my_c),((my_pn)->my_child)));
-	(my_ret)=((my_mknode)((my_c),(my_N_INDEX),(my_ret),(my_n)));
-	(my_copypos)((my_ret),(my_pn));
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_call_expr)))) {
-	(my_n)=((my_reconstruct_args)((my_c),((my_pn)->my_child)));
-	(my_ret)=((my_mknode)((my_c),(my_N_CALL),(my_ret),(my_n)));
-	(my_copypos)((my_ret),(my_pn));
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_member_expr)))) {
-	(my_n)=((my_reconstruct_ident)((my_c),((my_pn)->my_child)));
-	(my_ret)=((my_mknode)((my_c),(my_N_DOT),(my_ret),(my_n)));
-	(my_copypos)((my_ret),(my_pn));
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_cast_expr)))) {
-	(my_n)=((my_reconstruct_type)((my_c),((my_pn)->my_child)));
-	(my_ret)=((my_mknode)((my_c),(my_N_CAST),(my_ret),(my_n)));
-	(my_copypos)((my_ret),(my_pn));
-	} else {
-	(my_die)(((unsigned char *)"invalid post_expr"));
-	}
-	(my_pn)=((my_pn)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_primary)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_primary)))),((unsigned char *)"primary"));
-	(my_pn)=((my_pn)->my_child);
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_ident)))) {
-	return (my_reconstruct_ident)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_hex)))) {
-	return (my_reconstruct_hex)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_dec)))) {
-	return (my_reconstruct_dec)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_str)))) {
-	return (my_reconstruct_str)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_char)))) {
-	return (my_reconstruct_char)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_sizeof_expr)))) {
-	return (my_reconstruct_sizeof)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_expr)))) {
-	return (my_reconstruct_expr)((my_c),(my_pn));
-	} else {
-	(my_die)(((unsigned char *)"invalid primary"));
-	}
-}
-struct my_node*( my_reconstruct_return)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_return_stmt)))),((unsigned char *)"return_stmt"));
-	(my_a)=((struct my_node*)0UL);
-	if (((my_pn)->my_child)->my_next) {
-	(my_a)=((my_reconstruct_expr)((my_c),(((my_pn)->my_child)->my_next)));
-	}
-	(my_n)=((my_mknode1)((my_c),(my_N_RETURN),(my_a)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_shift)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_ret = 0;
-	struct my_node* my_n = 0;
-	struct my_node** my_link = 0;
-	unsigned long my_kind = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_shift_expr)))),((unsigned char *)"shift_expr"));
-	(my_ret)=((my_reconstruct_unary)((my_c),((my_pn)->my_child)));
-	(my_link)=(&(my_ret));
-	(my_pn)=(((my_pn)->my_child)->my_next);
-	while (1) {
-	if ((unsigned long)(!(my_pn))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_lsh_op)))) {
-	(my_kind)=(my_N_LSH);
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_rsh_op)))) {
-	(my_kind)=(my_N_RSH);
-	} else {
-	(my_die)(((unsigned char *)"invalid shift"));
-	}
-	(my_n)=((my_reconstruct_unary)((my_c),((my_pn)->my_next)));
-	(*(my_link))=((my_mknode)((my_c),(my_kind),(*(my_link)),(my_n)));
-	(my_copypos)((*(my_link)),(my_pn));
-	(my_pn)=(((my_pn)->my_next)->my_next);
-	}
-	return my_ret;
-}
-struct my_node*( my_reconstruct_sizeof)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_n = 0;
-	struct my_node* my_a = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_sizeof_expr)))),((unsigned char *)"sizeof_expr"));
-	(my_a)=((my_reconstruct_expr)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_n)=((my_mknode1)((my_c),(my_N_SIZEOF),(my_a)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_stmt)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_stmt)))),((unsigned char *)"stmt"));
-	(my_pn)=((my_pn)->my_child);
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_if_stmt)))) {
-	return (my_reconstruct_if)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_loop_stmt)))) {
-	return (my_reconstruct_loop)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_break_stmt)))) {
-	return (my_reconstruct_break)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_continue_stmt)))) {
-	return (my_reconstruct_continue)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_return_stmt)))) {
-	return (my_reconstruct_return)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_var_stmt)))) {
-	return (my_reconstruct_var)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_label_stmt)))) {
-	return (my_reconstruct_label)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_goto_stmt)))) {
-	return (my_reconstruct_goto)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_assign_stmt)))) {
-	return (my_reconstruct_assign)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_expr_stmt)))) {
-	return (my_reconstruct_expr_stmt)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_empty_stmt)))) {
-	return (my_reconstruct_empty)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_compound_stmt)))) {
-	return (my_reconstruct_compound)((my_c),(my_pn));
-	} else {
-	(my_die)(((unsigned char *)"invalid stmt"));
-	}
-}
-struct my_node*( my_reconstruct_str)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	unsigned long my_i = 0;
-	unsigned long my_j = 0;
-	unsigned long my_len = 0;
-	unsigned long my_ch = 0;
-	unsigned long my_ok = 0;
-	unsigned char* my_s = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_str)))),((unsigned char *)"str"));
-	(my_s)=((my_alloc)(((my_c)->my_a),((my_pn)->my_len)));
-	(my_i)=(1UL);
-	(my_j)=(0UL);
-	(my_len)=((unsigned long)(((unsigned long)((my_pn)->my_len))-((unsigned long)(1UL))));
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_len)))) {
-	break;
-	}
-	(my_ch)=((my_unescape)(((my_pn)->my_str),(&(my_i)),(my_len),(&(my_ok))));
-	if ((unsigned long)(!(my_ok))) {
-	(my_die)(((unsigned char *)"invalid escape"));
-	}
-	((my_s)[my_j])=((unsigned char)my_ch);
-	(my_j)=((unsigned long)(((unsigned long)(my_j))+((unsigned long)(1UL))));
-	}
-	((my_s)[my_j])=((unsigned char)0UL);
-	(my_n)=((my_mknode0)((my_c),(my_N_STR)));
-	(my_copypos)((my_n),(my_pn));
-	((my_n)->my_s)=(my_s);
-	return my_n;
-}
-struct my_node*( my_reconstruct_struct)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_n = 0;
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_struct_decl)))),((unsigned char *)"struct_def"));
-	(my_a)=((my_reconstruct_ident)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_b)=((my_reconstruct_member_list)((my_c),((((my_pn)->my_child)->my_next)->my_next)));
-	(my_n)=((my_mknode)((my_c),(my_N_STRUCT),(my_a),(my_b)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-struct my_node*( my_reconstruct_type)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_type)))),((unsigned char *)"type"));
-	(my_pn)=((my_pn)->my_child);
-	if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_ident)))) {
-	return (my_reconstruct_ident)((my_c),(my_pn));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_byte)))) {
-	return (my_reconstruct_intern)((my_c),(my_pn),((unsigned char *)"byte"),(4UL));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_int)))) {
-	return (my_reconstruct_intern)((my_c),(my_pn),((unsigned char *)"int"),(3UL));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_void)))) {
-	return (my_reconstruct_intern)((my_c),(my_pn),((unsigned char *)"void"),(4UL));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_ptr_type)))) {
-	(my_n)=((my_mknode1)((my_c),(my_N_PTRTYPE),((my_reconstruct_type)((my_c),((my_pn)->my_child)))));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_func)))) {
-	return (my_reconstruct_func_type)((my_c),((my_pn)->my_next));
-	} else if ((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_type)))) {
-	return (my_reconstruct_type)((my_c),(my_pn));
-	} else {
-	(my_die)(((unsigned char *)"reconstruct_type: invalid type"));
-	}
-}
-struct my_node*( my_reconstruct_unary)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_n = 0;
-	struct my_node* my_ret = 0;
-	struct my_node** my_link = 0;
-	unsigned long my_tag = 0;
-	unsigned long my_kind = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_unary_expr)))),((unsigned char *)"unary_expr"));
-	(my_link)=(&(my_ret));
-	(my_pn)=((my_pn)->my_child);
-	while (1) {
-	(my_tag)=((my_pn)->my_tag);
-	if ((unsigned long)(((long)(my_tag))==((long)(my_P_ref_op)))) {
-	(my_kind)=(my_N_REF);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_deref_op)))) {
-	(my_kind)=(my_N_DEREF);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_pos_op)))) {
-	(my_kind)=(my_N_POS);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_neg_op)))) {
-	(my_kind)=(my_N_NEG);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_not_op)))) {
-	(my_kind)=(my_N_NOT);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_bnot_op)))) {
-	(my_kind)=(my_N_BNOT);
-	} else if ((unsigned long)(((long)(my_tag))==((long)(my_P_post_expr)))) {
-	(*(my_link))=((my_reconstruct_post)((my_c),(my_pn)));
-	return my_ret;
-	} else {
-	(my_die)(((unsigned char *)"invalid unary_expr"));
-	}
-	(my_n)=((my_mknode0)((my_c),(my_kind)));
-	(my_copypos)((my_n),(my_pn));
-	(*(my_link))=(my_n);
-	(my_link)=(&((my_n)->my_a));
-	(my_pn)=((my_pn)->my_next);
-	}
-}
-struct my_node*( my_reconstruct_var)(struct my_parser* my_c,struct my_peg_node* my_pn){
-	struct my_node* my_a = 0;
-	struct my_node* my_b = 0;
-	struct my_node* my_n = 0;
-	(my_assert)(((unsigned long)(((long)((my_pn)->my_tag))==((long)(my_P_var_stmt)))),((unsigned char *)"var_stmt"));
-	(my_a)=((my_reconstruct_ident)((my_c),(((my_pn)->my_child)->my_next)));
-	(my_b)=((my_reconstruct_type)((my_c),((((my_pn)->my_child)->my_next)->my_next)));
-	(my_n)=((my_mknode)((my_c),(my_N_VARDECL),(my_a),(my_b)));
-	(my_copypos)((my_n),(my_pn));
-	return my_n;
-}
-unsigned long( my_rename)(unsigned char* my_oldname,unsigned char* my_newname){
-	return (my_syscall)((82UL),((unsigned long)my_oldname),((unsigned long)my_newname),(0UL),(0UL),(0UL),(0UL));
-}
-void( my_reserve)(struct my_assembler* my_c,unsigned long my_n){
-	unsigned char* my_m = 0;
-	struct my_chunk* my_b = 0;
-	if ((unsigned long)(((my_c)->my_text_end)&&((unsigned long)(((long)((unsigned long)(((unsigned long)(((my_c)->my_text_end)->my_cap))-((unsigned long)(((my_c)->my_text_end)->my_fill)))))>=((long)(my_n)))))) {
-	return;
-	}
-	if ((unsigned long)(((long)(my_n))<((long)(4096UL)))) {
-	(my_n)=(4096UL);
-	}
-	(my_m)=((my_alloc)(((my_c)->my_a),(my_n)));
-	(my_b)=((struct my_chunk*)(my_alloc)(((my_c)->my_a),(32UL)));
-	((my_b)->my_buf)=(my_m);
-	((my_b)->my_fill)=(0UL);
-	((my_b)->my_cap)=(my_n);
-	((my_b)->my_next)=((struct my_chunk*)0UL);
-	if ((my_c)->my_text_end) {
-	(((my_c)->my_text_end)->my_next)=(my_b);
-	((my_c)->my_text_end)=(my_b);
-	} else {
-	((my_c)->my_text)=(my_b);
-	((my_c)->my_text_end)=(my_b);
-	}
-}
-void( my_reverse)(unsigned char* my_buf,unsigned long my_len){
-	unsigned long my_i = 0;
-	unsigned char my_x = 0;
-	(my_i)=(0UL);
-	(my_len)=((unsigned long)(((unsigned long)(my_len))-((unsigned long)(1UL))));
-	while (1) {
-	if ((unsigned long)(((long)(my_i))>=((long)(my_len)))) {
-	break;
-	}
-	(my_x)=((my_buf)[my_i]);
-	((my_buf)[my_i])=((my_buf)[my_len]);
-	((my_buf)[my_len])=(my_x);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	(my_len)=((unsigned long)(((unsigned long)(my_len))-((unsigned long)(1UL))));
-	}
-}
-void( my_setup_alloc)(struct my_alloc* my_c){
-	((my_c)->my_page)=((struct my_page*)0UL);
-}
-struct my_assembler*( my_setup_assembler)(struct my_alloc* my_a){
-	struct my_assembler* my_c = 0;
-	(my_c)=((struct my_assembler*)(my_alloc)((my_a),(48UL)));
-	((my_c)->my_a)=(my_a);
-	((my_c)->my_out)=((struct my_file*)0UL);
-	((my_c)->my_at)=(0UL);
-	((my_c)->my_text)=((struct my_chunk*)0UL);
-	((my_c)->my_text_end)=((struct my_chunk*)0UL);
-	((my_c)->my_bits32)=(0UL);
-	return my_c;
-}
-struct my_parser*( my_setup_parser)(struct my_alloc* my_a){
-	struct my_parser* my_c = 0;
-	(my_c)=((struct my_parser*)(my_alloc)((my_a),(16UL)));
-	((my_c)->my_a)=(my_a);
-	((my_c)->my_p)=((my_peg_new)(((unsigned char *)""),((unsigned char *)""),(0UL),(my_a)));
-	return my_c;
-}
-struct my_peg_compiler*( my_setup_peg)(struct my_alloc* my_a,unsigned char* my_prefix){
-	struct my_peg_compiler* my_c = 0;
-	(my_c)=((struct my_peg_compiler*)(my_alloc)((my_a),(40UL)));
-	((my_c)->my_a)=(my_a);
-	((my_c)->my_prefix)=(my_prefix);
-	((my_c)->my_scratch)=((my_alloc)(((my_c)->my_a),(256UL)));
-	return my_c;
-}
-void( my_show_node)(struct my_file* my_out,struct my_node* my_n){
-	unsigned long my_i = 0;
-	unsigned long my_ch = 0;
-	unsigned char* my_hex = 0;
-	(my_hex)=((unsigned char *)"0123456789abcdef");
-	if ((unsigned long)(!(my_n))) {
-	return;
-	}
-	(my_fputc)((my_out),(40));
-	(my_fputs)((my_out),((my_node_to_str)(((my_n)->my_kind))));
-	if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_NUM)))) {
-	(my_fputc)((my_out),(32));
-	(my_fputd)((my_out),((my_n)->my_n));
-	}
-	if ((my_n)->my_s) {
-	(my_fputc)((my_out),(32));
-	(my_fputc)((my_out),(34));
-	(my_i)=(0UL);
-	while (1) {
-	(my_ch)=((unsigned long)((my_n)->my_s)[my_i]);
-	if ((unsigned long)(!(my_ch))) {
-	break;
-	}
-	if ((unsigned long)(((unsigned long)(((long)(my_ch))<((long)(32UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))>((long)(127UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))==((long)(92))))||((unsigned long)(((long)(my_ch))==((long)(34)))))))))) {
-	(my_fputc)((my_out),(92));
-	(my_fputc)((my_out),(120));
-	(my_fputc)((my_out),((unsigned long)(my_hex)[(unsigned long)(((unsigned long)(my_ch))>>((unsigned long)(4UL)))]));
-	(my_fputc)((my_out),((unsigned long)(my_hex)[(unsigned long)(((unsigned long)(my_ch))&((unsigned long)(15UL)))]));
-	} else {
-	(my_fputc)((my_out),(my_ch));
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(my_fputc)((my_out),(34));
-	}
-	if ((my_n)->my_a) {
-	(my_fputc)((my_out),(32));
-	(my_show_node)((my_out),((my_n)->my_a));
-	}
-	if ((my_n)->my_b) {
-	(my_fputc)((my_out),(32));
-	(my_show_node)((my_out),((my_n)->my_b));
-	}
-	(my_fputc)((my_out),(41));
-}
-unsigned long( my_sigaction)(unsigned long my_sig,struct my_sigaction* my_act,struct my_sigaction* my_oact){
-	return (my_syscall)((13UL),(my_sig),((unsigned long)my_act),((unsigned long)my_oact),(8UL),(0UL),(0UL));
-}
-unsigned long( my_socket)(unsigned long my_pf,unsigned long my_ty,unsigned long my_pc){
-	return (my_syscall)((41UL),(my_pf),(my_ty),(my_pc),(0UL),(0UL),(0UL));
-}
-unsigned long( my_strcmp)(unsigned char* my_a,unsigned char* my_b){
-	unsigned long my_i = 0;
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)((my_a)[my_i]))>((long)((my_b)[my_i])))) {
-	return 1UL;
-	}
-	if ((unsigned long)(((long)((my_a)[my_i]))<((long)((my_b)[my_i])))) {
-	return (unsigned long)(-(unsigned long)(1UL));
-	}
-	if ((unsigned long)(((long)((my_a)[my_i]))==((long)((unsigned char)0UL)))) {
-	return 0UL;
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-}
-unsigned long( my_strlen)(unsigned char* my_s){
-	unsigned long my_ret = 0;
-	(my_ret)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)((my_s)[my_ret]))==((long)((unsigned char)0UL)))) {
-	return my_ret;
-	}
-	(my_ret)=((unsigned long)(((unsigned long)(my_ret))+((unsigned long)(1UL))));
-	}
-}
-void( my_translate)(struct my_peg_compiler* my_c,struct my_peg_node* my_n){
-	struct my_peg_node* my_v = 0;
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"enum {\012"));
-	(my_v)=((my_n)->my_child);
-	while (1) {
-	if ((unsigned long)(!(my_v))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_v)->my_tag))==((long)(my_PEG_rule)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    "));
-	(my_fputs)(((my_c)->my_out),((my_c)->my_prefix));
-	(my_fputb)(((my_c)->my_out),(((my_v)->my_child)->my_str),(((my_v)->my_child)->my_len));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)",\012"));
-	}
-	(my_v)=((my_v)->my_next);
-	}
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"}\012\012"));
-	(my_fputs)(((my_c)->my_out),((my_c)->my_prefix));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"tag_to_str(tag: int): *byte {\012"));
-	(my_v)=((my_n)->my_child);
-	while (1) {
-	if ((unsigned long)(!(my_v))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_v)->my_tag))==((long)(my_PEG_rule)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if tag == "));
-	(my_fputs)(((my_c)->my_out),((my_c)->my_prefix));
-	(my_fputb)(((my_c)->my_out),(((my_v)->my_child)->my_str),(((my_v)->my_child)->my_len));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)" { return \042"));
-	(my_fputb)(((my_c)->my_out),(((my_v)->my_child)->my_str),(((my_v)->my_child)->my_len));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"\042; }\012"));
-	}
-	(my_v)=((my_v)->my_next);
-	}
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    die(\042invalid tag\042);\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"}\012"));
-	(my_v)=((my_n)->my_child);
-	while (1) {
-	if ((unsigned long)(!(my_v))) {
-	break;
-	}
-	if ((unsigned long)(((long)((my_v)->my_tag))==((long)(my_PEG_rule)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"\012peg_"));
-	(my_fputs)(((my_c)->my_out),((my_c)->my_prefix));
-	(my_fputb)(((my_c)->my_out),(((my_v)->my_child)->my_str),(((my_v)->my_child)->my_len));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"(c: *peg): int {\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    var ok: int;\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    enter(c, "));
-	(my_fputs)(((my_c)->my_out),((my_c)->my_prefix));
-	(my_fputb)(((my_c)->my_out),(((my_v)->my_child)->my_str),(((my_v)->my_child)->my_len));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)");\012"));
-	(my_translate_pattern)((my_c),(((my_v)->my_child)->my_next));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if ok { leave(c, "));
-	(my_fputs)(((my_c)->my_out),((my_c)->my_prefix));
-	(my_fputb)(((my_c)->my_out),(((my_v)->my_child)->my_str),(((my_v)->my_child)->my_len));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"); } else { fail(c); }\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    return ok;\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"}\012"));
-	}
-	(my_v)=((my_v)->my_next);
-	}
-}
-void( my_translate_charset)(struct my_peg_compiler* my_c,struct my_peg_node* my_n){
-	unsigned long my_i = 0;
-	unsigned long my_len = 0;
-	unsigned long my_ch = 0;
-	unsigned long my_a = 0;
-	unsigned long my_b = 0;
-	unsigned char* my_hex = 0;
-	unsigned long my_count = 0;
-	(my_hex)=((unsigned char *)"0123456789abcdef");
-	(my_memset)(((my_c)->my_scratch),(0UL),(256UL));
-	(my_i)=(1UL);
-	(my_len)=((unsigned long)(((unsigned long)((my_n)->my_len))-((unsigned long)(1UL))));
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_len)))) {
-	break;
-	}
-	(my_ch)=((unsigned long)((my_n)->my_str)[my_i]);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_ch))==((long)(92)))) {
-	(my_ch)=((my_parse_escape)(((my_n)->my_str),(&(my_i)),(my_len)));
-	}
-	if ((unsigned long)(((unsigned long)(((long)(my_i))<((long)(my_len))))&&((unsigned long)(((long)(((my_n)->my_str)[my_i]))==((long)((unsigned char)45)))))) {
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_i))==((long)(my_len)))) {
-	(my_die)(((unsigned char *)"invalid range"));
-	}
-	(my_a)=(my_ch);
-	(my_ch)=((unsigned long)((my_n)->my_str)[my_i]);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_ch))==((long)(92)))) {
-	(my_ch)=((my_parse_escape)(((my_n)->my_str),(&(my_i)),(my_len)));
-	}
-	(my_b)=(my_ch);
-	while (1) {
-	if ((unsigned long)(((long)(my_a))>((long)(my_b)))) {
-	break;
-	}
-	(((my_c)->my_scratch)[my_a])=((unsigned char)1UL);
-	(my_a)=((unsigned long)(((unsigned long)(my_a))+((unsigned long)(1UL))));
-	}
-	} else {
-	(((my_c)->my_scratch)[my_ch])=((unsigned char)1UL);
-	}
-	}
-	(my_count)=(0UL);
-	(my_i)=(1UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(256UL)))) {
-	break;
-	}
-	(my_count)=((unsigned long)(((unsigned long)(my_count))+((unsigned long)((unsigned long)((my_c)->my_scratch)[my_i]))));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	if ((unsigned long)(((long)(my_count))==((long)(0UL)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    fail(c);\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    ok = 0;\012"));
-	return;
-	} else if ((unsigned long)(((long)(my_count))>=((long)(255UL)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    ok = any(c);\012"));
-	return;
-	} else if ((unsigned long)(((long)(my_count))==((long)(1UL)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    ok = literal(c, \042"));
-	} else {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    ok = charset(c, \042"));
-	}
-	(my_i)=(1UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(256UL)))) {
-	break;
-	}
-	if (((my_c)->my_scratch)[my_i]) {
-	if ((unsigned long)(((unsigned long)(((long)(my_ch))<((long)(32UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))>((long)(127UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))==((long)(92))))||((unsigned long)(((long)(my_ch))==((long)(34)))))))))) {
-	(my_fputc)(((my_c)->my_out),(92));
-	(my_fputc)(((my_c)->my_out),(120));
-	(my_fputc)(((my_c)->my_out),((unsigned long)(my_hex)[(unsigned long)(((unsigned long)(my_i))>>((unsigned long)(4UL)))]));
-	(my_fputc)(((my_c)->my_out),((unsigned long)(my_hex)[(unsigned long)(((unsigned long)(my_i))&((unsigned long)(15UL)))]));
-	} else {
-	(my_fputc)(((my_c)->my_out),(my_i));
-	}
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"\042);\012"));
-}
-void( my_translate_literal)(struct my_peg_compiler* my_c,struct my_peg_node* my_n){
-	unsigned long my_i = 0;
-	unsigned long my_len = 0;
-	unsigned long my_ch = 0;
-	unsigned char* my_hex = 0;
-	(my_hex)=((unsigned char *)"0123456789abcdef");
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    ok = literal(c, \042"));
-	(my_i)=(1UL);
-	(my_len)=((unsigned long)(((unsigned long)((my_n)->my_len))-((unsigned long)(1UL))));
-	while (1) {
-	if ((unsigned long)(((long)(my_i))==((long)(my_len)))) {
-	break;
-	}
-	(my_ch)=((unsigned long)((my_n)->my_str)[my_i]);
-	if ((unsigned long)(((unsigned long)(((long)(my_ch))<((long)(32UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))>((long)(127UL))))||((unsigned long)(((unsigned long)(((long)(my_ch))==((long)(92))))||((unsigned long)(((long)(my_ch))==((long)(34)))))))))) {
-	(my_fputc)(((my_c)->my_out),(92));
-	(my_fputc)(((my_c)->my_out),(120));
-	(my_fputc)(((my_c)->my_out),((unsigned long)(my_hex)[(unsigned long)(((unsigned long)(my_ch))>>((unsigned long)(4UL)))]));
-	(my_fputc)(((my_c)->my_out),((unsigned long)(my_hex)[(unsigned long)(((unsigned long)(my_ch))&((unsigned long)(15UL)))]));
-	} else {
-	(my_fputc)(((my_c)->my_out),(my_ch));
-	}
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"\042);\012"));
-}
-void( my_translate_pattern)(struct my_peg_compiler* my_c,struct my_peg_node* my_n){
-	unsigned long my_count = 0;
-	unsigned long my_look = 0;
-	struct my_peg_node* my_d = 0;
-	while (1) {
-	if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_pattern)))) {
-	(my_d)=((my_n)->my_child);
-	if ((unsigned long)(!((my_d)->my_next))) {
-	(my_translate_pattern)((my_c),(my_d));
-	} else {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    choice(c);\012"));
-	(my_translate_pattern)((my_c),(my_d));
-	(my_d)=((my_d)->my_next);
-	while (1) {
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if !ok { choice(c);\012"));
-	(my_translate_pattern)((my_c),(my_d));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    }\012"));
-	(my_d)=((my_d)->my_next);
-	}
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if ok { commit(c); } else { fail(c); }\012"));
-	}
-	} else if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_alternative)))) {
-	(my_d)=((my_n)->my_child);
-	(my_translate_pattern)((my_c),(my_d));
-	(my_d)=((my_d)->my_next);
-	while (1) {
-	if ((unsigned long)(!(my_d))) {
-	break;
-	}
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if ok {\012"));
-	(my_translate_pattern)((my_c),(my_d));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    }\012"));
-	(my_d)=((my_d)->my_next);
-	}
-	} else if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_lookahead)))) {
-	(my_look)=((my_decode_look)((my_n)));
-	(my_d)=((my_n)->my_child);
-	if ((unsigned long)(((long)((my_d)->my_tag))==((long)(my_PEG_lookop)))) {
-	(my_d)=((my_d)->my_next);
-	}
-	if ((unsigned long)(((long)(my_look))==((long)(my_LOOK_AND)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    choice(c);\012"));
-	(my_translate_pattern)((my_c),(my_d));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    fail(c);\012"));
-	} else if ((unsigned long)(((long)(my_look))==((long)(my_LOOK_NOT)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    choice(c);\012"));
-	(my_translate_pattern)((my_c),(my_d));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if ok { fail(c); fail(c); ok = 0; } else { ok = 1; }\012"));
-	} else if ((unsigned long)(((long)(my_look))==((long)(my_LOOK_NORMAL)))) {
-	(my_translate_pattern)((my_c),(my_d));
-	} else {
-	(my_die)(((unsigned char *)"invalid lookop"));
-	}
-	} else if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_suffix)))) {
-	(my_count)=((my_decode_count)((my_n)));
-	if ((unsigned long)(((long)(my_count))==((long)(my_ZERO_OR_ONE)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    choice(c);\012"));
-	(my_translate_pattern)((my_c),((my_n)->my_child));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if ok { commit(c); } else { ok = 1; }\012"));
-	} else if ((unsigned long)(((long)(my_count))==((long)(my_EXACTLY_ONE)))) {
-	(my_translate_pattern)((my_c),((my_n)->my_child));
-	} else if ((unsigned long)(((long)(my_count))==((long)(my_ZERO_OR_MORE)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    loop {\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    choice(c);\012"));
-	(my_translate_pattern)((my_c),((my_n)->my_child));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if !ok { ok = 1; break; }\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    commit(c);\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    }\012"));
-	} else if ((unsigned long)(((long)(my_count))==((long)(my_ONE_OR_MORE)))) {
-	(my_translate_pattern)((my_c),((my_n)->my_child));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if ok {\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    loop {\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    choice(c);\012"));
-	(my_translate_pattern)((my_c),((my_n)->my_child));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    if !ok { ok = 1; break; }\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    commit(c);\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    }\012"));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    }\012"));
-	} else {
-	(my_die)(((unsigned char *)"invalid countop"));
-	}
-	} else if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_primary)))) {
-	(my_translate_pattern)((my_c),((my_n)->my_child));
-	} else if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_any)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    ok = any(c);\012"));
-	} else if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_literal)))) {
-	(my_translate_literal)((my_c),(my_n));
-	} else if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_class)))) {
-	(my_translate_charset)((my_c),(my_n));
-	} else if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_call)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"    ok = peg_"));
-	(my_fputs)(((my_c)->my_out),((my_c)->my_prefix));
-	(my_fputb)(((my_c)->my_out),(((my_n)->my_child)->my_str),(((my_n)->my_child)->my_len));
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"(c);\012"));
-	} else if ((unsigned long)(((long)((my_n)->my_tag))==((long)(my_PEG_sp)))) {
-	(my_n)=((my_n)->my_next);
-	continue;
-	} else {
-	(my_fdputs)((2UL),((my_PEG_tag_to_str)(((my_n)->my_tag))));
-	(my_die)(((unsigned char *)"invalid tag"));
-	}
-	break;
-	}
-}
-unsigned long( my_type_isint)(struct my_type* my_t){
-	return (unsigned long)(((unsigned long)(((long)((my_t)->my_kind))==((long)(my_TY_INT))))||((unsigned long)(((long)((my_t)->my_kind))==((long)(my_TY_BYTE)))));
-}
-unsigned long( my_type_isprim)(struct my_type* my_t){
-	return (unsigned long)(((unsigned long)(((long)((my_t)->my_kind))!=((long)(my_TY_VOID))))&&((unsigned long)(((long)((my_t)->my_kind))!=((long)(my_TY_STRUCT)))));
-}
-unsigned long( my_type_sizeof)(struct my_compiler* my_c,struct my_type* my_t){
-	unsigned long my_kind = 0;
-	(my_kind)=((my_t)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_TY_INT)))) {
-	return 8UL;
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_TY_BYTE)))) {
-	return 8UL;
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_TY_PTR)))) {
-	return 8UL;
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_TY_FUNC)))) {
-	return 8UL;
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_TY_STRUCT)))) {
-	(my_layout_struct)((my_c),((my_t)->my_st));
-	return ((my_t)->my_st)->my_struct_size;
-	} else {
-	(my_cdie)((my_c),((unsigned char *)"sizeof: invalid type"));
-	}
-}
-unsigned long( my_unescape)(unsigned char* my_s,unsigned long* my_i,unsigned long my_len,unsigned long* my_ok){
-	unsigned long my_ch = 0;
-	unsigned long my_hex = 0;
-	(*(my_ok))=(1UL);
-	if ((unsigned long)(((long)(*(my_i)))>=((long)(my_len)))) {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-	(my_ch)=((unsigned long)(my_s)[*(my_i)]);
-	(*(my_i))=((unsigned long)(((unsigned long)(*(my_i)))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_ch))!=((long)(92)))) {
-	return my_ch;
-	}
-	if ((unsigned long)(((long)(*(my_i)))>=((long)(my_len)))) {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-	(my_ch)=((unsigned long)(my_s)[*(my_i)]);
-	(*(my_i))=((unsigned long)(((unsigned long)(*(my_i)))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_ch))==((long)(116)))) {
-	return 9;
-	} else if ((unsigned long)(((long)(my_ch))==((long)(114)))) {
-	return 13;
-	} else if ((unsigned long)(((long)(my_ch))==((long)(110)))) {
-	return 10;
-	} else if ((unsigned long)(((long)(my_ch))==((long)(92)))) {
-	return 92;
-	} else if ((unsigned long)(((long)(my_ch))==((long)(39)))) {
-	return 39;
-	} else if ((unsigned long)(((long)(my_ch))==((long)(34)))) {
-	return 34;
-	} else if ((unsigned long)(((long)(my_ch))==((long)(120)))) {
-	if ((unsigned long)(((long)(*(my_i)))>=((long)(my_len)))) {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-	(my_ch)=((unsigned long)(my_s)[*(my_i)]);
-	(*(my_i))=((unsigned long)(((unsigned long)(*(my_i)))+((unsigned long)(1UL))));
-	(my_hex)=((unsigned long)(((long)((my_hexdig)((my_ch),(my_ok))))*((long)(16UL))));
-	if ((unsigned long)(!(*(my_ok)))) {
-	return 0UL;
-	}
-	if ((unsigned long)(((long)(*(my_i)))>=((long)(my_len)))) {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-	(my_ch)=((unsigned long)(my_s)[*(my_i)]);
-	(*(my_i))=((unsigned long)(((unsigned long)(*(my_i)))+((unsigned long)(1UL))));
-	(my_hex)=((unsigned long)(((unsigned long)(my_hex))|((unsigned long)((my_hexdig)((my_ch),(my_ok))))));
-	if ((unsigned long)(!(*(my_ok)))) {
-	return 0UL;
-	}
-	return my_hex;
-	} else {
-	(*(my_ok))=(0UL);
-	return 0UL;
-	}
-}
-unsigned long( my_unhex)(unsigned char* my_dest,unsigned char* my_src){
-	unsigned long my_i = 0;
-	unsigned long my_dlen = 0;
-	unsigned long my_x = 0;
-	unsigned long my_y = 0;
-	(my_i)=(0UL);
-	(my_dlen)=(0UL);
-	while (1) {
-	(my_x)=((unsigned long)(my_src)[my_i]);
-	if ((unsigned long)(((long)(my_x))==((long)(0UL)))) {
-	break;
-	}
-	if ((unsigned long)(((unsigned long)(((long)(my_x))==((long)(32))))||((unsigned long)(((unsigned long)(((long)(my_x))==((long)(9))))||((unsigned long)(((unsigned long)(((long)(my_x))==((long)(13))))||((unsigned long)(((long)(my_x))==((long)(10)))))))))) {
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	continue;
-	}
-	if ((unsigned long)(((unsigned long)(((long)(my_x))>=((long)(48))))&&((unsigned long)(((long)(my_x))<=((long)(57)))))) {
-	(my_x)=((unsigned long)(((unsigned long)(my_x))-((unsigned long)(48))));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_x))>=((long)(97))))&&((unsigned long)(((long)(my_x))<=((long)(102)))))) {
-	(my_x)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_x))-((unsigned long)(97)))))+((unsigned long)(10UL))));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_x))>=((long)(65))))&&((unsigned long)(((long)(my_x))<=((long)(70)))))) {
-	(my_x)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_x))-((unsigned long)(65)))))+((unsigned long)(10UL))));
-	} else {
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	continue;
-	}
-	(my_y)=((unsigned long)(my_src)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL)))]);
-	if ((unsigned long)(((long)(my_y))==((long)(0UL)))) {
-	break;
-	}
-	if ((unsigned long)(((unsigned long)(((long)(my_y))>=((long)(48))))&&((unsigned long)(((long)(my_y))<=((long)(57)))))) {
-	(my_y)=((unsigned long)(((unsigned long)(my_y))-((unsigned long)(48))));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_y))>=((long)(97))))&&((unsigned long)(((long)(my_y))<=((long)(102)))))) {
-	(my_y)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_y))-((unsigned long)(97)))))+((unsigned long)(10UL))));
-	} else if ((unsigned long)(((unsigned long)(((long)(my_y))>=((long)(65))))&&((unsigned long)(((long)(my_y))<=((long)(70)))))) {
-	(my_y)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_y))-((unsigned long)(65)))))+((unsigned long)(10UL))));
-	} else {
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	continue;
-	}
-	((my_dest)[my_dlen])=((unsigned char)(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_x))<<((unsigned long)(4UL)))))|((unsigned long)(my_y))));
-	(my_dlen)=((unsigned long)(((unsigned long)(my_dlen))+((unsigned long)(1UL))));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(2UL))));
-	}
-	return my_dlen;
-}
-void( my_unify)(struct my_compiler* my_c,struct my_type* my_a,struct my_type* my_b){
-	unsigned long my_kind = 0;
-	if ((unsigned long)(((long)(my_a))==((long)(my_b)))) {
-	return;
-	}
-	if ((unsigned long)(((unsigned long)((my_a)&&((unsigned long)(!(my_b)))))||((unsigned long)(((unsigned long)((my_b)&&((unsigned long)(!(my_a)))))||((unsigned long)(((long)((my_a)->my_kind))!=((long)((my_b)->my_kind)))))))) {
-	(my_cdie)((my_c),((unsigned char *)"type error"));
-	}
-	(my_kind)=((my_a)->my_kind);
-	if ((unsigned long)(((long)(my_kind))==((long)(my_TY_PTR)))) {
-	(my_unify)((my_c),((my_a)->my_val),((my_b)->my_val));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_TY_FUNC)))) {
-	(my_unify)((my_c),((my_a)->my_val),((my_b)->my_val));
-	(my_unify)((my_c),((my_a)->my_arg),((my_b)->my_arg));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_TY_ARG)))) {
-	(my_unify)((my_c),((my_a)->my_val),((my_b)->my_val));
-	(my_unify)((my_c),((my_a)->my_arg),((my_b)->my_arg));
-	} else if ((unsigned long)(((long)(my_kind))==((long)(my_TY_STRUCT)))) {
-	if ((unsigned long)(((long)((my_a)->my_st))!=((long)((my_b)->my_st)))) {
-	(my_cdie)((my_c),((unsigned char *)"type error"));
-	}
-	} else if ((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_TY_VOID))))&&((unsigned long)(((unsigned long)(((long)(my_kind))!=((long)(my_TY_INT))))&&((unsigned long)(((long)(my_kind))!=((long)(my_TY_BYTE)))))))) {
-	(my_cdie)((my_c),((unsigned char *)"unify: invalid type"));
-	}
-}
-unsigned long( my_unlink)(unsigned char* my_name){
-	return (my_syscall)((87UL),((unsigned long)my_name),(0UL),(0UL),(0UL),(0UL),(0UL));
-}
-unsigned long( my_wait)(unsigned long my_pid,unsigned long* my_status,unsigned long my_flags){
-	unsigned long my_s = 0;
-	unsigned long my_ret = 0;
-	(my_s)=(0UL);
-	(my_ret)=((my_syscall)((61UL),(my_pid),((unsigned long)my_s),(my_flags),(0UL),(0UL),(0UL)));
-	if (my_status) {
-	(*(my_status))=((unsigned long)(((unsigned long)(my_s))&((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(1UL))))>>((unsigned long)(32UL)))))));
-	}
-	return my_ret;
-}
-unsigned long( my_write)(unsigned long my_fd,unsigned char* my_buf,unsigned long my_n){
-	return (my_syscall)((1UL),(my_fd),((unsigned long)my_buf),(my_n),(0UL),(0UL),(0UL));
-}
-void( my_writeout)(struct my_assembler* my_c,struct my_label* my_start,struct my_label* my_kstart){
-	struct my_chunk* my_b = 0;
-	unsigned long my_i = 0;
-	unsigned long my_text_size = 0;
-	unsigned long my_text_end = 0;
-	unsigned long my_load_addr = 0;
-	unsigned long my_entry = 0;
-	unsigned long my_kentry = 0;
-	unsigned long my_mb_magic = 0;
-	unsigned long my_mb_flags = 0;
-	unsigned long my_mb_checksum = 0;
-	unsigned long my_mb_addr = 0;
-	if ((unsigned long)(!((my_c)->my_out))) {
-	(my_die)(((unsigned char *)"output not opened"));
-	}
-	(my_load_addr)=(1048576UL);
-	(my_text_size)=((my_c)->my_at);
-	if ((unsigned long)(((unsigned long)(!(my_start)))||((unsigned long)(!((my_start)->my_fixed))))) {
-	(my_die)(((unsigned char *)"_start is not defined"));
-	}
-	(my_entry)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)((my_start)->my_at)))))+((unsigned long)(128UL)))))+((unsigned long)(32UL))));
-	(my_text_size)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_text_size))+((unsigned long)(128UL)))))+((unsigned long)(32UL))));
-	(my_text_end)=((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)(my_text_size))));
-	(my_mb_magic)=(464367618UL);
-	(my_mb_flags)=(65539UL);
-	(my_mb_checksum)=((unsigned long)(-(unsigned long)((unsigned long)(((unsigned long)(my_mb_magic))+((unsigned long)(my_mb_flags))))));
-	(my_mb_addr)=((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)(120UL))));
-	if ((unsigned long)((my_kstart)&&((my_kstart)->my_fixed))) {
-	(my_kentry)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)((my_kstart)->my_at)))))+((unsigned long)(128UL)))))+((unsigned long)(32UL))));
-	} else {
-	(my_mb_magic)=(0UL);
-	(my_kentry)=(0UL);
-	}
-	(my_putchar)((my_c),(127UL));
-	(my_putchar)((my_c),(69));
-	(my_putchar)((my_c),(76));
-	(my_putchar)((my_c),(70));
-	(my_putchar)((my_c),(2UL));
-	(my_putchar)((my_c),(1UL));
-	(my_putchar)((my_c),(1UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(2UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(62UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(1UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(my_entry));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_entry))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_entry))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_entry))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(64UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(64UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(56UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(1UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(64UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(1UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(5UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(16UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(my_text_size));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_text_size))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_text_size))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_text_size))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(my_text_size));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_text_size))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_text_size))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_text_size))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(my_mb_magic));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_magic))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_magic))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_magic))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(my_mb_flags));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_flags))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_flags))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_flags))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(my_mb_checksum));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_checksum))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_checksum))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_checksum))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(my_mb_addr));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_addr))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_addr))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_mb_addr))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(my_load_addr));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_load_addr))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_load_addr))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_load_addr))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(my_text_end));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_text_end))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_text_end))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_text_end))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(my_kentry));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_kentry))>>((unsigned long)(8UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_kentry))>>((unsigned long)(16UL)))));
-	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_kentry))>>((unsigned long)(24UL)))));
-	(my_putchar)((my_c),(my_OP_NOP));
-	(my_putchar)((my_c),(my_OP_NOP));
-	(my_putchar)((my_c),(my_OP_NOP));
-	(my_putchar)((my_c),(my_OP_NOP));
-	(my_putchar)((my_c),(my_OP_NOP));
-	(my_putchar)((my_c),(my_OP_NOP));
-	(my_putchar)((my_c),(my_OP_NOP));
-	(my_putchar)((my_c),(my_OP_NOP));
-	(my_b)=((my_c)->my_text);
-	while (1) {
-	if ((unsigned long)(!(my_b))) {
-	break;
-	}
-	(my_i)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_i))>=((long)((my_b)->my_fill)))) {
-	break;
-	}
-	(my_putchar)((my_c),((unsigned long)((my_b)->my_buf)[my_i]));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	(my_b)=((my_b)->my_next);
-	}
-	(my_fflush)(((my_c)->my_out));
-}
-void( my_xxd_line)(unsigned char* my_line,unsigned long my_offset,unsigned char* my_data,unsigned long my_len){
-	unsigned long my_i = 0;
-	unsigned long my_j = 0;
-	unsigned char* my_d = 0;
-	(my_d)=((unsigned char *)"0123456789abcdef");
-	(my_i)=(0UL);
-	((my_line)[my_i])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_offset))>>((unsigned long)(28UL)))))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL)))])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_offset))>>((unsigned long)(24UL)))))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(2UL)))])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_offset))>>((unsigned long)(20UL)))))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(3UL)))])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_offset))>>((unsigned long)(16UL)))))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(4UL)))])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_offset))>>((unsigned long)(12UL)))))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(5UL)))])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_offset))>>((unsigned long)(8UL)))))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(6UL)))])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_offset))>>((unsigned long)(4UL)))))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(7UL)))])=((my_d)[(unsigned long)(((unsigned long)(my_offset))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(8UL)))])=((unsigned char)58);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(9UL)))])=((unsigned char)32);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(10UL))));
-	(my_j)=(0UL);
-	while (1) {
-	if ((unsigned long)(((long)(my_j))==((long)(16UL)))) {
-	break;
-	}
-	if ((unsigned long)(((long)(my_j))<((long)(my_len)))) {
-	((my_line)[my_i])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(my_data)[my_j]))>>((unsigned long)(4UL)))))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL)))])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(my_data)[my_j]))&((unsigned long)(15UL)))]);
-	} else {
-	((my_line)[my_i])=((unsigned char)32);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL)))])=((unsigned char)32);
-	}
-	if ((unsigned long)(((long)((unsigned long)(((unsigned long)(my_j))+((unsigned long)(1UL)))))<((long)(my_len)))) {
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(2UL)))])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(my_data)[(unsigned long)(((unsigned long)(my_j))+((unsigned long)(1UL)))]))>>((unsigned long)(4UL)))))&((unsigned long)(15UL)))]);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(3UL)))])=((my_d)[(unsigned long)(((unsigned long)((unsigned long)(my_data)[(unsigned long)(((unsigned long)(my_j))+((unsigned long)(1UL)))]))&((unsigned long)(15UL)))]);
-	} else {
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(2UL)))])=((unsigned char)32);
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(3UL)))])=((unsigned char)32);
-	}
-	((my_line)[(unsigned long)(((unsigned long)(my_i))+((unsigned long)(4UL)))])=((unsigned char)32);
-	(my_j)=((unsigned long)(((unsigned long)(my_j))+((unsigned long)(2UL))));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(5UL))));
-	}
-	((my_line)[my_i])=((unsigned char)32);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	(my_j)=(0UL);
-	while (1) {
-	if ((unsigned long)(((unsigned long)(((long)(my_j))==((long)(16UL))))||((unsigned long)(((long)(my_j))>=((long)(my_len)))))) {
-	break;
-	}
-	if ((unsigned long)(((unsigned long)(((long)((unsigned long)(my_data)[my_j]))>=((long)(32UL))))&&((unsigned long)(((long)((unsigned long)(my_data)[my_j]))<((long)(128UL)))))) {
-	((my_line)[my_i])=((my_data)[my_j]);
-	} else {
-	((my_line)[my_i])=((unsigned char)46);
-	}
-	(my_j)=((unsigned long)(((unsigned long)(my_j))+((unsigned long)(1UL))));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	}
-	((my_line)[my_i])=((unsigned char)10);
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	((my_line)[my_i])=((unsigned char)0UL);
+
+// The token from the source
+unsigned char token[4096];
+
+// Token type
+int tt;
+
+// Token length
+int tlen;
+
+// Single character lookahead
+int nc;
+
+// Line number of the start of the current token
+int lineno;
+
+// Read in an identifier
+void
+feed_ident(void)
+{
+	tt = T_IDENT;
+	while (1) {
+		if (!((nc >= 'a' && nc <= 'z') ||
+				(nc >= 'A' && nc <= 'Z') ||
+				(nc >= '0' && nc <= '9') ||
+				nc == '_')) {
+			break;
+		}
+		if (tlen == sizeof(token) - 1) {
+			die("identifier too long");
+		}
+		token[tlen] = nc;
+		tlen = tlen + 1;
+		nc = fgetc(fin);
+	}
+	token[tlen] = 0;
+}
+
+// Parse a hex digit
+int
+hexdig(int c)
+{
+	if (c >= '0' && c <= '9') {
+		return c - '0';
+	}
+
+	if (c >= 'A' && c <= 'F') {
+		return c - 'F' + 10;
+	}
+
+	if (c >= 'a' && c <= 'f') {
+		return c - 'a' + 10;
+	}
+
+	die("invalid hex digit");
+	return 0;
+}
+
+// Parse an escape and replace nc with the value
+void
+feed_escape(void)
+{
+	int hex;
+
+	nc = fgetc(fin);
+	if (nc == 't') {
+		nc = '\t';
+	} else if (nc == 'r') {
+		nc = '\r';
+	} else if (nc == 'n') {
+		nc = '\n';
+	} else if (nc == 'x') {
+		nc = fgetc(fin);
+		hex = hexdig(nc) * 16;
+
+		nc = fgetc(fin);
+		hex = hex + hexdig(nc);
+
+		nc = hex;
+	} else if (nc != '\\' && nc != '\'' && nc != '"') {
+		die("invalid escape");
+	}
+}
+
+// Read in a string
+void
+feed_str(void)
+{
+	tt = T_STR;
+	nc = fgetc(fin);
+	while (1) {
+		if (nc == '"') {
+			token[tlen] = 0;
+			nc = fgetc(fin);
+			return;
+		}
+
+		if (nc == EOF) {
+			die("eof in string literal");
+		}
+
+		if (nc == 0 || nc == '\n') {
+			die("invalid char in string");
+		}
+
+		if (tlen == sizeof(token) - 1) {
+			die("string too long");
+		}
+
+		if (nc == '\\') {
+			feed_escape();
+		}
+
+		token[tlen] = nc;
+		tlen = tlen + 1;
+		nc = fgetc(fin);
+	}
+}
+
+// Read in a character
+void
+feed_char(void)
+{
+	tt = T_CHAR;
+	nc = fgetc(fin);
+
+	if (nc == 0 || nc == EOF || nc == '\'' || nc == '\n') {
+		die("invalid char");
+	}
+
+	if (nc == '\\') {
+		feed_escape();
+	}
+
+	token[tlen] = nc;
+	tlen = tlen + 1;
+	nc = fgetc(fin);
+
+	if (nc != '\'') {
+		die("expected '");
+	}
+
+	token[tlen] = 0;
+	nc = fgetc(fin);
+}
+
+// Read a hex number
+void
+feed_hex(void)
+{
+	tt = T_HEX;
+
+	tlen = 0;
+	while (1) {
+		if (!((nc >= '0' && nc <= '9')
+				|| (nc >= 'a' && nc <= 'f')
+				|| (nc >= 'A' && nc <= 'F'))) {
+			break;
+		}
+		if (tlen == sizeof(token) - 1) {
+			die("identifier too long");
+		}
+		token[tlen] = nc;
+		tlen = tlen + 1;
+		nc = fgetc(fin);
+	}
+
+	if (!tlen) {
+		die("expected hex");
+	}
+
+	token[tlen] = 0;
+}
+
+// Read in a number
+void
+feed_num(void)
+{
+	tt = T_NUM;
+
+	if (nc == '0') {
+		token[tlen] = nc;
+		tlen = tlen + 1;
+		nc = fgetc(fin);
+
+		if (nc == 'x') {
+			nc = fgetc(fin);
+			feed_hex();
+			return;
+		}
+	}
+
+	while (1) {
+		if (!(nc >= '0' && nc <= '9')) {
+			break;
+		}
+		if (tlen == sizeof(token) - 1) {
+			die("identifier too long");
+		}
+		token[tlen] = nc;
+		tlen = tlen + 1;
+		nc = fgetc(fin);
+	}
+	token[tlen] = 0;
+}
+
+// Read in the next token
+void
+feed(void)
+{
+	tlen = 0;
+
+	// Loop invariant: possible whitespace or EOF
+	while (1) {
+		if (nc == EOF) {
+			// Reached the end of input
+			tt = T_EOF;
+			return;
+		} else if (nc == ' ' || nc == '\t' || nc == '\r') {
+			// Whitespace
+			nc = fgetc(fin);
+		} else if (nc == '\n') {
+			// Line end
+			nc = fgetc(fin);
+			lineno = lineno + 1;
+		} else if (nc == '/') {
+			// Comment
+			nc = fgetc(fin);
+			if (nc == '/') {
+				// Read until the end of the comment
+				while (1) {
+					if (nc == '\n' || nc == EOF) {
+						break;
+					}
+					nc = fgetc(fin);
+				}
+			} else {
+				tt = T_DIV;
+				return;
+			}
+		} else {
+			// Start of a real token
+			break;
+		}
+	}
+
+	// Identifier
+	if ((nc >= 'a' && nc <= 'z') || (nc >= 'A' && nc <= 'Z') || nc == '_') {
+		feed_ident();
+		return;
+	}
+
+	// String
+	if (nc == '"') {
+		feed_str();
+		return;
+	}
+
+	// Character
+	if (nc == '\'') {
+		feed_char();
+		return;
+	}
+
+	// Number
+	if (nc >= '0' && nc <= '9') {
+		feed_num();
+		return;
+	}
+
+	// Single character tokens
+	if (nc == '(') {
+		tt = T_LPAR;
+		nc = fgetc(fin);
+	} else if (nc == ')') {
+		tt = T_RPAR;
+		nc = fgetc(fin);
+	} else if (nc == '{') {
+		tt = T_LBRA;
+		nc = fgetc(fin);
+	} else if (nc == '}') {
+		tt = T_RBRA;
+		nc = fgetc(fin);
+	} else if (nc == ',') {
+		tt = T_COMMA;
+		nc = fgetc(fin);
+	} else if (nc == ';') {
+		tt = T_SEMI;
+		nc = fgetc(fin);
+	} else if (nc == ':') {
+		tt = T_COLON;
+		nc = fgetc(fin);
+	} else if (nc == '*') {
+		tt = T_STAR;
+		nc = fgetc(fin);
+	} else if (nc == '.') {
+		tt = T_DOT;
+		nc = fgetc(fin);
+	} else if (nc == '=') {
+		tt = T_ASSIGN;
+		nc = fgetc(fin);
+		if (nc == '=') {
+			tt = T_EQ;
+			nc = fgetc(fin);
+		}
+	} else if (nc == '&') {
+		tt = T_AMP;
+		nc = fgetc(fin);
+		if (nc == '&') {
+			tt = T_BAND;
+			nc = fgetc(fin);
+		}
+	} else if (nc == '~') {
+		tt = T_NOT;
+		nc = fgetc(fin);
+	} else if (nc == '|') {
+		tt = T_OR;
+		nc = fgetc(fin);
+		if (nc == '|') {
+			tt = T_BOR;
+			nc = fgetc(fin);
+		}
+	} else if (nc == '^') {
+		tt = T_XOR;
+		nc = fgetc(fin);
+	} else if (nc == '!') {
+		tt = T_BANG;
+		nc = fgetc(fin);
+		if (nc == '=') {
+			tt = T_NE;
+			nc = fgetc(fin);
+		}
+	} else if (nc == '<') {
+		tt = T_LT;
+		nc = fgetc(fin);
+		if (nc == '<') {
+			tt = T_LSH;
+			nc = fgetc(fin);
+		} else if (nc == '=') {
+			tt = T_LE;
+			nc = fgetc(fin);
+		}
+	} else if (nc == '>') {
+		tt = T_GT;
+		nc = fgetc(fin);
+		if (nc == '>') {
+			tt = T_RSH;
+			nc = fgetc(fin);
+		} else if (nc == '=') {
+			tt = T_GE;
+			nc = fgetc(fin);
+		}
+	} else if (nc == '[') {
+		tt = T_LSQ;
+		nc = fgetc(fin);
+	} else if (nc == ']') {
+		tt = T_RSQ;
+		nc = fgetc(fin);
+	} else if (nc == '+') {
+		tt = T_ADD;
+		nc = fgetc(fin);
+	} else if (nc == '-') {
+		tt = T_SUB;
+		nc = fgetc(fin);
+	} else if (nc == '%') {
+		tt = T_MOD;
+		nc = fgetc(fin);
+	} else {
+		die("invalid char");
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Grammar                                                                   //
+///////////////////////////////////////////////////////////////////////////////
+
+struct node {
+	int kind;
+	struct node *a;
+	struct node *b;
+	struct type *t;
+	int n;
+	unsigned char *s;
+	int offset;
+	unsigned char *filename;
+	int lineno;
+};
+
+enum {
+	N_IDENT,
+	N_NUM,
+	N_CHAR,
+	N_STR,
+	N_STMTLIST,
+	N_EXPRLIST,
+	N_CALL,
+	N_DOT,
+	N_ARGLIST,
+	N_FUNC,
+	N_ARGDECL,
+	N_FUNCDECL,
+	N_PROGRAM,
+	N_FUNCTYPE,
+	N_PTRTYPE,
+	N_STRUCT,
+	N_MEMBERDECL,
+	N_MEMBERLIST,
+	N_CONDLIST,
+	N_COND,
+	N_ENUM,
+	N_ENUMITEM,
+	N_ENUMLIST,
+	N_LOOP,
+	N_BREAK,
+	N_CONTINUE,
+	N_RETURN,
+	N_VARDECL,
+	N_ASSIGN,
+	N_SIZEOF,
+	N_REF,
+	N_DEREF,
+	N_CAST,
+	N_INDEX,
+	N_LT,
+	N_GT,
+	N_LE,
+	N_GE,
+	N_EQ,
+	N_NE,
+	N_ADD,
+	N_SUB,
+	N_MUL,
+	N_LSH,
+	N_RSH,
+	N_BNOT,
+	N_BOR,
+	N_BAND,
+	N_AND,
+	N_OR,
+	N_XOR,
+	N_NOT,
+	N_POS,
+	N_NEG,
+	N_DIV,
+	N_MOD,
+};
+
+// Construct a node
+struct node *
+mknode(int kind, struct node *a, struct node *b)
+{
+	struct node *n;
+
+	n = malloc(sizeof(*n));
+	if (!n) {
+		die("out of memory");
+	}
+
+	n->kind = kind;
+	n->a = a;
+	n->b = b;
+	n->t = 0;
+	n->n = 0;
+	n->s = 0;
+	n->offset = 0;
+	n->filename = filename;
+	n->lineno = lineno;
+
+	return n;
+}
+
+// Copy the current token
+unsigned char *
+intern(void)
+{
+	unsigned char *ret;
+	int i;
+
+	ret = malloc(tlen + 1);
+	if (!ret) {
+		return 0;
+	}
+
+	i = 0;
+	while (1) {
+		if (i >= tlen) {
+			break;
+		}
+		ret[i] = token[i];
+		i = i + 1;
+	}
+	ret[i] = 0;
+
+	return ret;
+}
+
+// ident := IDENT
+struct node *
+ident(void)
+{
+	struct node *n;
+
+	if (tt != T_IDENT) {
+		return 0;
+	}
+
+	n = mknode(N_IDENT, 0, 0);
+	n->s = intern();
+	feed();
+
+	return n;
+}
+
+struct node *
+hex(void)
+{
+	struct node *n;
+	long x;
+	int i;
+	int d;
+
+	x = 0;
+	i = 0;
+	while (1) {
+		if (i >= tlen) {
+			break;
+		}
+
+		d = token[i];
+
+		if (d >= '0' && d <= '9') {
+			d = d - '0';
+		} else if (d >= 'a' && d <= 'f') {
+			d = d - 'a' + 10;
+		} else {
+			d = d - 'A' + 10;
+		}
+
+		x = x * 16;
+		x = x + d;
+		i = i + 1;
+
+		if (x > 0x7fffffff) {
+			die("overflow");
+		}
+	}
+
+	n = mknode(N_NUM, 0, 0);
+	n->n = x;
+	feed();
+
+	return n;
+}
+
+// num := NUM
+struct node *
+num(void)
+{
+	struct node *n;
+	long x;
+	int d;
+	int i;
+
+	if (tt == T_HEX) {
+		return hex();
+	}
+
+	if (tt != T_NUM) {
+		return 0;
+	}
+
+	x = 0;
+	i = 0;
+	while (1) {
+		if (i >= tlen) {
+			break;
+		}
+
+		d = token[i] - '0';
+
+		x = x * 10;
+
+		x = x + d;
+		i = i + 1;
+
+		if (x > 0x7fffffff) {
+			die("overflow");
+		}
+	}
+
+	n = mknode(N_NUM, 0, 0);
+	n->n = x;
+	feed();
+
+	return n;
+}
+
+// chr := CHAR
+struct node *
+chr(void)
+{
+	struct node *n;
+
+	if (tt != T_CHAR) {
+		return 0;
+	}
+
+	n = mknode(N_CHAR, 0, 0);
+	n->n = token[0];
+	feed();
+
+	return n;
+}
+
+// str := STR
+struct node *
+str(void)
+{
+	struct node *n;
+
+	if (tt != T_STR) {
+		return 0;
+	}
+
+	n = mknode(N_STR, 0, 0);
+	n->s = intern();
+	feed();
+
+	return n;
+}
+
+// primary := ident
+//          | num
+//          | str
+//          | chr
+//          | '(' expr ')'
+struct node *
+primary(void)
+{
+	struct node *n;
+
+	n = ident();
+	if (n) {
+		return n;
+	}
+
+	n = num();
+	if (n) {
+		return n;
+	}
+
+	n = str();
+	if (n) {
+		return n;
+	}
+
+	n = chr();
+	if (n) {
+		return n;
+	}
+
+	if (tt == T_LPAR) {
+		feed();
+
+		n = expr();
+		if (!n) {
+			die("expected expr");
+		}
+
+		if (tt != T_RPAR) {
+			die("expected )");
+		}
+		feed();
+
+		return n;
+	}
+
+	return 0;
+}
+
+// expr_list := expr
+//            | expr ',' expr_list
+struct node *
+expr_list(void)
+{
+	struct node *n;
+	struct node *e;
+	struct node *a;
+
+	a = expr();
+	if (!a) {
+		return 0;
+	}
+
+	e = mknode(N_EXPRLIST, a, 0);
+	n = e;
+
+	while (1) {
+		if (tt != T_COMMA) {
+			return n;
+		}
+		feed();
+
+		a = expr();
+		if (!a) {
+			die("expected expr");
+		}
+
+		e->b = mknode(N_EXPRLIST, a, 0);
+		e = e->b;
+	}
+}
+
+// post_expr := primary
+//            | 'sizeof' '(' expr ')'
+//            | post_expr '[' expr ']'
+//            | post_expr '(' expr_list ')'
+//            | post_expr '.' ident
+//            | post_expr ':' type
+struct node *
+post_expr(void)
+{
+	struct node *n;
+	struct node *b;
+
+	if (tt == T_IDENT && !cmp(token, (unsigned char *)"sizeof")) {
+		feed();
+
+		if (tt != T_LPAR) {
+			die("expected (");
+		}
+		feed();
+
+		n = expr();
+		if (!n) {
+			die("expected expr");
+		}
+
+		if (tt != T_RPAR) {
+			die("expected )");
+		}
+		feed();
+
+		return mknode(N_SIZEOF, n, 0);;
+	}
+
+	n = primary();
+	if (!n) {
+		return 0;
+	}
+
+	while (1) {
+		if (tt == T_LSQ) {
+			feed();
+
+			b = expr();
+
+			if (tt != T_RSQ) {
+				die("expected ]");
+			}
+			feed();
+
+			n = mknode(N_INDEX, n, b);
+		} else if (tt == T_LPAR) {
+			feed();
+
+			b = expr_list();
+
+			if (tt != T_RPAR) {
+				die("expected )");
+			}
+			feed();
+
+			n  = mknode(N_CALL, n, b);
+		} else if (tt == T_DOT) {
+			feed();
+
+			b = ident();
+			if (!b) {
+				die("expected ident");
+			}
+
+			n = mknode(N_DOT, n, b);
+		} else if (tt == T_COLON) {
+			feed();
+
+			b = type();
+			if (!b) {
+				die("expected type");
+			}
+
+			n = mknode(N_CAST, n, b);
+		} else {
+			return n;
+		}
+	}
+}
+
+// unary_expr := post_expr
+//             | '&' unary_expr
+//             | '*' unary_expr
+//             | '+' unary_expr
+//             | '-' unary_expr
+//             | '~' unary_expr
+//             | '!' unary_expr
+struct node *
+unary_expr(void)
+{
+	struct node *n;
+
+	if (tt == T_AMP) {
+		feed();
+
+		n = unary_expr();
+		if (!n) {
+			die("expected unary_expr");
+		}
+
+		return mknode(N_REF, n, 0);
+	}
+
+	if (tt == T_STAR) {
+		feed();
+
+		n = unary_expr();
+		if (!n) {
+			die("expected unary_expr");
+		}
+
+		return mknode(N_DEREF, n, 0);
+	}
+
+	if (tt == T_ADD) {
+		feed();
+
+		n = unary_expr();
+		if (!n) {
+			die("expected unary_expr");
+		}
+
+		return mknode(N_POS, n, 0);
+	}
+
+	if (tt == T_SUB) {
+		feed();
+
+		n = unary_expr();
+		if (!n) {
+			die("expected unary_expr");
+		}
+
+		return mknode(N_NEG, n, 0);
+	}
+
+	if (tt == T_NOT) {
+		feed();
+
+		n = unary_expr();
+		if (!n) {
+			die("expected unary_expr");
+		}
+
+		return mknode(N_NOT, n, 0);
+	}
+
+	if (tt == T_BANG) {
+		feed();
+
+		n = unary_expr();
+		if (!n) {
+			die("expected unary_expr");
+		}
+
+		return mknode(N_BNOT, n, 0);
+	}
+
+	return post_expr();
+}
+
+
+// shift_expr := unary_expr
+//             | shift_expr '<<' unary_expr
+//             | shift_expr '>>' unary_expr
+struct node *
+shift_expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = unary_expr();
+	if (!a) {
+		return 0;
+	}
+
+	while (1) {
+		if (tt == T_LSH) {
+			feed();
+
+			b = unary_expr();
+			if (!b) {
+				die("expected unary_expr");
+			}
+
+			a = mknode(N_LSH, a, b);
+		} else if (tt == T_RSH) {
+			feed();
+
+			b = unary_expr();
+			if (!b) {
+				die("expected unary_expr");
+			}
+
+			a = mknode(N_RSH, a, b);
+		} else {
+			return a;
+		}
+	}
+}
+
+// mul_expr := shift_expr
+//           | mul_expr '*' shift_expr
+//           | mul_expr '/' shift_expr
+//           | mul_expr '%' shift_expr
+//           | mul_expr '&' shift_expr
+struct node *
+mul_expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = shift_expr();
+	if (!a) {
+		return 0;
+	}
+
+	while (1) {
+		if (tt == T_STAR) {
+			feed();
+
+			b = shift_expr();
+			if (!b) {
+				die("expected shift_expr");
+			}
+
+			a = mknode(N_MUL, a, b);
+		} else if (tt == T_DIV) {
+			feed();
+
+			b = shift_expr();
+			if (!b) {
+				die("expected shift_expr");
+			}
+
+			a = mknode(N_DIV, a, b);
+		} else if (tt == T_MOD) {
+			feed();
+
+			b = shift_expr();
+			if (!b) {
+				die("expected shift_expr");
+			}
+
+			a = mknode(N_MOD, a, b);
+		} else if (tt == T_AMP) {
+			feed();
+
+			b = shift_expr();
+			if (!b) {
+				die("expected shift_expr");
+			}
+
+			a = mknode(N_AND, a, b);
+		} else {
+			return a;
+		}
+	}
+}
+
+// add_expr := mul_expr
+//           | add_expr '+' mul_expr
+//           | add_expr '-' mul_expr
+//           | add_expr '|' mul_expr
+//           | add_expr '^' mul_expr
+struct node *
+add_expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = mul_expr();
+	if (!a) {
+		return 0;
+	}
+
+	while (1) {
+		if (tt == T_ADD) {
+			feed();
+
+			b = mul_expr();
+			if (!b) {
+				die("expected mul_expr");
+			}
+
+			a = mknode(N_ADD, a, b);
+		} else if (tt == T_SUB) {
+			feed();
+
+			b = mul_expr();
+			if (!b) {
+				die("expected mul_expr");
+			}
+
+			a = mknode(N_SUB, a, b);
+		} else if (tt == T_OR) {
+			feed();
+
+			b = mul_expr();
+			if (!b) {
+				die("expected mul_expr");
+			}
+
+			a = mknode(N_OR, a, b);
+		} else if (tt == T_XOR) {
+			feed();
+
+			b = mul_expr();
+			if (!b) {
+				die("expected mul_expr");
+			}
+
+			a = mknode(N_XOR, a, b);
+		} else {
+			return a;
+		}
+	}
+}
+
+// comp_expr := add_expr
+//            | add_expr '<' add_expr
+//            | add_expr '>' add_expr
+//            | add_expr '<=' add_expr
+//            | add_expr '>=' add_expr
+//            | add_expr '==' add_expr
+//            | add_expr '!=' add_expr
+struct node *
+comp_expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = add_expr();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt == T_LT) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_LT, a, b);
+	}
+
+	if (tt == T_GT) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_GT, a, b);
+	}
+
+	if (tt == T_LE) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_LE, a, b);
+	}
+
+	if (tt == T_GE) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_GE, a, b);
+	}
+
+	if (tt == T_EQ) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_EQ, a, b);
+	}
+
+	if (tt == T_NE) {
+		feed();
+
+		b = add_expr();
+		if (!b) {
+			die("expected add_expr");
+		}
+
+		return mknode(N_NE, a, b);
+	}
+
+	return a;
+}
+
+// bool_expr := bool_expr
+//            | comp_expr '&&' bool_expr
+//            | comp_expr '||' bool_expr
+struct node *
+bool_expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = comp_expr();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt == T_BAND) {
+		feed();
+
+		b = bool_expr();
+		if (!b) {
+			die("expected bool_expr");
+		}
+
+		return mknode(N_BAND, a, b);
+	}
+
+	if (tt == T_BOR) {
+		feed();
+
+		b = bool_expr();
+		if (!b) {
+			die("expected bool_expr");
+		}
+
+		return mknode(N_BOR, a, b);
+	}
+
+	return a;
+}
+
+// expr := bool_expr
+//       | bool_expr '=' expr
+struct node *
+expr(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = bool_expr();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt == T_ASSIGN) {
+		feed();
+
+		b = expr();
+		if (!b) {
+			die("expected expr");
+		}
+
+		return mknode(N_ASSIGN, a, b);
+	}
+
+	return a;
+}
+
+// if_stmt := 'if' expr '{' stmt_list '}'
+//          | 'if' expr '{' stmt_list '}' 'else' if_stmt
+//          | 'if' expr '{' stmt_list '}' 'else' '{' stmt_list '}'
+struct node *
+if_stmt(void)
+{
+	struct node *n;
+	struct node *e;
+	struct node *a;
+	struct node *b;
+
+	if (tt != T_IDENT || cmp(token, (unsigned char *)"if")) {
+		return 0;
+	}
+	feed();
+
+	n = mknode(N_CONDLIST, 0, 0);
+	e = n;
+
+	while (1) {
+		a = expr();
+		if (!a) {
+			die("expected expr");
+		}
+
+		if (tt != T_LBRA) {
+			die("expected {");
+		}
+		feed();
+
+		b = stmt_list();
+
+		if (tt != T_RBRA) {
+			die("expected }");
+		}
+		feed();
+
+		e->a = mknode(N_COND, a, b);
+
+		if (tt != T_IDENT || cmp(token, (unsigned char *)"else")) {
+			return n;
+		}
+		feed();
+
+		if (tt == T_LBRA) {
+			feed();
+
+			b = stmt_list();
+
+			if (tt != T_RBRA) {
+				die("expected }");
+			}
+			feed();
+
+			e->b = mknode(N_CONDLIST, mknode(N_COND, 0, b), 0);
+
+			return n;
+		}
+
+		if (tt != T_IDENT || cmp(token, (unsigned char *)"if")) {
+			die("expected if");
+		}
+		feed();
+
+		e->b = mknode(N_CONDLIST, 0, 0);
+		e = e->b;
+	}
+}
+
+// loop_stmt := 'loop' '{' stmt_list '}'
+struct node *
+loop_stmt(void)
+{
+	struct node *a;
+
+	if (tt != T_IDENT || cmp(token, (unsigned char *)"loop")) {
+		return 0;
+	}
+	feed();
+
+	if (tt != T_LBRA) {
+		die("expected {");
+	}
+	feed();
+
+	a = stmt_list();
+
+	if (tt != T_RBRA) {
+		die("expected }");
+	}
+	feed();
+
+	return mknode(N_LOOP, a, 0);
+}
+
+// break_stmt := 'break'
+struct node *
+break_stmt(void)
+{
+	if (tt != T_IDENT || cmp(token, (unsigned char *)"break")) {
+		return 0;
+	}
+	feed();
+
+	return mknode(N_BREAK, 0, 0);
+}
+
+// continue_stmt := 'continue'
+struct node *
+continue_stmt(void)
+{
+	if (tt != T_IDENT || cmp(token, (unsigned char *)"continue")) {
+		return 0;
+	}
+	feed();
+
+	return mknode(N_CONTINUE, 0, 0);
+}
+
+// return_stmt := 'return'
+//              | 'return' expr
+struct node *
+return_stmt(void)
+{
+	struct node *a;
+
+	if (tt != T_IDENT || cmp(token, (unsigned char *)"return")) {
+		return 0;
+	}
+	feed();
+
+	a = expr();
+
+	return mknode(N_RETURN, a, 0);
+}
+
+// var_decl := ident ':' type
+struct node *
+var_decl(void)
+{
+	struct node *n;
+	struct node *a;
+	struct node *b;
+
+	a = ident();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt != T_COLON) {
+		die("expected :");
+	}
+	feed();
+
+	b = type();
+	if (!b) {
+		die("expected type");
+	}
+
+	return mknode(N_VARDECL, a, b);
+}
+
+// var_stmt := 'var' var_decl
+struct node *
+var_stmt(void)
+{
+	struct node *a;
+
+	if (tt != T_IDENT || cmp(token, (unsigned char *)"var")) {
+		return 0;
+	}
+	feed();
+
+	a = var_decl();
+	if (!a) {
+		die("expected var_decl");
+	}
+
+	return a;
+}
+
+// stmt := if_stmt
+//       | loop_stmt
+//       | break_stmt ';'
+//       | continue_stmt ';'
+//       | return_stmt ';'
+//       | var_stmt ';'
+//       | expr ';'
+struct node *
+stmt(void)
+{
+	struct node *n;
+
+	n = if_stmt();
+	if (n) {
+		return n;
+	}
+
+	n = loop_stmt();
+	if (n) {
+		return n;
+	}
+
+	n = break_stmt();
+	if (n) {
+		if (tt != T_SEMI) {
+			die("expected ;");
+		}
+		feed();
+
+		return n;
+	}
+
+	n = return_stmt();
+	if (n) {
+		if (tt != T_SEMI) {
+			die("expected ;");
+		}
+		feed();
+
+		return n;
+	}
+
+	n = continue_stmt();
+	if (n) {
+		if (tt != T_SEMI) {
+			die("expected ;");
+		}
+		feed();
+
+		return n;
+	}
+
+	n = var_stmt();
+	if (n) {
+		if (tt != T_SEMI) {
+			die("expected ;");
+		}
+		feed();
+
+		return n;
+	}
+
+	n = expr();
+	if (n) {
+		if (tt != T_SEMI) {
+			die("expected ;");
+		}
+		feed();
+
+		return n;
+	}
+
+	return 0;
+}
+
+// stmt_list := stmt
+//            | stmt stmt_list
+struct node *
+stmt_list(void)
+{
+	struct node *n;
+	struct node *e;
+	struct node *a;
+
+	a = stmt();
+	if (!a) {
+		return 0;
+	}
+
+	e = mknode(N_STMTLIST, a, 0);
+	n = e;
+
+	while (1) {
+		a = stmt();
+		if (!a) {
+			return n;
+		}
+
+		e->b = mknode(N_STMTLIST, a, 0);
+		e = e->b;
+	}
+}
+
+// type := ident
+//       | '*' type
+//       | '(' type ')'
+struct node *
+type(void)
+{
+	struct node *n;
+
+	if (tt == T_STAR) {
+		feed();
+
+		n = type();
+
+		return mknode(N_PTRTYPE, n, 0);
+	}
+
+	if (tt == T_LPAR) {
+		feed();
+
+		n = type();
+
+		if (tt != T_RPAR) {
+			die("expected )");
+		}
+		feed();
+
+		return n;
+	}
+
+	return ident();
+}
+
+// arg_decl := ':' type
+//             ident ':' type
+struct node *
+arg_decl(void)
+{
+	struct node *n;
+	struct node *a;
+	struct node *b;
+
+	a = ident();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt != T_COLON) {
+		die("expected :");
+	}
+	feed();
+
+	b = type();
+	if (!b) {
+		die("expected type");
+	}
+
+	return mknode(N_ARGDECL, a, b);
+}
+
+// arg_list := arg_decl
+//           | arg_decl ',' arg_list
+struct node *
+arg_list(void)
+{
+	struct node *n;
+	struct node *e;
+	struct node *a;
+
+	a = arg_decl();
+	if (!a) {
+		return 0;
+	}
+
+	e = mknode(N_ARGLIST, a, 0);
+	n = e;
+
+	while (1) {
+		if (tt != T_COMMA) {
+			return n;
+		}
+		feed();
+
+		a = arg_decl();
+		if (!a) {
+			die("expected identifier");
+		}
+
+		e->b = mknode(N_ARGLIST, a, 0);
+		e = e->b;
+	}
+}
+
+// func_decl := ident '(' ')' ':' type
+//            | ident '(' arg_list ')' ':' type
+//            | ident '(' ')'
+//            | ident '(' arg_list ')'
+struct node *
+func_decl(void)
+{
+	struct node *a;
+	struct node *b;
+	struct node *c;
+
+	a = ident();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt != T_LPAR) {
+		die("expected (");
+	}
+	feed();
+
+	b = arg_list();
+
+	if (tt != T_RPAR) {
+		die("expected )");
+	}
+	feed();
+
+	if (tt != T_COLON) {
+		return mknode(N_FUNCDECL, a, mknode(N_FUNCTYPE, b, 0));
+	}
+	feed();
+
+	c = type();
+	if (!c) {
+		die("expected type");
+	}
+
+	return mknode(N_FUNCDECL, a, mknode(N_FUNCTYPE, b, c));
+}
+
+
+// func := func_decl '{' stmt_list '}'
+//       | func_decl ';'
+struct node *
+func(void)
+{
+	struct node *n;
+	struct node *a;
+	struct node *b;
+
+	a = func_decl();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt == T_SEMI) {
+		feed();
+		return a;
+	}
+
+	if (tt != T_LBRA) {
+		die("expected {");
+	}
+	feed();
+
+	b = stmt_list();
+
+	if (tt != T_RBRA) {
+		die("expected }");
+	}
+	feed();
+
+	return mknode(N_FUNC, a, b);
+}
+
+// member_decl := ident ':' type
+struct node *
+member_decl(void)
+{
+	struct node *n;
+	struct node *a;
+	struct node *b;
+
+	a = ident();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt != T_COLON) {
+		die("expected :");
+	}
+	feed();
+
+	b = type();
+	if (!b) {
+		die("expected type");
+	}
+
+	return mknode(N_MEMBERDECL, a, b);
+}
+
+// enum_item := ident
+//            | ident '=' num
+struct node *
+enum_item(void)
+{
+	struct node *a;
+	struct node *b;
+
+	a = ident();
+	if (!a) {
+		return 0;
+	}
+
+	if (tt != T_ASSIGN) {
+		return mknode(N_ENUMITEM, a, 0);
+	}
+	feed();
+
+	b = num();
+	if (!b) {
+		die("expected num");
+	}
+
+	return mknode(N_ENUMITEM, a, b);
+}
+
+// enum_list := enum_item
+//            | enum_list ',' enum_list
+struct node *
+enum_list(void)
+{
+	struct node *n;
+	struct node *e;
+	struct node *a;
+
+	a = enum_item();
+	if (!a) {
+		return 0;
+	}
+
+	e = mknode(N_ENUMLIST, a, 0);
+	n = e;
+
+	while (1) {
+		if (tt != T_COMMA) {
+			return n;
+		}
+		feed();
+
+		a = enum_item();
+		if (!a) {
+			return n;
+		}
+
+		e->b = mknode(N_ENUMLIST, a, 0);
+		e = e->b;
+	}
+}
+
+// enum_decl := 'enum' ident '{' enum_list '}'
+struct node *
+enum_decl(void)
+{
+	struct node *b;
+
+	if (tt != T_IDENT) {
+		return 0;
+	}
+
+	if (cmp(token, (unsigned char *)"enum")) {
+		return 0;
+	}
+	feed();
+
+	if (tt != T_LBRA) {
+		die("expected {");
+	}
+	feed();
+
+	b = enum_list();
+
+	if (tt != T_RBRA) {
+		die("expected }");
+	}
+	feed();
+
+	return mknode(N_ENUM, 0, b);
+}
+
+// member_list := member_decl
+//              | member_decl ';' member_list
+struct node *
+member_list(void)
+{
+	struct node *n;
+	struct node *e;
+	struct node *a;
+
+	a = member_decl();
+	if (!a) {
+		return 0;
+	}
+
+	e = mknode(N_MEMBERLIST, a, 0);
+	n = e;
+
+	while (1) {
+		if (tt != T_SEMI) {
+			return n;
+		}
+		feed();
+
+		a = member_decl();
+		if (!a) {
+			return n;
+		}
+
+		e->b = mknode(N_MEMBERLIST, a, 0);
+		e = e->b;
+	}
+}
+
+// struct_decl := 'struct' ident '{' member_list '}'
+struct node *
+struct_decl(void)
+{
+	struct node *a;
+	struct node *b;
+
+	if (tt != T_IDENT) {
+		return 0;
+	}
+
+	if (cmp(token, (unsigned char *)"struct")) {
+		return 0;
+	}
+	feed();
+
+	a = ident();
+	if (!a) {
+		die("expected ident");
+	}
+
+	if (tt != T_LBRA) {
+		die("expected {");
+	}
+	feed();
+
+	b = member_list();
+
+	if (tt != T_RBRA) {
+		die("expected }");
+	}
+	feed();
+
+	return mknode(N_STRUCT, a, b);
+}
+
+// decl := func
+//       | struct_decl
+struct node *
+decl(void)
+{
+	struct node *n;
+
+	n = enum_decl();
+	if (n) {
+		return n;
+	}
+
+	n = struct_decl();
+	if (n) {
+		return n;
+	}
+
+	return func();
+}
+
+// program := func
+//          | func program
+struct node *
+program(struct node *p)
+{
+	struct node *n;
+	struct node *e;
+	struct node *d;
+
+	d = decl();
+	if (!d) {
+		return p;
+	}
+
+	e = mknode(N_PROGRAM, d, 0);
+	n = e;
+
+	while (1) {
+		d = decl();
+		if (!d) {
+			if (tt != T_EOF) {
+				die("expected eof");
+			}
+
+			e->b = p;
+			return n;
+		}
+
+		e->b = mknode(N_PROGRAM, d, 0);
+		e = e->b;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Setup                                                                     //
+///////////////////////////////////////////////////////////////////////////////
+
+// Prime the parser by reading in the lookahead
+void
+setup(void)
+{
+	filename = (unsigned char *)"<stdin>";
+	fin = stdin;
+	fout = stdout;
+	lineno = 1;
+	nc = 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Type System                                                               //
+///////////////////////////////////////////////////////////////////////////////
+
+enum {
+	TY_VOID,
+	TY_INT,
+	TY_BYTE,
+	TY_PTR,
+	TY_ARG,
+	TY_FUNC,
+	TY_STRUCT,
+};
+
+struct type {
+	int kind;
+	struct sdecl *s;
+	struct type *val;
+	struct type *arg;
+};
+
+struct decl {
+	unsigned char *name;
+	struct decl *p;
+	struct decl *l;
+	struct decl *r;
+	struct type *ftype;
+	struct node *args;
+	struct node *body;
+	struct label *label;
+	struct vdecl *locals;
+	struct vdecl *vlocals;
+	struct vdecl *vargs;
+	int preamble;
+	int defined;
+};
+
+struct vdecl {
+	unsigned char *name;
+	struct vdecl *p;
+	struct vdecl *l;
+	struct vdecl *r;
+	struct vdecl *next;
+	struct type *t;
+	int size;
+	int offset;
+	int defined;
+};
+
+struct mdecl {
+	unsigned char *name;
+	struct mdecl *p;
+	struct mdecl *l;
+	struct mdecl *r;
+	struct mdecl *next;
+	struct type *t;
+	int offset;
+	int defined;
+};
+
+struct sdecl {
+	unsigned char *name;
+	struct sdecl *p;
+	struct sdecl *l;
+	struct sdecl *r;
+	struct mdecl *mem;
+	struct mdecl *vmem;
+	struct mdecl *vmem_last;
+	int size;
+	int computed;
+	int defined;
+};
+
+struct edecl {
+	unsigned char *name;
+	struct edecl *p;
+	struct edecl *l;
+	struct edecl *r;
+	int val;
+	int defined;
+};
+
+struct decl *decls;
+struct sdecl *structs;
+struct edecl *enums;
+
+// Unify two types
+void
+unify(struct type *a, struct type *b)
+{
+	int kind;
+
+	if (!a || !b || a == b) {
+		return;
+	}
+
+	if (a->kind != b->kind) {
+		die("type error");
+	}
+
+	kind = a->kind;
+	if (kind == TY_PTR) {
+		unify(a->val, b->val);
+	} else if (kind == TY_FUNC) {
+		unify(a->val, b->val);
+		unify(a->arg, b->arg);
+	} else if (kind == TY_ARG) {
+		unify(a->val, b->val);
+		unify(a->arg, b->arg);
+	} else if (kind == TY_STRUCT) {
+		if (a->s != b->s) {
+			die("type error");
+		}
+	} else if (kind != TY_VOID && kind != TY_INT && kind != TY_BYTE) {
+		die("unify: invalid type");
+	}
+}
+
+// Find a function declaration by name
+struct decl *
+find(unsigned char *name)
+{
+	struct decl **link;
+	struct decl *d;
+	struct decl *p;
+	int c;
+
+	p = 0;
+	link = &decls;
+	while (1) {
+		d = *link;
+		if (!d) {
+			break;
+		}
+
+		c = cmp(name, d->name);
+
+		if (c < 0) {
+			p = d;
+			link = &d->l;
+		} else if (c > 0) {
+			p = d;
+			link = &d->r;
+		} else {
+			return d;
+		}
+	}
+
+	d = malloc(sizeof(*d));
+	if (!d) {
+		die("out of memory");
+	}
+
+	d->name = name;
+	d->ftype = 0;
+	d->args = 0;
+	d->body = 0;
+	d->p = p;
+	d->l = 0;
+	d->r = 0;
+	d->label = mklabel();
+	d->locals = 0;
+	d->vlocals = 0;
+	d->vargs = 0;
+	d->preamble = 0;
+	d->defined = 0;
+
+	*link = d;
+
+	return d;
+}
+
+// Find a local by name
+struct vdecl *
+vfind(struct decl *f, unsigned char *name, int def)
+{
+	struct vdecl **link;
+	struct vdecl *d;
+	struct vdecl *p;
+	int c;
+
+	p = 0;
+	link = &f->locals;
+	while (1) {
+		d = *link;
+		if (!d) {
+			break;
+		}
+
+		c = cmp(name, d->name);
+
+		if (c < 0) {
+			p = d;
+			link = &d->l;
+		} else if (c > 0) {
+			p = d;
+			link = &d->r;
+		} else {
+			return d;
+		}
+	}
+
+	if (!def) {
+		return 0;
+	}
+
+	d = malloc(sizeof(*d));
+	if (!d) {
+		die("out of memory");
+	}
+
+	d->name = name;
+	d->p = p;
+	d->l = 0;
+	d->r = 0;
+	d->t = 0;
+	d->next = 0;
+	d->size = 0;
+	d->offset = 0;
+	d->defined = 0;
+
+	*link = d;
+
+	return d;
+}
+
+// Find a member by name
+struct mdecl *
+mfind(struct sdecl *s, unsigned char *name)
+{
+	struct mdecl **link;
+	struct mdecl *d;
+	struct mdecl *p;
+	int c;
+
+	p = 0;
+	link = &s->mem;
+	while (1) {
+		d = *link;
+		if (!d) {
+			break;
+		}
+
+		c = cmp(name, d->name);
+
+		if (c < 0) {
+			p = d;
+			link = &d->l;
+		} else if (c > 0) {
+			p = d;
+			link = &d->r;
+		} else {
+			return d;
+		}
+	}
+
+	d = malloc(sizeof(*d));
+	if (!d) {
+		die("out of memory");
+	}
+
+	d->name = name;
+	d->p = p;
+	d->l = 0;
+	d->r = 0;
+	d->t = 0;
+	d->next = 0;
+	d->offset = 0;
+	d->defined = 0;
+
+	if (s->vmem_last) {
+		s->vmem_last->next = d;
+	} else {
+		s->vmem = d;
+	}
+	s->vmem_last = d;
+
+	*link = d;
+
+	return d;
+}
+
+// Find a structure by name
+struct sdecl *
+sfind(unsigned char *name)
+{
+	struct sdecl **link;
+	struct sdecl *d;
+	struct sdecl *p;
+	int c;
+
+	p = 0;
+	link = &structs;
+	while (1) {
+		d = *link;
+		if (!d) {
+			break;
+		}
+
+		c = cmp(name, d->name);
+
+		if (c < 0) {
+			p = d;
+			link = &d->l;
+		} else if (c > 0) {
+			p = d;
+			link = &d->r;
+		} else {
+			return d;
+		}
+	}
+
+	d = malloc(sizeof(*d));
+	if (!d) {
+		die("out of memory");
+	}
+
+	d->name = name;
+	d->p = p;
+	d->l = 0;
+	d->r = 0;
+	d->mem = 0;
+	d->vmem_last = 0;
+	d->vmem = 0;
+	d->size = 0;
+	d->computed = 0;
+	d->defined = 0;
+
+	*link = d;
+
+	return d;
+}
+
+// Find a enum by name
+struct edecl *
+efind(unsigned char *name, int def)
+{
+	struct edecl **link;
+	struct edecl *d;
+	struct edecl *p;
+	int c;
+
+	p = 0;
+	link = &enums;
+	while (1) {
+		d = *link;
+		if (!d) {
+			break;
+		}
+
+		c = cmp(name, d->name);
+
+		if (c < 0) {
+			p = d;
+			link = &d->l;
+		} else if (c > 0) {
+			p = d;
+			link = &d->r;
+		} else {
+			return d;
+		}
+	}
+
+	if (!def) {
+		return 0;
+	}
+
+	d = malloc(sizeof(*d));
+	if (!d) {
+		die("out of memory");
+	}
+
+	d->name = name;
+	d->p = p;
+	d->l = 0;
+	d->r = 0;
+	d->val = 0;
+	d->defined = 0;
+
+	*link = d;
+
+	return d;
+}
+
+struct type *
+mktype(int kind, struct type *val, struct type *arg, struct sdecl *s)
+{
+	struct type *t;
+
+	t = malloc(sizeof(*t));
+	if (!t) {
+		die("out of memory");
+	}
+
+	t->s = s;
+	t->kind = kind;
+	t->val = val;
+	t->arg = arg;
+
+	return t;
+}
+
+// Convert a type node into a type
+struct type *
+prototype(struct node *n)
+{
+	struct type *a;
+	struct type *b;
+	struct sdecl *s;
+	int kind;
+
+	if (!n) {
+		return 0;
+	}
+
+	kind = n->kind;
+	if (kind == N_IDENT) {
+		if (!cmp(n->s, (unsigned char *)"void")) {
+			return mktype(TY_VOID, 0, 0, 0);
+		}
+		if (!cmp(n->s, (unsigned char *)"int")) {
+			return mktype(TY_INT, 0, 0, 0);
+		}
+		if (!cmp(n->s, (unsigned char *)"byte")) {
+			return mktype(TY_BYTE, 0, 0, 0);
+		}
+
+		s = sfind(n->s);
+
+		return mktype(TY_STRUCT, 0, 0, s);
+	} else if (kind == N_ARGLIST) {
+		a = prototype(n->a->b);
+		b = prototype(n->b);
+
+		kind = a->kind;
+		if (kind != TY_INT && kind != TY_BYTE
+				&& kind != TY_PTR && kind != TY_FUNC) {
+			die("not a ptr arg");
+		}
+
+		return mktype(TY_ARG, a, b, 0);
+	} else if (kind == N_FUNCTYPE) {
+		if (n->b) {
+			a = prototype(n->b);
+		} else {
+			a = mktype(TY_VOID, 0, 0, 0);
+		}
+
+		b = prototype(n->a);
+
+		kind = a->kind;
+		if (kind != TY_VOID && kind != TY_INT && kind != TY_BYTE
+				&& kind != TY_PTR && kind != TY_FUNC) {
+			die("not a ptr return");
+		}
+
+		return mktype(TY_FUNC, a, b, 0);
+	} else if (kind == N_PTRTYPE) {
+		return mktype(TY_PTR, prototype(n->a), 0, 0);
+	} else {
+		die("prototype: invalid type");
+		return 0;
+	}
+}
+
+// Evaluate function declaration
+struct decl *
+declare(struct node *n)
+{
+	struct decl *d;
+	struct type *t;
+	d = find(n->a->s);
+	t = prototype(n->b);
+	filename = n->filename;
+	lineno = n->lineno;
+	if (d->ftype) {
+		unify(d->ftype, t);
+	} else {
+		d->ftype = t;
+	}
+	return d;
+}
+
+// Function definition
+void
+define(struct node *n)
+{
+	struct decl *d;
+
+	d = declare(n->a);
+
+	if (d->defined) {
+		die("duplicate declaration");
+	}
+
+	d->body = n->b;
+	d->defined = 1;
+	d->args = n->a->b->a;
+}
+
+struct decl *curfunc;
+struct sdecl *curstruct;
+struct vdecl **link_arg;
+struct vdecl **link_local;
+
+int
+type_isint(struct type *t)
+{
+	return t->kind == TY_INT || t->kind == TY_BYTE;
+}
+
+int
+type_isprim(struct type *t)
+{
+	return t->kind != TY_VOID && t->kind != TY_STRUCT;
+}
+
+void
+typeexpr(struct node *n)
+{
+	struct node *a;
+	struct type *t;
+	struct decl *d;
+	struct vdecl *v;
+	struct mdecl *m;
+	struct edecl *e;
+	int kind;
+
+	kind = n->kind;
+	if (kind == N_STR) {
+		n->t = mktype(TY_PTR, mktype(TY_BYTE, 0, 0, 0), 0, 0);
+	} else if (kind == N_NUM) {
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_CHAR) {
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_CALL) {
+		typeexpr(n->a);
+		t = n->a->t;
+		if (t->kind != TY_FUNC) {
+			die("calling not a function");
+		}
+		a = n->b;
+		t = t->arg;
+		while (1) {
+			if (!a || !t) {
+				break;
+			}
+			typeexpr(a->a);
+			unify(a->a->t, t->val);
+			a = a->b;
+			t = t->arg;
+		}
+		if (a || t) {
+			die("wrong number of arguments");
+		}
+		n->t = n->a->t->val;
+	} else if (kind == N_DOT) {
+		typeexpr(n->a);
+		t = n->a->t;
+		if (t->kind == TY_PTR) {
+			t = t->val;
+		}
+		if (t->kind != TY_STRUCT) {
+			die("dot not a struct");
+		}
+		m = mfind(t->s, n->b->s);
+		if (!m->defined) {
+			die("no such member");
+		}
+		n->t = m->t;
+		n->offset = m->offset;
+	} else if (kind == N_IDENT) {
+		e = efind(n->s, 0);
+		if (e) {
+			n->t = mktype(TY_INT, 0, 0, 0);
+		} else {
+			v = vfind(curfunc, n->s, 0);
+			if (v) {
+				n->t = v->t;
+			} else {
+				d = find(n->s);
+				if (!d->ftype) {
+					die("no such variable");
+				}
+				n->t = d->ftype;
+			}
+		}
+	} else if (kind == N_ASSIGN) {
+		typeexpr(n->a);
+		typeexpr(n->b);
+		unify(n->a->t, n->b->t);
+		t = n->a->t;
+		n->t = t;
+		if (t->kind != TY_INT && t->kind != TY_BYTE
+				&& t->kind != TY_PTR && t->kind != TY_FUNC) {
+			die("assignment not primitive");
+		}
+	} else if (kind == N_SIZEOF) {
+		typeexpr(n->a);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_REF) {
+		typeexpr(n->a);
+		t = n->a->t;
+		n->t = mktype(TY_PTR, t, 0, 0);
+	} else if (kind == N_DEREF) {
+		typeexpr(n->a);
+		t = n->a->t;
+		if (t->kind != TY_PTR) {
+			die("deref not a pointer");
+		}
+		t = t->val;
+		n->t = t;
+	} else if (kind == N_INDEX) {
+		typeexpr(n->a);
+		t = n->a->t;
+		if (t->kind != TY_PTR) {
+			die("not a pointer");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		n->t = t->val;
+		n->offset = type_sizeof(t->val);
+		if (t->val->kind == TY_BYTE) {
+			n->offset = 1;
+		}
+	} else if (kind == N_LT) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_GT) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_LE) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_GE) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_EQ) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_NE) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_ADD) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_SUB) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_MUL) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_DIV) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_MOD) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		unify(n->a->t, n->b->t);
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_LSH) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_RSH) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		typeexpr(n->b);
+		if (!type_isint(n->b->t)) {
+			die("not an int");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_BNOT) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_BOR) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_BAND) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_POS) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_NEG) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		n->t = n->a->t;
+	} else if (kind == N_NOT) {
+		typeexpr(n->a);
+		if (!type_isint(n->a->t)) {
+			die("not an int");
+		}
+		n->t = n->a->t;
+	} else if (kind == N_AND) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_OR) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_XOR) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not an prim");
+		}
+		typeexpr(n->b);
+		if (!type_isprim(n->b->t)) {
+			die("not an prim");
+		}
+		n->t = mktype(TY_INT, 0, 0, 0);
+	} else if (kind == N_CAST) {
+		typeexpr(n->a);
+		if (!type_isprim(n->a->t)) {
+			die("not a primitive");
+		}
+		n->t = prototype(n->b);
+	} else {
+		die("not an expression");
+	}
+}
+
+void
+typelocal(struct node *n)
+{
+	unsigned char *name;
+	struct type *t;
+	struct vdecl *v;
+	int size;
+
+	name = n->a->s;
+	t = prototype(n->b);
+
+	v = vfind(curfunc, name, 1);
+
+	if (v->defined) {
+		die("duplicate variable");
+	}
+
+	v->t = t;
+	v->defined = 1;
+
+	size = type_sizeof(t);
+
+	curfunc->preamble = curfunc->preamble + size;
+	v->offset = -curfunc->preamble;
+
+	*link_local = v;
+	link_local = &v->next;
+}
+
+void
+typearg(struct node *n, int offset)
+{
+	unsigned char *name;
+	struct type *t;
+	struct vdecl *v;
+
+	name = n->a->s;
+	t = prototype(n->b);
+
+	v = vfind(curfunc, name, 1);
+
+	if (v->defined) {
+		die("duplicate variable");
+	}
+
+	v->t = t;
+	v->defined = 1;
+	v->offset = offset;
+
+	*link_arg = v;
+	link_arg = &v->next;
+}
+
+// Type a statement
+void
+typestmt(struct node *n)
+{
+	int kind;
+
+	if (!n) {
+		return;
+	}
+
+	filename = n->filename;
+	lineno = n->lineno;
+
+	kind = n->kind;
+	if (kind == N_CONDLIST) {
+		while (1) {
+			if (!n) {
+				break;
+			}
+			typestmt(n->a->a);
+			typestmt(n->a->b);
+			n = n->b;
+		}
+	} else if (kind == N_STMTLIST) {
+		while (1) {
+			if (!n) {
+				break;
+			}
+			typestmt(n->a);
+			n = n->b;
+		}
+	} else if (kind == N_LOOP) {
+		typestmt(n->a);
+	} else if (kind == N_RETURN) {
+		if (n->a) {
+			if (curfunc->ftype->val->kind == TY_VOID) {
+				die("returning a value in a void function");
+			}
+			typeexpr(n->a);
+			unify(n->a->t, curfunc->ftype->val);
+		} else {
+			if (curfunc->ftype->val->kind != TY_VOID) {
+				die("returning void in a non void function");
+			}
+		}
+	} else if (kind == N_VARDECL) {
+		typelocal(n);
+	} else if (kind != N_BREAK && kind != N_CONTINUE) {
+		typeexpr(n);
+	}
+}
+
+// Find the first decl in a subtree
+struct decl *
+mindecl(struct decl *d)
+{
+	while (1) {
+		if (!d || !d->l) {
+			return d;
+		}
+		d = d->l;
+	}
+}
+
+// Find the next declaration
+struct decl *
+nextdecl(struct decl *d)
+{
+	if (!d) {
+		return 0;
+	}
+
+	if (d->r) {
+		return mindecl(d->r);
+	}
+
+	while (1) {
+		if (!d->p) {
+			return 0;
+		}
+		if (d->p->l == d) {
+			return d->p;
+		}
+		d = d->p;
+	}
+}
+
+// Find the first declaration
+struct decl *
+firstdecl(void)
+{
+	return mindecl(decls);
+}
+
+struct sdecl *
+minsdecl(struct sdecl *d)
+{
+	while (1) {
+		if (!d || !d->l) {
+			return d;
+		}
+		d = d->l;
+	}
+}
+
+struct sdecl *
+sfirst(void)
+{
+	return minsdecl(structs);
+}
+
+struct sdecl *
+snext(struct sdecl *d)
+{
+	if (!d) {
+		return 0;
+	}
+
+	if (d->r) {
+		return minsdecl(d->r);
+	}
+
+	while (1) {
+		if (!d->p) {
+			return 0;
+		}
+		if (d->p->l == d) {
+			return d->p;
+		}
+		d = d->p;
+	}
+}
+
+// Define a struct member
+void
+defmember(struct node *n)
+{
+	struct mdecl *m;
+	unsigned char *name;
+
+	name = n->a->s;
+
+	m = mfind(curstruct, name);
+
+	if (m->defined) {
+		die("duplicate memeber");
+	}
+
+	m->defined = 1;
+	m->t = prototype(n->b);
+}
+
+// Define a struct type
+void
+defstruct(struct node *n)
+{
+	struct sdecl *d;
+	unsigned char *name;
+	struct node *m;
+
+	name = n->a->s;
+
+	if (!cmp(name, (unsigned char *)"int")) {
+		die("int is reserved");
+	}
+
+	if (!cmp(name, (unsigned char *)"byte")) {
+		die("byte is reserved");
+	}
+
+	if (!cmp(name, (unsigned char *)"func")) {
+		die("func is reserved");
+	}
+
+	d = sfind(name);
+	if (d->defined) {
+		die("duplicate struct");
+	}
+
+	d->defined = 1;
+
+	curstruct = d;
+
+	m = n->b;
+	while (1) {
+		if (!m) {
+			break;
+		}
+
+		defmember(m->a);
+
+		m = m->b;
+	}
+}
+
+void
+defenum(struct node *n)
+{
+	struct edecl *d;
+	int i;
+
+	n = n->b;
+	i = 0;
+	while (1) {
+		if (!n) {
+			break;
+		}
+
+		d = efind(n->a->a->s, 1);
+
+		if (d->defined) {
+			die("duplicate enum");
+		}
+
+		if (n->a->b) {
+			i = n->a->b->n;
+		}
+
+		d->defined = 1;
+		d->val = i;
+
+		i = i + 1;
+		n = n->b;
+	}
+}
+
+int
+type_sizeof(struct type *t)
+{
+	int kind;
+
+	kind = t->kind;
+	if (kind == TY_INT) {
+		return 8;
+	} else if (kind == TY_BYTE) {
+		return 8;
+	} else if (kind == TY_PTR) {
+		return 8;
+	} else if (kind == TY_FUNC) {
+		return 8;
+	} else if (kind == TY_STRUCT) {
+		compute_struct(t->s);
+		return t->s->size;
+	} else {
+		die("sizeof: invalid type");
+		return 0;
+	}
+}
+
+// Depth first compute offset of struct members
+void
+compute_struct(struct sdecl *s)
+{
+	struct mdecl *m;
+	int size;
+
+	if (s->computed) {
+		if (s->computed == 2) {
+			die("circular reference");
+		}
+		return;
+	}
+
+	s->computed = 2;
+
+	size = 0;
+
+	m = s->vmem;
+	while (1) {
+		if (!m) {
+			break;
+		}
+
+		m->offset = size;
+		size = size + type_sizeof(m->t);
+
+		m = m->next;
+	}
+
+	s->size = size;
+	s->computed = 1;
+}
+
+// Evaluate declarations
+void
+typecheck(struct node *p)
+{
+	struct sdecl *s;
+	struct decl *d;
+	struct node *n;
+	int kind;
+	int offset;
+
+	// Process declarations
+	n = p;
+	while (1) {
+		if (!n) {
+			break;
+		}
+
+		kind = n->a->kind;
+		if (kind == N_FUNCDECL) {
+			declare(n->a);
+		} else if (kind == N_FUNC) {
+			define(n->a);
+		} else if (kind == N_STRUCT) {
+			defstruct(n->a);
+		} else if (kind == N_ENUM) {
+			defenum(n->a);
+		} else {
+			die("invalid decl");
+		}
+
+		n = n->b;
+	}
+
+	// Allocate structs
+	s = sfirst();
+	while (1) {
+		if (!s) {
+			break;
+		}
+
+		compute_struct(s);
+
+		s = snext(s);
+	}
+
+	// Check types
+	d = firstdecl();
+	while (1) {
+		if (!d) {
+			break;
+		}
+
+		curfunc = d;
+		link_local = &d->vlocals;
+		link_arg = &d->vargs;
+
+		offset = 16;
+
+		n = d->args;
+		while (1) {
+			if (!n) {
+				break;
+			}
+
+			typearg(n->a, offset);
+
+			n = n->b;
+			offset = offset + 8;
+		}
+
+		typestmt(d->body);
+
+		d = nextdecl(d);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Assembler                                                                 //
+///////////////////////////////////////////////////////////////////////////////
+
+struct label {
+	struct label *next;
+	struct fix *fix;
+	int at;
+	int fixed;
+};
+
+struct fix {
+	struct fix *next;
+	unsigned char *ptr;
+	int at;
+};
+
+struct buf {
+	unsigned char *buf;
+	int fill;
+	int cap;
+	struct buf *next;
+};
+
+int at;
+struct label *labels;
+struct buf *text;
+struct buf *text_end;
+
+// Create a new label
+struct label *
+mklabel(void)
+{
+	struct label *l;
+
+	l = malloc(sizeof(*l));
+	if (!l) {
+		die("out of memory");
+	}
+
+	l->next = labels;
+	l->fix = 0;
+	l->at = 0;
+	l->fixed = 0;
+
+	labels = l;
+
+	return l;
+}
+
+// Reserve size in the output buffer
+void
+reserve(int n)
+{
+	unsigned char *m;
+	struct buf *b;
+
+	if (text_end && text_end->cap - text_end->fill >= n) {
+		return;
+	}
+
+	if (n < 4096) {
+		n = 4096;
+	}
+
+	m = malloc(n);
+	if (!m) {
+		die("out of memory");
+	}
+
+	b = malloc(sizeof(*b));
+	if (!b) {
+		die("out of memory");
+	}
+
+	b->buf = m;
+	b->fill = 0;
+	b->cap = n;
+	b->next = 0;
+
+	if (text_end) {
+		text_end->next = b;
+		text_end = b;
+	} else {
+		text = b;
+		text_end = b;
+	}
+}
+
+// Add a single byte to the output
+void
+emit(int c)
+{
+	reserve(1);
+	text_end->buf[text_end->fill] = c;
+	text_end->fill = text_end->fill + 1;
+	at = at + 1;
+}
+
+// Fix a single reference
+void
+fixup(unsigned char *here, int delta)
+{
+	here[0] = delta;
+	here[1] = delta >> 8;
+	here[2] = delta >> 16;
+	here[3] = delta >> 24;
+}
+
+// Add an new fixup for the current position
+void
+addfixup(struct label *l)
+{
+	struct fix *f;
+	unsigned char *here;
+
+	reserve(4);
+	here = &text_end->buf[text_end->fill];
+
+	emit(0);
+	emit(0);
+	emit(0);
+	emit(0);
+
+	if (l->fixed) {
+		fixup(here, l->at - at);
+	} else {
+		f = malloc(sizeof(*f));
+		if (!f) {
+			die("out of memory");
+		}
+
+		f->next = l->fix;
+		f->ptr = here;
+		f->at = at;
+
+		l->fix = f;
+	}
+}
+
+// Fix references to a label to the current position
+void
+fixup_label(struct label *l)
+{
+	struct fix *f;
+
+	if (l->fixed) {
+		die("already fixed");
+	}
+
+	l->at = at;
+	l->fixed = 1;
+
+	f = l->fix;
+	while (1) {
+		if (!f) {
+			break;
+		}
+		fixup(f->ptr, l->at - f->at);
+		f = f->next;
+	}
+}
+
+void
+emit_ptr(struct label *l)
+{
+	// lea %rax, [l]
+	emit(0x48);
+	emit(0x8d);
+	emit(0x05);
+	addfixup(l);
+	// push %rax
+	emit(0x50);
+}
+
+void
+emit_jmp(struct label *l)
+{
+	// jmp l
+	emit(0xe9);
+	addfixup(l);
+}
+
+void
+emit_num(long x)
+{
+	// movabs rdx, x
+	emit(0x48);
+	emit(0xba);
+	emit(x);
+	emit(x >> 8);
+	emit(x >> 16);
+	emit(x >> 24);
+	emit(x >> 32);
+	emit(x >> 40);
+	emit(x >> 48);
+	emit(x >> 56);
+	// push rdx
+	emit(0x52);
+}
+
+void
+emit_str(unsigned char *s)
+{
+	struct label *a;
+	struct label *b;
+	int i;
+
+	a = mklabel();
+	b = mklabel();
+
+	// jmp b
+	emit_jmp(b);
+
+	// a:
+	fixup_label(a);
+	// .string s
+	while (1) {
+		if (!*s) {
+			break;
+		}
+		emit(*s);
+		s = s + 1;
+	}
+	emit(0);
+
+	// nop sled
+	emit(0x90);
+	emit(0x90);
+	emit(0x90);
+	emit(0x90);
+	emit(0x90);
+	emit(0x90);
+	emit(0x90);
+	emit(0x90);
+
+	// b:
+	fixup_label(b);
+	// push a
+	emit_ptr(a);
+}
+
+void
+emit_pop(int n)
+{
+	n = n * 8;
+	// add rsp, 8*n
+	emit(0x48);
+	emit(0x81);
+	emit(0xc4);
+	emit(n);
+	emit(n >> 8);
+	emit(n >> 16);
+	emit(n >> 24);
+}
+
+void
+emit_preamble(int n, int start)
+{
+	int i;
+	if (start) {
+		// xor rbp, rbp
+		emit(0x48);
+		emit(0x33);
+		emit(0xed);
+		// mov rdi, [rsp]
+		emit(0x48);
+		emit(0x8b);
+		emit(0x3c);
+		emit(0x24);
+		// lea rsi, [rsp + 8]
+		emit(0x48);
+		emit(0x8d);
+		emit(0x74);
+		emit(0x24);
+		emit(0x08);
+		// lea rdx, [rsi + rdi * 8 + 8]
+		emit(0x48);
+		emit(0x8d);
+		emit(0x54);
+		emit(0xfe);
+		emit(0x08);
+		// push rdx
+		emit(0x52);
+		// push rsi
+		emit(0x56);
+		// push rdi
+		emit(0x57);
+		// push rbp
+		emit(0x55);
+	}
+	// push rbp
+	emit(0x55);
+	// mov rbp, rsp
+	emit(0x48);
+	emit(0x8b);
+	emit(0xec);
+	i = 0;
+	while (1) {
+		if (i >= n) {
+			break;
+		}
+		emit_num(0);
+		i = i + 8;
+	}
+}
+
+void
+emit_store(struct type *t)
+{
+	// pop rdi
+	emit(0x5f);
+	// pop rax
+	emit(0x58);
+	if (t->kind == TY_BYTE) {
+		// mov [rdi], al
+		emit(0x40);
+		emit(0x88);
+		emit(0x07);
+	} else if (type_isprim(t)) {
+		// mov [rdi], rax
+		emit(0x48);
+		emit(0x89);
+		emit(0x07);
+	} else {
+		die("invalid store");
+	}
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_load(struct type *t)
+{
+	// pop rdi
+	emit(0x5f);
+	if (t->kind == TY_BYTE) {
+		// xor rax, rax
+		emit(0x48);
+		emit(0x33);
+		emit(0xc0);
+		// mov al, [rdi]
+		emit(0x40);
+		emit(0x8a);
+		emit(0x07);
+	} else if (type_isprim(t)) {
+		// mov rax, [rdi]
+		emit(0x48);
+		emit(0x8b);
+		emit(0x07);
+	} else {
+		die("invalid load");
+	}
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_jz(struct label *l)
+{
+	// pop rax
+	emit(0x58);
+	// test rax, rax
+	emit(0x48);
+	emit(0x85);
+	emit(0xc0);
+	// jz no
+	emit(0x0f);
+	emit(0x84);
+	addfixup(l);
+}
+
+void
+emit_lea(struct vdecl *v)
+{
+	int offset;
+	offset = v->offset;
+	if (offset >= -128 && offset <= 127) {
+		// lea rax, [rbp + v]
+		emit(0x48);
+		emit(0x8d);
+		emit(0x45);
+		emit(offset);
+	} else {
+		// lea rax, [rbp + v]
+		emit(0x48);
+		emit(0x8d);
+		emit(0x85);
+		emit(offset);
+		emit(offset >> 8);
+		emit(offset >> 16);
+		emit(offset >> 24);
+	}
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_and(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rdx
+	emit(0x5a);
+	// and rdx, rax
+	emit(0x48);
+	emit(0x23);
+	emit(0xc2);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_or(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rdx
+	emit(0x5a);
+	// or rdx, rax
+	emit(0x48);
+	emit(0x0b);
+	emit(0xc2);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_xor(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rdx
+	emit(0x5a);
+	// xor rdx, rax
+	emit(0x48);
+	emit(0x33);
+	emit(0xc2);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_add(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rdx
+	emit(0x5a);
+	// add rdx, rax
+	emit(0x48);
+	emit(0x03);
+	emit(0xc2);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_ret(void)
+{
+	// pop rax
+	emit(0x58);
+	// mov rsp, rbp
+	emit(0x48);
+	emit(0x8b);
+	emit(0xe5);
+	// pop rbp
+	emit(0x5d);
+	// ret
+	emit(0xc3);
+}
+
+void
+emit_lcall(struct label *l, int n)
+{
+	// call l
+	emit(0xe8);
+	addfixup(l);
+	// add rsp, 8*(n+1)
+	emit_pop(n);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_call(int n)
+{
+	// pop rax
+	emit(0x58);
+	// call rax
+	emit(0xff);
+	emit(0xd0);
+	// add rsp, 8*(n+1)
+	emit_pop(n);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_gt(void)
+{
+	// pop rdx
+	emit(0x5a);
+	// pop rcx
+	emit(0x59);
+	// xor rax, rax
+	emit(0x48);
+	emit(0x33);
+	emit(0xc0);
+	// cmp rdx, rcx
+	emit(0x48);
+	emit(0x3b);
+	emit(0xd1);
+	// setg al
+	emit(0x48);
+	emit(0x0f);
+	emit(0x9f);
+	emit(0xc0);
+	// mov rax
+	emit(0x50);
+}
+
+void
+emit_lt(void)
+{
+	// pop rdx
+	emit(0x5a);
+	// pop rcx
+	emit(0x59);
+	// xor rax, rax
+	emit(0x48);
+	emit(0x33);
+	emit(0xc0);
+	// cmp rdx, rcx
+	emit(0x48);
+	emit(0x3b);
+	emit(0xd1);
+	// setl al
+	emit(0x48);
+	emit(0x0f);
+	emit(0x9c);
+	emit(0xc0);
+	// mov rax
+	emit(0x50);
+}
+
+void
+emit_ge(void)
+{
+	// pop rdx
+	emit(0x5a);
+	// pop rcx
+	emit(0x59);
+	// xor rax, rax
+	emit(0x48);
+	emit(0x33);
+	emit(0xc0);
+	// cmp rdx, rcx
+	emit(0x48);
+	emit(0x3b);
+	emit(0xd1);
+	// setge al
+	emit(0x48);
+	emit(0x0f);
+	emit(0x9d);
+	emit(0xc0);
+	// mov rax
+	emit(0x50);
+}
+
+void
+emit_le(void)
+{
+	// pop rdx
+	emit(0x5a);
+	// pop rcx
+	emit(0x59);
+	// xor rax, rax
+	emit(0x48);
+	emit(0x33);
+	emit(0xc0);
+	// cmp rdx, rcx
+	emit(0x48);
+	emit(0x3b);
+	emit(0xd1);
+	// setle al
+	emit(0x48);
+	emit(0x0f);
+	emit(0x9e);
+	emit(0xc0);
+	// mov rax
+	emit(0x50);
+}
+
+void
+emit_eq(void)
+{
+	// pop rdx
+	emit(0x5a);
+	// pop rcx
+	emit(0x59);
+	// xor rax, rax
+	emit(0x48);
+	emit(0x33);
+	emit(0xc0);
+	// cmp rdx, rcx
+	emit(0x48);
+	emit(0x3b);
+	emit(0xd1);
+	// sete al
+	emit(0x48);
+	emit(0x0f);
+	emit(0x94);
+	emit(0xc0);
+	// mov rax
+	emit(0x50);
+}
+
+void
+emit_ne(void)
+{
+	// pop rdx
+	emit(0x5a);
+	// pop rcx
+	emit(0x59);
+	// xor rax, rax
+	emit(0x48);
+	emit(0x33);
+	emit(0xc0);
+	// cmp rdx, rcx
+	emit(0x48);
+	emit(0x3b);
+	emit(0xd1);
+	// setne al
+	emit(0x48);
+	emit(0x0f);
+	emit(0x95);
+	emit(0xc0);
+	// mov rax
+	emit(0x50);
+}
+
+void
+emit_sub(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rdx
+	emit(0x5a);
+	// sub rax, rdx
+	emit(0x48);
+	emit(0x2b);
+	emit(0xc2);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_mul(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rcx
+	emit(0x59);
+	// mul rcx
+	emit(0x48);
+	emit(0xf7);
+	emit(0xe1);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_div(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rcx
+	emit(0x59);
+	// xor rdx, rdx
+	emit(0x48);
+	emit(0x33);
+	emit(0xd2);
+	// test rax, rax
+	emit(0x48);
+	emit(0x85);
+	emit(0xc0);
+	// sets dl
+	emit(0x48);
+	emit(0x0f);
+	emit(0x98);
+	emit(0xc2);
+	// neg rdx
+	emit(0x48);
+	emit(0xf7);
+	emit(0xda);
+	// idiv rcx
+	emit(0x48);
+	emit(0xf7);
+	emit(0xf9);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_mod(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rcx
+	emit(0x59);
+	// xor rdx, rdx
+	emit(0x48);
+	emit(0x33);
+	emit(0xd2);
+	// test rax, rax
+	emit(0x48);
+	emit(0x85);
+	emit(0xc0);
+	// sets dl
+	emit(0x48);
+	emit(0x0f);
+	emit(0x98);
+	emit(0xc2);
+	// neg rdx
+	emit(0x48);
+	emit(0xf7);
+	emit(0xda);
+	// idiv rcx
+	emit(0x48);
+	emit(0xf7);
+	emit(0xf9);
+	// push rdx
+	emit(0x52);
+}
+
+void
+emit_lsh(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rcx
+	emit(0x59);
+	// shl rax, cl
+	emit(0x48);
+	emit(0xd3);
+	emit(0xe0);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_rsh(void)
+{
+	// pop rax
+	emit(0x58);
+	// pop rcx
+	emit(0x59);
+	// shr rax, cl
+	emit(0x48);
+	emit(0xd3);
+	emit(0xe8);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_not(void)
+{
+	// pop rax
+	emit(0x58);
+	// neg rax
+	emit(0x48);
+	emit(0xf7);
+	emit(0xd0);
+	// push rax
+	emit(0x50);
+}
+
+void
+emit_neg(void)
+{
+	// pop rax
+	emit(0x58);
+	// neg rax
+	emit(0x48);
+	emit(0xf7);
+	emit(0xd8);
+	// push rax
+	emit(0x50);
+}
+
+// Write the output
+void
+writeout(void)
+{
+	int i;
+	int load_addr;
+	int entry;
+	struct decl *d;
+	struct buf *b;
+	int kentry;
+	int magic;
+	int flags;
+	int checksum;
+	int addr;
+	int end;
+
+	d = find((unsigned char *)"_start");
+	if (!d->defined || !d->label->fixed) {
+		die("no _start function");
+	}
+
+	load_addr = 0x100000;
+	entry = load_addr + d->label->at + 128 + 32;
+	at = at + 128 + 32;
+	end = load_addr + at;
+
+	magic = 0x1badb002;
+	flags = 0x00010003;
+	checksum = -(magic + flags);
+	addr = load_addr + 120;
+
+	d = find((unsigned char *)"_kstart");
+	if (d->defined && d->label->fixed) {
+		kentry = load_addr + d->label->at +128 + 32;
+	} else {
+		magic = 0;
+		kentry = 0;
+	}
+
+	// magic
+	fputc(0x7f, fout);
+	fputc('E', fout);
+	fputc('L', fout);
+	fputc('F', fout);
+
+	// class
+	fputc(2, fout);
+
+	// endian
+	fputc(1, fout);
+
+	// version
+	fputc(1, fout);
+
+	// abi
+	fputc(0, fout);
+
+	// abi version
+	fputc(0, fout);
+
+	// padding
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// type
+	fputc(2, fout);
+	fputc(0, fout);
+
+	// machine
+	fputc(62, fout);
+	fputc(0, fout);
+
+	// version
+	fputc(1, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// entry point
+	fputc(entry, fout);
+	fputc(entry >> 8, fout);
+	fputc(entry >> 16, fout);
+	fputc(entry >> 24, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// phoff
+	fputc(64, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// shoff
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// flags
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// ehsize
+	fputc(64, fout);
+	fputc(0, fout);
+
+	// phentsize
+	fputc(56, fout);
+	fputc(0, fout);
+
+	// phnum
+	fputc(1, fout);
+	fputc(0, fout);
+
+	// shentsize
+	fputc(64, fout);
+	fputc(0, fout);
+
+	// shnum
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// shstrndx
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// phdr[0].type
+	fputc(1, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// phdr[0].flags
+	fputc(5, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// phdr[0].offset
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// phdr[0].vaddr
+	fputc(load_addr, fout);
+	fputc(load_addr >> 8, fout);
+	fputc(load_addr >> 16, fout);
+	fputc(load_addr >> 24, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// phdr[0].paddr
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// phdr[0].filesize
+	fputc(at, fout);
+	fputc(at >> 8, fout);
+	fputc(at >> 16, fout);
+	fputc(at >> 24, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// phdr[0].memsize
+	fputc(at, fout);
+	fputc(at >> 8, fout);
+	fputc(at >> 16, fout);
+	fputc(at >> 24, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// phdr[0].align
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// mb.magic
+	fputc(magic, fout);
+	fputc(magic >> 8, fout);
+	fputc(magic >> 16, fout);
+	fputc(magic >> 24, fout);
+
+	// mb.flags
+	fputc(flags, fout);
+	fputc(flags >> 8, fout);
+	fputc(flags >> 16, fout);
+	fputc(flags >> 24, fout);
+
+	// mb.checksum
+	fputc(checksum, fout);
+	fputc(checksum >> 8, fout);
+	fputc(checksum >> 16, fout);
+	fputc(checksum >> 24, fout);
+
+	// mb.header
+	fputc(addr, fout);
+	fputc(addr >> 8, fout);
+	fputc(addr >> 16, fout);
+	fputc(addr >> 24, fout);
+
+	// mb.load
+	fputc(load_addr, fout);
+	fputc(load_addr >> 8, fout);
+	fputc(load_addr >> 16, fout);
+	fputc(load_addr >> 24, fout);
+
+	// mb.load_end
+	fputc(end, fout);
+	fputc(end >> 8, fout);
+	fputc(end >> 16, fout);
+	fputc(end >> 24, fout);
+
+	// mb.bss_end
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+	fputc(0, fout);
+
+	// mb.entry
+	fputc(kentry, fout);
+	fputc(kentry >> 8, fout);
+	fputc(kentry >> 16, fout);
+	fputc(kentry >> 24, fout);
+
+	// nop sled
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+	fputc(0x90, fout);
+
+	// text
+	b = text;
+	while (1) {
+		if (!b) {
+			break;
+		}
+		i = 0;
+		while (1) {
+			if (i >= b->fill) {
+				break;
+			}
+			fputc(b->buf[i], fout);
+			i = i + 1;
+		}
+		b = b->next;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// stdlib                                                                    //
+///////////////////////////////////////////////////////////////////////////////
+
+// Define "stdlib" functions
+void
+add_stdlib(void)
+{
+	struct label *a;
+	struct label *b;
+	struct decl *d;
+
+	d = find((unsigned char *)"syscall");
+	if (!d->defined) {
+		d->defined = 1;
+		fixup_label(d->label);
+		// push rbp
+		emit(0x55);
+		// mov rbp, rsp
+		emit(0x48);
+		emit(0x8b);
+		emit(0xec);
+		// mov rax, [rbp + 16]
+		emit(0x48);
+		emit(0x8b);
+		emit(0x45);
+		emit(0x10);
+		// mov rdi, [rbp + 24]
+		emit(0x48);
+		emit(0x8b);
+		emit(0x7d);
+		emit(0x18);
+		// mov rsi, [rbp + 32]
+		emit(0x48);
+		emit(0x8b);
+		emit(0x75);
+		emit(0x20);
+		// mov rdx, [rbp + 40]
+		emit(0x48);
+		emit(0x8b);
+		emit(0x55);
+		emit(0x28);
+		// mov r10, [rbp + 48]
+		emit(0x4c);
+		emit(0x8b);
+		emit(0x55);
+		emit(0x30);
+		// mov r8, [rbp + 56]
+		emit(0x4c);
+		emit(0x8b);
+		emit(0x45);
+		emit(0x38);
+		// mov r9, [rbp + 64]
+		emit(0x4c);
+		emit(0x8b);
+		emit(0x4d);
+		emit(0x40);
+		// syscall
+		emit(0x0f);
+		emit(0x05);
+		// push rax
+		emit(0x50);
+		// pop rax
+		emit(0x58);
+		// mov rsp, rbp
+		emit(0x48);
+		emit(0x8b);
+		emit(0xe5);
+		// pop rbp
+		emit(0x5d);
+		// ret
+		emit(0xc3);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Code Generation                                                           //
+///////////////////////////////////////////////////////////////////////////////
+
+// Translate an expression
+void
+texpr(struct node *n, int rhs)
+{
+	struct decl *d;
+	struct vdecl *v;
+	struct edecl *e;
+	struct node *a;
+	struct label *no;
+	struct label *out;
+	int nargs;
+	int kind;
+	int offset;
+
+	kind = n->kind;
+	if (kind == N_IDENT) {
+		e = efind(n->s, 0);
+		if (e) {
+			emit_num(e->val);
+		} else {
+			v = vfind(curfunc, n->s, 0);
+			if (v) {
+				emit_lea(v);
+				if (rhs) {
+					emit_load(n->t);
+				}
+			} else {
+				d = find(n->s);
+				emit_ptr(d->label);
+			}
+		}
+	} else if (kind == N_NUM) {
+		if (!rhs) {
+			die("num is not an lexpr");
+		}
+		emit_num(n->n);
+	} else if (kind == N_CHAR) {
+		if (!rhs) {
+			die("char is not an lexpr");
+		}
+		emit_num(n->n);
+	} else if (kind == N_STR) {
+		if (!rhs) {
+			die("str is not an lexpr");
+		}
+		emit_str(n->s);
+	} else if (kind == N_EXPRLIST) {
+		if (n->b) {
+			texpr(n->b, 1);
+		}
+		texpr(n->a, 1);
+	} else if (kind == N_CALL) {
+		if (!rhs) {
+			die("call is not an lexpr");
+		}
+		nargs = 0;
+		a = n->b;
+		while (1) {
+			if (!a) {
+				break;
+			}
+			nargs = nargs + 1;
+			a = a->b;
+		}
+		if (n->b) {
+			texpr(n->b, 1);
+		}
+		if (n->a->kind == N_IDENT) {
+			v = vfind(curfunc, n->a->s, 0);
+			if (v) {
+				emit_lea(v);
+				emit_load(n->a->t);
+				emit_call(nargs);
+			} else {
+				d = find(n->a->s);
+				emit_lcall(d->label, nargs);
+			}
+		} else {
+			texpr(n->a, 0);
+			emit_call(nargs);
+		}
+	} else if (kind == N_DOT) {
+		texpr(n->a, 0);
+		if (n->a->t->kind == TY_PTR) {
+			emit_load(n->a->t);
+		}
+		emit_num(n->offset);
+		emit_add();
+		if (rhs) {
+			emit_load(n->t);
+		}
+	} else if (kind == N_ASSIGN) {
+		if (!rhs) {
+			die("assign is not an lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 0);
+		emit_store(n->t);
+	} else if (kind == N_SIZEOF) {
+		if (!rhs) {
+			die("sizeof is not an lexpr");
+		}
+		out = mklabel();
+		emit_jmp(out);
+		texpr(n->a, 0);
+		fixup_label(out);
+		if (n->a->t->kind == TY_BYTE) {
+			emit_num(1);
+		} else {
+			emit_num(type_sizeof(n->a->t));
+		}
+	} else if (kind == N_REF) {
+		if (!rhs) {
+			die("ref is not an lexpr");
+		}
+		texpr(n->a, 0);
+	} else if (kind == N_DEREF) {
+		texpr(n->a, 1);
+		if (rhs) {
+			emit_load(n->t);
+		}
+	} else if (kind == N_INDEX) {
+		texpr(n->a, 1);
+		texpr(n->b, 1);
+		emit_num(n->offset);
+		emit_mul();
+		emit_add();
+		if (rhs) {
+			emit_load(n->t);
+		}
+	} else if (kind == N_LT) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_lt();
+	} else if (kind == N_GT) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_gt();
+	} else if (kind == N_LE) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_le();
+	} else if (kind == N_GE) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_ge();
+	} else if (kind == N_EQ) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_eq();
+	} else if (kind == N_NE) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_ne();
+	} else if (kind == N_ADD) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_add();
+	} else if (kind == N_SUB) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_sub();
+	} else if (kind == N_MUL) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_mul();
+	} else if (kind == N_DIV) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_div();
+	} else if (kind == N_MOD) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_mod();
+	} else if (kind == N_LSH) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_lsh();
+	} else if (kind == N_RSH) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_rsh();
+	} else if (kind == N_BNOT) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		no = mklabel();
+		out = mklabel();
+		texpr(n->a, 1);
+		emit_jz(no);
+		emit_num(0);
+		emit_jmp(out);
+		fixup_label(no);
+		emit_num(1);
+		fixup_label(out);
+	} else if (kind == N_BOR) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		no = mklabel();
+		out = mklabel();
+		texpr(n->a, 1);
+		emit_jz(no);
+		emit_num(1);
+		emit_jmp(out);
+		fixup_label(no);
+		no = mklabel();
+		texpr(n->b, 1);
+		emit_jz(no);
+		emit_num(1);
+		emit_jmp(out);
+		fixup_label(no);
+		emit_num(0);
+		fixup_label(out);
+	} else if (kind == N_BAND) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		no = mklabel();
+		out = mklabel();
+		texpr(n->a, 1);
+		emit_jz(no);
+		texpr(n->b, 1);
+		emit_jz(no);
+		emit_num(1);
+		emit_jmp(out);
+		fixup_label(no);
+		emit_num(0);
+		fixup_label(out);
+	} else if (kind == N_POS) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->a, 1);
+	} else if (kind == N_NEG) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->a, 1);
+		emit_neg();
+	} else if (kind == N_CAST) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->a, 1);
+	} else if (kind == N_NOT) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->a, 1);
+		emit_not();
+	} else if (kind == N_AND) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_and();
+	} else if (kind == N_OR) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_or();
+	} else if (kind == N_XOR) {
+		if (!rhs) {
+			die("not lexpr");
+		}
+		texpr(n->b, 1);
+		texpr(n->a, 1);
+		emit_xor();
+	} else {
+		die("invalid expr");
+	}
+}
+
+// Loop top and loop out
+struct label *ltop;
+struct label *lout;
+
+// Translate a statement
+void
+tstmt(struct node *n)
+{
+	struct label *out;
+	struct label *no;
+	struct label *saved_top;
+	struct label *saved_out;
+	int kind;
+
+	if (!n) {
+		return;
+	}
+
+	kind = n->kind;
+	if (kind == N_CONDLIST) {
+		out = mklabel();
+		no = 0;
+		while (1) {
+			if (no) {
+				fixup_label(no);
+			}
+			if (!n) {
+				break;
+			}
+			no = mklabel();
+
+			if (n->a->a) {
+				texpr(n->a->a, 1);
+				emit_jz(no);
+			}
+
+			tstmt(n->a->b);
+			emit_jmp(out);
+			n = n->b;
+		}
+		fixup_label(out);
+	} else if (kind == N_STMTLIST) {
+		while (1) {
+			if (!n) {
+				break;
+			}
+			tstmt(n->a);
+			n = n->b;
+		}
+	} else if (kind == N_LOOP) {
+		saved_top = ltop;
+		saved_out = lout;
+		ltop = mklabel();
+		lout = mklabel();
+		fixup_label(ltop);
+		tstmt(n->a);
+		emit_jmp(ltop);
+		fixup_label(lout);
+		ltop = saved_top;
+		lout = saved_out;
+	} else if (kind == N_BREAK) {
+		if (!ltop) {
+			die("break outside loop");
+		}
+		emit_jmp(lout);
+	} else if (kind == N_CONTINUE) {
+		if (!ltop) {
+			die("continue outside loop");
+		}
+		emit_jmp(ltop);
+	} else if (kind == N_RETURN) {
+		if (n->a) {
+			texpr(n->a, 1);
+		} else {
+			emit_num(0);
+		}
+		emit_ret();
+	} else if (kind != N_VARDECL) {
+		texpr(n, 1);
+		emit_pop(1);
+	}
+}
+
+// Translate a function
+void
+tfunc(struct decl *d)
+{
+	struct node *n;
+
+	if (!d->defined) {
+		return;
+	}
+
+	curfunc = d;
+
+	emit_str(d->name);
+
+	fixup_label(d->label);
+
+	emit_preamble(d->preamble, !cmp(d->name, (unsigned char *)"_start"));
+
+	tstmt(d->body);
+
+	emit_num(0);
+
+	if (!cmp(d->name, (unsigned char *)"_start")) {
+		emit(0x0f);
+		emit(0x0b);
+	}
+
+	emit_ret();
+}
+
+// Translate all functions
+void
+translate(struct node *p)
+{
+	struct decl *d;
+
+	d = firstdecl();
+	while (1) {
+		if (!d) {
+			break;
+		}
+		tfunc(d);
+		d = nextdecl(d);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Main                                                                      //
+///////////////////////////////////////////////////////////////////////////////
+
+int
+main(int argc, char **argv)
+{
+	struct node *p;
+	int i;
+
+	// Setup the compiler
+	setup();
+
+	p = 0;
+	i = 1;
+	while (1) {
+		if (i >= argc) {
+			break;
+		}
+
+		if (!cmp((unsigned char *)argv[i], (unsigned char *)"-o")) {
+			i = i + 1;
+			if (i >= argc) {
+				die("invalid -o at end of argument list");
+			}
+
+			open_output((unsigned char *)argv[i]);
+
+			i = i + 1;
+			continue;
+		}
+
+		open_source((unsigned char *)argv[i]);
+
+		// Parse the program
+		p = program(p);
+
+		close_source();
+
+		i = i + 1;
+	}
+
+	// Verify types
+	typecheck(p);
+
+	// Generate code
+	translate(p);
+
+	if (fout == stdout) {
+		open_output((unsigned char *)"a.out");
+	}
+
+	// Define _start, syscall
+	add_stdlib();
+
+	// Write output
+	writeout();
+
+	return 0;
 }
