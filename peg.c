@@ -1,3 +1,5 @@
+// A good reference https://www.inf.puc-rio.br/~roberto/docs/peg.pdf
+
 struct peg_compiler {
 	a: *alloc;
 	p: *peg;
