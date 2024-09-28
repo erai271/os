@@ -65,19 +65,15 @@ sha256_round(ctx: *sha256_ctx, w: *int, k: int) {
 	var maj: int;
 	var w16: int;
 
-	s1 = ror32(ctx.e, 6) ^ ror32(ctx.e, 11) ^ ror32(ctx.e, 25);
+	s1 = ror32(ctx.e, 6); s1 = s1 ^ ror32(ctx.e, 11); s1 = s1 ^ ror32(ctx.e, 25);
 	ch = (ctx.e & ctx.f) ^ ((~ctx.e) & ctx.g);
 	t1 = (ctx.h + s1 + ch + k + w[0]) & (-1 >> 32);
-	s0 = ror32(ctx.a, 2) ^ ror32(ctx.a, 13) ^ ror32(ctx.a, 22);
+	s0 = ror32(ctx.a, 2); s0 = s0 ^ ror32(ctx.a, 13); s0 = s0 ^ ror32(ctx.a, 22);
 	maj = (ctx.a & ctx.b) ^ (ctx.a & ctx.c) ^ (ctx.b & ctx.c);
 	t2 = (s0 + maj) & (-1 >> 32);
 
-	s0 = ror32(w[16 - 15], 7)
-		^ ror32(w[16 - 15], 18)
-		^ (w[16 - 15] >> 3);
-	s1 = ror32(w[16 - 2], 17)
-		^ ror32(w[16 - 2], 19)
-		^ (w[16 - 2] >> 10);
+	s0 = ror32(w[16 - 15], 7); s0 = s0 ^ ror32(w[16 - 15], 18); s0 = s0 ^ (w[16 - 15] >> 3);
+	s1 = ror32(w[16 - 2], 17); s1 = s1 ^ ror32(w[16 - 2], 19); s1 = s1 ^ (w[16 - 2] >> 10);
 	w16 = (w[16 - 16] + s0 + w[16 - 7] + s1) & (-1 >> 32);
 
 	w[0] = w[1];

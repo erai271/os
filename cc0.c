@@ -529,6 +529,7 @@ void( my_as_rex)(struct my_assembler* my_a,unsigned long my_op,unsigned long my_
 void( my_assert)(unsigned long my_x,unsigned char* my_msg);
 unsigned long( my_bind)(unsigned long my_fd,unsigned char* my_addr,unsigned long my_len);
 void( my_bzero)(unsigned char* my_s,unsigned long my_size);
+unsigned long( my_call_check)(struct my_compiler* my_c,struct my_node* my_n);
 void( my_cdie)(struct my_compiler* my_c,unsigned char* my_msg);
 unsigned long( my_charset)(struct my_peg* my_c,unsigned char* my_s);
 void( my_choice)(struct my_peg* my_c);
@@ -1448,6 +1449,47 @@ void( my_bzero)(unsigned char* my_s,unsigned long my_size){
 	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
 	}
 }
+unsigned long( my_call_check)(struct my_compiler* my_c,struct my_node* my_n){
+	unsigned long my_result = 0;
+	unsigned long my_ret = 0;
+	(my_result)=(0UL);
+	if ((unsigned long)(!(my_n))) {
+	return my_result;
+	}
+	if ((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_CALL)))) {
+	(my_result)=((my_call_check)((my_c),((my_n)->my_a)));
+	(my_n)=((my_n)->my_b);
+	while (1) {
+	if ((unsigned long)(!(my_n))) {
+	break;
+	}
+	(my_ret)=((my_call_check)((my_c),((my_n)->my_a)));
+	if ((unsigned long)((my_result)&&(my_ret))) {
+	(my_cdie)((my_c),((unsigned char *)"multiple calls in call"));
+	}
+	(my_result)=((unsigned long)(((unsigned long)(my_result))|((unsigned long)(my_ret))));
+	(my_n)=((my_n)->my_b);
+	}
+	(my_result)=(1UL);
+	} else if ((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_BOR))))||((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_BAND)))))) {
+	(my_result)=((my_call_check)((my_c),((my_n)->my_a)));
+	(my_result)=((unsigned long)(((unsigned long)(my_result))|((unsigned long)((my_call_check)((my_c),((my_n)->my_b))))));
+	} else if ((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_ASSIGN))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_INDEX))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_LT))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_LE))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_GT))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_GE))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_EQ))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_NE))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_BNOT))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_ADD))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_SUB))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_MUL))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_DIV))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_MOD))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_LSH))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_RSH))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_AND))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_OR))))||((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_XOR)))))))))))))))))))))))))))))))))))))))) {
+	(my_result)=((my_call_check)((my_c),((my_n)->my_a)));
+	(my_ret)=((my_call_check)((my_c),((my_n)->my_b)));
+	if ((unsigned long)((my_result)&&(my_ret))) {
+	(my_cdie)((my_c),((unsigned char *)"multiple calls in expression"));
+	}
+	(my_result)=((unsigned long)(((unsigned long)(my_result))|((unsigned long)(my_ret))));
+	} else if ((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_REF))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_DEREF))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_POS))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_NEG))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_NOT))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_CAST))))||((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_DOT)))))))))))))))) {
+	(my_result)=((my_call_check)((my_c),((my_n)->my_a)));
+	} else if ((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_STR))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_NUM))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_CHAR))))||((unsigned long)(((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_IDENT))))||((unsigned long)(((long)((my_n)->my_kind))==((long)(my_N_SIZEOF)))))))))))) {
+	} else {
+	(my_fdputd)((2UL),((my_n)->my_kind));
+	(my_die)(((unsigned char *)"invalid expr"));
+	}
+	return my_result;
+}
 void( my_cdie)(struct my_compiler* my_c,unsigned char* my_msg){
 	(my_cshow_context)((my_c));
 	(my_fdputs)((2UL),((unsigned char *)"cdie: "));
@@ -2145,6 +2187,7 @@ void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	}
 	(my_no)=((my_mklabel)(((my_c)->my_as)));
 	if (((my_n)->my_a)->my_a) {
+	(my_call_check)((my_c),(((my_n)->my_a)->my_a));
 	(my_compile_expr)((my_c),(my_d),(((my_n)->my_a)->my_a),(1UL));
 	(my_emit_jz)(((my_c)->my_as),(my_no));
 	}
@@ -2183,6 +2226,7 @@ void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	if ((unsigned long)(((long)((((my_d)->my_func_type)->my_val)->my_kind))==((long)(my_TY_VOID)))) {
 	(my_cdie)((my_c),((unsigned char *)"returning a value in a void function"));
 	}
+	(my_call_check)((my_c),((my_n)->my_a));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_d)->my_func_type)->my_val));
 	} else {
@@ -2202,6 +2246,7 @@ void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	}
 	(my_emit_jmp)(((my_c)->my_as),((my_v)->my_goto_label));
 	} else if ((unsigned long)(((long)(my_kind))!=((long)(my_N_VARDECL)))) {
+	(my_call_check)((my_c),(my_n));
 	(my_compile_expr)((my_c),(my_d),(my_n),(1UL));
 	(my_emit_pop)(((my_c)->my_as),(1UL));
 	}

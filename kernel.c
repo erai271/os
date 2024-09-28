@@ -1241,7 +1241,7 @@ init_realtek(dev: *pcidev) {
 	var mac: int;
 	realtek_port = alloc():*realtek_port;
 	realtek_port.io = io;
-	mac = ind(io) + (ind(io + 4) << 32);
+	mac = ind(io); mac = mac + (ind(io + 4) << 32);
 	realtek_port.mac = ((mac >> 40) & 0xff)
 		+ (((mac >> 32) & 0xff) << 8)
 		+ (((mac >> 24) & 0xff) << 16)

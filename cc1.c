@@ -1103,6 +1103,65 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 	}
 }
 
+call_check(c: *compiler, n: *node): int {
+	var result: int;
+	var ret: int;
+
+	result = 0;
+
+	if !n {
+		return result;
+	}
+
+	if n.kind == N_CALL {
+		result = call_check(c, n.a);
+		n = n.b;
+		loop {
+			if !n {
+				break;
+			}
+			ret = call_check(c, n.a);
+			if result && ret {
+				cdie(c, "multiple calls in call");
+			}
+			result = result | ret;
+			n = n.b;
+		}
+		result = 1;
+	} else if n.kind == N_BOR || n.kind == N_BAND {
+		// Side effects okay in both positions
+		result = call_check(c, n.a);
+		result = result | call_check(c, n.b);
+	} else if n.kind == N_ASSIGN || n.kind == N_INDEX || n.kind == N_LT
+		|| n.kind == N_LE || n.kind == N_GT || n.kind == N_GE
+		|| n.kind == N_EQ || n.kind == N_NE || n.kind == N_BNOT
+		|| n.kind == N_ADD || n.kind == N_SUB || n.kind == N_MUL
+		|| n.kind == N_DIV || n.kind == N_MOD || n.kind == N_LSH
+		|| n.kind == N_RSH || n.kind == N_AND || n.kind == N_OR
+		|| n.kind == N_XOR {
+		// Possible side effects in both positions
+		result = call_check(c, n.a);
+		ret = call_check(c, n.b);
+		if result && ret {
+			cdie(c, "multiple calls in expression");
+		}
+		result = result | ret;
+	} else if n.kind == N_REF || n.kind == N_DEREF || n.kind == N_POS
+		|| n.kind == N_NEG || n.kind == N_NOT || n.kind == N_CAST
+		|| n.kind == N_DOT {
+		// Possible side effect in the first position
+		result = call_check(c, n.a);
+	} else if n.kind == N_STR || n.kind == N_NUM || n.kind == N_CHAR
+		|| n.kind == N_IDENT || n.kind == N_SIZEOF {
+		// No side effects
+	} else {
+		fdputd(2, n.kind);
+		die("invalid expr");
+	}
+
+	return result;
+}
+
 // Compile a statement
 compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 	var no: *label;
@@ -1134,6 +1193,7 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 			no = mklabel(c.as);
 
 			if (n.a.a) {
+				call_check(c, n.a.a);
 				compile_expr(c, d, n.a.a, 1);
 				emit_jz(c.as, no);
 			}
@@ -1174,6 +1234,7 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 			if (d.func_type.val.kind == TY_VOID) {
 				cdie(c, "returning a value in a void function");
 			}
+			call_check(c, n.a);
 			compile_expr(c, d, n.a, 1);
 			unify(c, n.a.t, d.func_type.val);
 		} else {
@@ -1193,6 +1254,7 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 		}
 		emit_jmp(c.as, v.goto_label);
 	} else if (kind != N_VARDECL) {
+		call_check(c, n);
 		compile_expr(c, d, n, 1);
 		emit_pop(c.as, 1);
 	}

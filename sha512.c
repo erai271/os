@@ -62,10 +62,10 @@ sha512_round(r: *sha512_ctx, w: *int, k: int) {
 	var w16: int;
 	var i: int;
 
-	s1 = ror64(r.e, 14) ^ ror64(r.e, 18) ^ ror64(r.e, 41);
+	s1 = ror64(r.e, 14); s1 = s1 ^ ror64(r.e, 18); s1 = s1 ^ ror64(r.e, 41);
 	ch = (r.e & r.f) ^ ((~r.e) & r.g);
 	t1 = r.h + s1 + ch + k + w[0];
-	s0 = ror64(r.a, 28) ^ ror64(r.a, 34) ^ ror64(r.a, 39);
+	s0 = ror64(r.a, 28); s0 = s0 ^ ror64(r.a, 34); s0 = s0 ^ ror64(r.a, 39);
 	maj = (r.a & r.b) ^ (r.a & r.c) ^ (r.b & r.c);
 
 	t2 = s0 + maj;
@@ -78,8 +78,8 @@ sha512_round(r: *sha512_ctx, w: *int, k: int) {
 	r.b = r.a;
 	r.a = t1 + t2;
 
-	s0 = ror64(w[1], 1) ^ ror64(w[1], 8) ^ (w[1] >> 7);
-	s1 = ror64(w[14], 19) ^ ror64(w[14], 61) ^ (w[14] >> 6);
+	s0 = ror64(w[1], 1); s0 = s0 ^ ror64(w[1], 8); s0 = s0 ^ (w[1] >> 7);
+	s1 = ror64(w[14], 19); s1 = s1 ^ ror64(w[14], 61); s1 = s1 ^ (w[14] >> 6);
 	w16 = w[0] + s0 + w[9] + s1;
 
 	i = 0;
