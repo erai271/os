@@ -827,6 +827,9 @@ void( my_translate_pattern)(struct my_peg_compiler* my_c,struct my_peg_node* my_
 unsigned long( my_type_isint)(struct my_type* my_t);
 unsigned long( my_type_isprim)(struct my_type* my_t);
 unsigned long( my_type_sizeof)(struct my_compiler* my_c,struct my_type* my_t);
+void( my_typecheck_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n,unsigned long my_rhs);
+void( my_typecheck_func)(struct my_compiler* my_c,struct my_decl* my_d);
+void( my_typecheck_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n);
 unsigned long( my_unescape)(unsigned char* my_s,unsigned long* my_i,unsigned long my_len,unsigned long* my_ok);
 void( my_unify)(struct my_compiler* my_c,struct my_type* my_a,struct my_type* my_b);
 unsigned long( my_unlink)(unsigned char* my_name);
@@ -1566,6 +1569,16 @@ void( my_compile)(struct my_compiler* my_c,struct my_node* my_p){
 	}
 	(my_d)=((my_next_decl)((my_c),(my_d)));
 	}
+	(my_d)=((my_first_decl)((my_c)));
+	while (1) {
+	if ((unsigned long)(!(my_d))) {
+	break;
+	}
+	if ((my_d)->my_func_defined) {
+	(my_typecheck_func)((my_c),(my_d));
+	}
+	(my_d)=((my_next_decl)((my_c),(my_d)));
+	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_start"),((unsigned char*)0UL),(0UL)));
 	if ((unsigned long)((my_d)&&((my_d)->my_func_defined))) {
 	((my_c)->my_start)=((my_d)->my_func_label);
@@ -1598,40 +1611,17 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	((my_c)->my_colno)=((my_n)->my_colno);
 	(my_kind)=((my_n)->my_kind);
 	if ((unsigned long)(((long)(my_kind))==((long)(my_N_STR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"str is not an lexpr"));
-	}
 	(my_emit_str)(((my_c)->my_as),((my_n)->my_s));
-	((my_n)->my_t)=((my_mktype1)((my_c),(my_TY_PTR),((my_mktype0)((my_c),(my_TY_BYTE)))));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NUM)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"num is not an lexpr"));
-	}
 	(my_emit_num)(((my_c)->my_as),((my_n)->my_n));
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CHAR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"char is not an lexpr"));
-	}
 	(my_emit_num)(((my_c)->my_as),((my_n)->my_n));
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_EXPRLIST)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"call is not an lexpr"));
-	}
 	if ((my_n)->my_b) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	if ((my_n)->my_b) {
-	((my_n)->my_t)=((my_mktype2)((my_c),(my_TY_ARG),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t)));
-	} else {
-	((my_n)->my_t)=((my_mktype1)((my_c),(my_TY_ARG),(((my_n)->my_a)->my_t)));
-	}
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CALL)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"call is not an lexpr"));
-	}
 	if ((my_n)->my_b) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	}
@@ -1643,57 +1633,34 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
 	if ((unsigned long)((my_v)&&((my_v)->my_var_defined))) {
 	(my_emit_lea)(((my_c)->my_as),((my_v)->my_var_offset));
-	(((my_n)->my_a)->my_t)=((my_v)->my_var_type);
 	(my_emit_load)(((my_c)->my_as),(((my_n)->my_a)->my_t));
 	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
 	} else if ((unsigned long)(!((my_strcmp)((((my_n)->my_a)->my_s),((unsigned char *)"_include"))))) {
 	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_func_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no such function"));
-	}
-	(((my_n)->my_a)->my_t)=((my_v)->my_func_type);
 	(my_compile_include)((my_c),(my_n));
 	} else {
 	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_func_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no such function"));
-	}
-	(((my_n)->my_a)->my_t)=((my_v)->my_func_type);
 	(my_emit_lcall)(((my_c)->my_as),((my_v)->my_func_label),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
 	}
 	} else {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
 	}
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_FUNC)))) {
-	(my_cdie)((my_c),((unsigned char *)"calling not a function"));
-	}
 	if ((my_n)->my_b) {
 	(my_unify)((my_c),((((my_n)->my_a)->my_t)->my_arg),(((my_n)->my_b)->my_t));
 	} else {
 	(my_unify)((my_c),((((my_n)->my_a)->my_t)->my_arg),((struct my_type*)0UL));
 	}
-	((my_n)->my_t)=((((my_n)->my_a)->my_t)->my_val);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DOT)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
 	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))==((long)(my_TY_PTR)))) {
-	if ((unsigned long)(((long)(((((my_n)->my_a)->my_t)->my_val)->my_kind))!=((long)(my_TY_STRUCT)))) {
-	(my_cdie)((my_c),((unsigned char *)"dot not a struct"));
-	}
 	(my_v)=((my_find)((my_c),((((((my_n)->my_a)->my_t)->my_val)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
 	(my_emit_load)(((my_c)->my_as),(((my_n)->my_a)->my_t));
 	} else {
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_STRUCT)))) {
-	(my_cdie)((my_c),((unsigned char *)"dot not a struct"));
-	}
 	(my_v)=((my_find)((my_c),(((((my_n)->my_a)->my_t)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
-	}
-	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
-	(my_cdie)((my_c),((unsigned char *)"no such member"));
 	}
 	(my_emit_num)(((my_c)->my_as),((my_v)->my_member_offset));
 	(my_emit_add)(((my_c)->my_as));
-	((my_n)->my_t)=((my_v)->my_member_type);
 	if (my_rhs) {
 	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
 	}
@@ -1701,13 +1668,11 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	(my_v)=((my_find)((my_c),((my_n)->my_s),((unsigned char*)0UL),(0UL)));
 	if ((unsigned long)((my_v)&&((my_v)->my_enum_defined))) {
 	(my_emit_num)(((my_c)->my_as),((my_v)->my_enum_value));
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
 	return;
 	}
 	(my_v)=((my_find)((my_c),((my_d)->my_name),((my_n)->my_s),(0UL)));
 	if ((unsigned long)((my_v)&&((my_v)->my_var_defined))) {
 	(my_emit_lea)(((my_c)->my_as),((my_v)->my_var_offset));
-	((my_n)->my_t)=((my_v)->my_var_type);
 	if (my_rhs) {
 	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
 	}
@@ -1716,23 +1681,13 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	(my_v)=((my_find)((my_c),((my_n)->my_s),((unsigned char*)0UL),(0UL)));
 	if ((unsigned long)((my_v)&&((my_v)->my_func_defined))) {
 	(my_emit_ptr)(((my_c)->my_as),((my_v)->my_func_label));
-	((my_n)->my_t)=((my_v)->my_func_type);
 	return;
 	}
-	(my_cdie)((my_c),((unsigned char *)"no such variable"));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ASSIGN)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"assign is not an lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	(my_emit_store)(((my_c)->my_as),((my_n)->my_t));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_SIZEOF)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"sizeof is not an lexpr"));
-	}
 	(my_out)=((my_mklabel)(((my_c)->my_as)));
 	(my_emit_jmp)(((my_c)->my_as),(my_out));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
@@ -1742,32 +1697,16 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	} else {
 	(my_emit_num)(((my_c)->my_as),((my_type_sizeof)((my_c),(((my_n)->my_a)->my_t))));
 	}
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_REF)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"ref is not an lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
-	((my_n)->my_t)=((my_mktype1)((my_c),(my_TY_PTR),(((my_n)->my_a)->my_t)));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DEREF)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_PTR)))) {
-	(my_cdie)((my_c),((unsigned char *)"deref not a pointer"));
-	}
-	((my_n)->my_t)=((((my_n)->my_a)->my_t)->my_val);
 	if (my_rhs) {
 	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
 	}
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_INDEX)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_PTR)))) {
-	(my_cdie)((my_c),((unsigned char *)"not a pointer"));
-	}
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_b)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"index: not an int"));
-	}
-	((my_n)->my_t)=((((my_n)->my_a)->my_t)->my_val);
 	if ((unsigned long)(((long)(((my_n)->my_t)->my_kind))==((long)(my_TY_BYTE)))) {
 	(my_emit_num)(((my_c)->my_as),(1UL));
 	} else {
@@ -1779,81 +1718,30 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
 	}
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LT)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_lt)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"lt: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GT)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_gt)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"gt: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LE)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_le)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"le: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GE)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_ge)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"ge: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_EQ)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_eq)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"eq: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NE)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_ne)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"ne: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BNOT)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_no)=((my_mklabel)(((my_c)->my_as)));
 	(my_out)=((my_mklabel)(((my_c)->my_as)));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
@@ -1863,14 +1751,7 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	(my_fixup_label)(((my_c)->my_as),(my_no));
 	(my_emit_num)(((my_c)->my_as),(1UL));
 	(my_fixup_label)(((my_c)->my_as),(my_out));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BOR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_no)=((my_mklabel)(((my_c)->my_as)));
 	(my_out)=((my_mklabel)(((my_c)->my_as)));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
@@ -1886,17 +1767,7 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	(my_fixup_label)(((my_c)->my_as),(my_no));
 	(my_emit_num)(((my_c)->my_as),(0UL));
 	(my_fixup_label)(((my_c)->my_as),(my_out));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_b)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BAND)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_no)=((my_mklabel)(((my_c)->my_as)));
 	(my_out)=((my_mklabel)(((my_c)->my_as)));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
@@ -1908,171 +1779,56 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	(my_fixup_label)(((my_c)->my_as),(my_no));
 	(my_emit_num)(((my_c)->my_as),(0UL));
 	(my_fixup_label)(((my_c)->my_as),(my_out));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_b)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not an prim"));
-	}
-	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_POS)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"pos: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NEG)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_neg)(((my_c)->my_as));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"neg: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NOT)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_not)(((my_c)->my_as));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ADD)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_add)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"add: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_SUB)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_sub)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"sub: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_MUL)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_mul)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"mul: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DIV)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_div)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"div: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_MOD)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_mod)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"mod: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LSH)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_lsh)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"lsh: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_RSH)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_rsh)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"rsh: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_AND)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_and)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"and: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_OR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_or)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"or: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_XOR)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_emit_xor)(((my_c)->my_as));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
-	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"xor: not an int"));
-	}
-	((my_n)->my_t)=(((my_n)->my_a)->my_t);
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CAST)))) {
-	if ((unsigned long)(!(my_rhs))) {
-	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
-	}
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
-	(my_cdie)((my_c),((unsigned char *)"not a primitive"));
-	}
-	((my_n)->my_t)=((my_prototype)((my_c),((my_n)->my_b)));
 	} else {
 	(my_cdie)((my_c),((unsigned char *)"not an expression"));
 	}
@@ -2145,7 +1901,6 @@ void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	}
 	(my_no)=((my_mklabel)(((my_c)->my_as)));
 	if (((my_n)->my_a)->my_a) {
-	(my_call_check)((my_c),(((my_n)->my_a)->my_a));
 	(my_compile_expr)((my_c),(my_d),(((my_n)->my_a)->my_a),(1UL));
 	(my_emit_jz)(((my_c)->my_as),(my_no));
 	}
@@ -2184,9 +1939,7 @@ void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	if ((unsigned long)(((long)((((my_d)->my_func_type)->my_val)->my_kind))==((long)(my_TY_VOID)))) {
 	(my_cdie)((my_c),((unsigned char *)"returning a value in a void function"));
 	}
-	(my_call_check)((my_c),((my_n)->my_a));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_d)->my_func_type)->my_val));
 	} else {
 	if ((unsigned long)(((long)((((my_d)->my_func_type)->my_val)->my_kind))!=((long)(my_TY_VOID)))) {
 	(my_cdie)((my_c),((unsigned char *)"returning void in a non void function"));
@@ -2204,7 +1957,6 @@ void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	}
 	(my_emit_jmp)(((my_c)->my_as),((my_v)->my_goto_label));
 	} else if ((unsigned long)(((long)(my_kind))!=((long)(my_N_VARDECL)))) {
-	(my_call_check)((my_c),(my_n));
 	(my_compile_expr)((my_c),(my_d),(my_n),(1UL));
 	(my_emit_pop)(((my_c)->my_as),(1UL));
 	}
@@ -4720,6 +4472,9 @@ void( my_mark_expr_used)(struct my_compiler* my_c,struct my_decl* my_d,struct my
 	if ((unsigned long)(!(my_n))) {
 	return;
 	}
+	((my_c)->my_filename)=((my_n)->my_filename);
+	((my_c)->my_lineno)=((my_n)->my_lineno);
+	((my_c)->my_colno)=((my_n)->my_colno);
 	(my_kind)=((my_n)->my_kind);
 	if ((unsigned long)(((long)(my_kind))==((long)(my_N_EXPRLIST)))) {
 	while (1) {
@@ -4771,6 +4526,9 @@ void( my_mark_stmt_used)(struct my_compiler* my_c,struct my_decl* my_d,struct my
 	if ((unsigned long)(!(my_n))) {
 	return;
 	}
+	((my_c)->my_filename)=((my_n)->my_filename);
+	((my_c)->my_lineno)=((my_n)->my_lineno);
+	((my_c)->my_colno)=((my_n)->my_colno);
 	(my_kind)=((my_n)->my_kind);
 	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONDLIST)))) {
 	while (1) {
@@ -9375,6 +9133,472 @@ unsigned long( my_type_sizeof)(struct my_compiler* my_c,struct my_type* my_t){
 	return ((my_t)->my_st)->my_struct_size;
 	} else {
 	(my_cdie)((my_c),((unsigned char *)"sizeof: invalid type"));
+	}
+}
+void( my_typecheck_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n,unsigned long my_rhs){
+	struct my_decl* my_v = 0;
+	unsigned long my_kind = 0;
+	((my_c)->my_filename)=((my_n)->my_filename);
+	((my_c)->my_lineno)=((my_n)->my_lineno);
+	((my_c)->my_colno)=((my_n)->my_colno);
+	(my_kind)=((my_n)->my_kind);
+	if ((unsigned long)(((long)(my_kind))==((long)(my_N_STR)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"str is not an lexpr"));
+	}
+	((my_n)->my_t)=((my_mktype1)((my_c),(my_TY_PTR),((my_mktype0)((my_c),(my_TY_BYTE)))));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NUM)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"num is not an lexpr"));
+	}
+	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CHAR)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"char is not an lexpr"));
+	}
+	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_EXPRLIST)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"call is not an lexpr"));
+	}
+	if ((my_n)->my_b) {
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	if ((my_n)->my_b) {
+	((my_n)->my_t)=((my_mktype2)((my_c),(my_TY_ARG),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t)));
+	} else {
+	((my_n)->my_t)=((my_mktype1)((my_c),(my_TY_ARG),(((my_n)->my_a)->my_t)));
+	}
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CALL)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"call is not an lexpr"));
+	}
+	if ((my_n)->my_b) {
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	}
+	if ((unsigned long)(((long)(((my_n)->my_a)->my_kind))==((long)(my_N_IDENT)))) {
+	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
+	if ((unsigned long)((my_v)&&((my_v)->my_enum_defined))) {
+	(my_cdie)((my_c),((unsigned char *)"type error"));
+	}
+	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
+	if ((unsigned long)((my_v)&&((my_v)->my_var_defined))) {
+	(my_emit_lea)(((my_c)->my_as),((my_v)->my_var_offset));
+	(((my_n)->my_a)->my_t)=((my_v)->my_var_type);
+	(my_emit_load)(((my_c)->my_as),(((my_n)->my_a)->my_t));
+	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
+	} else if ((unsigned long)(!((my_strcmp)((((my_n)->my_a)->my_s),((unsigned char *)"_include"))))) {
+	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
+	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_func_defined))))) {
+	(my_cdie)((my_c),((unsigned char *)"no such function"));
+	}
+	(((my_n)->my_a)->my_t)=((my_v)->my_func_type);
+	} else {
+	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
+	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_func_defined))))) {
+	(my_cdie)((my_c),((unsigned char *)"no such function"));
+	}
+	(((my_n)->my_a)->my_t)=((my_v)->my_func_type);
+	(my_emit_lcall)(((my_c)->my_as),((my_v)->my_func_label),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
+	}
+	} else {
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
+	}
+	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_FUNC)))) {
+	(my_cdie)((my_c),((unsigned char *)"calling not a function"));
+	}
+	if ((my_n)->my_b) {
+	(my_unify)((my_c),((((my_n)->my_a)->my_t)->my_arg),(((my_n)->my_b)->my_t));
+	} else {
+	(my_unify)((my_c),((((my_n)->my_a)->my_t)->my_arg),((struct my_type*)0UL));
+	}
+	((my_n)->my_t)=((((my_n)->my_a)->my_t)->my_val);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DOT)))) {
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
+	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))==((long)(my_TY_PTR)))) {
+	if ((unsigned long)(((long)(((((my_n)->my_a)->my_t)->my_val)->my_kind))!=((long)(my_TY_STRUCT)))) {
+	(my_cdie)((my_c),((unsigned char *)"dot not a struct"));
+	}
+	(my_v)=((my_find)((my_c),((((((my_n)->my_a)->my_t)->my_val)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
+	} else {
+	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_STRUCT)))) {
+	(my_cdie)((my_c),((unsigned char *)"dot not a struct"));
+	}
+	(my_v)=((my_find)((my_c),(((((my_n)->my_a)->my_t)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
+	}
+	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
+	(my_cdie)((my_c),((unsigned char *)"no such member"));
+	}
+	((my_n)->my_t)=((my_v)->my_member_type);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_IDENT)))) {
+	(my_v)=((my_find)((my_c),((my_n)->my_s),((unsigned char*)0UL),(0UL)));
+	if ((unsigned long)((my_v)&&((my_v)->my_enum_defined))) {
+	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
+	return;
+	}
+	(my_v)=((my_find)((my_c),((my_d)->my_name),((my_n)->my_s),(0UL)));
+	if ((unsigned long)((my_v)&&((my_v)->my_var_defined))) {
+	((my_n)->my_t)=((my_v)->my_var_type);
+	return;
+	}
+	(my_v)=((my_find)((my_c),((my_n)->my_s),((unsigned char*)0UL),(0UL)));
+	if ((unsigned long)((my_v)&&((my_v)->my_func_defined))) {
+	((my_n)->my_t)=((my_v)->my_func_type);
+	return;
+	}
+	(my_cdie)((my_c),((unsigned char *)"no such variable"));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ASSIGN)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"assign is not an lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_SIZEOF)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"sizeof is not an lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
+	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_REF)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"ref is not an lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
+	((my_n)->my_t)=((my_mktype1)((my_c),(my_TY_PTR),(((my_n)->my_a)->my_t)));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DEREF)))) {
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_PTR)))) {
+	(my_cdie)((my_c),((unsigned char *)"deref not a pointer"));
+	}
+	((my_n)->my_t)=((((my_n)->my_a)->my_t)->my_val);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_INDEX)))) {
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_PTR)))) {
+	(my_cdie)((my_c),((unsigned char *)"not a pointer"));
+	}
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_b)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"index: not an int"));
+	}
+	((my_n)->my_t)=((((my_n)->my_a)->my_t)->my_val);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LT)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"lt: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GT)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"gt: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LE)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"le: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GE)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"ge: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_EQ)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"eq: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NE)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"ne: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BNOT)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_emit_num)(((my_c)->my_as),(1UL));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"not an prim"));
+	}
+	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BOR)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"not an prim"));
+	}
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_b)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"not an prim"));
+	}
+	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BAND)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"not an prim"));
+	}
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_b)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"not an prim"));
+	}
+	((my_n)->my_t)=((my_mktype0)((my_c),(my_TY_INT)));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_POS)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"pos: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NEG)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"neg: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NOT)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"not: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ADD)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"add: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_SUB)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"sub: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_MUL)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"mul: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DIV)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"div: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_MOD)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"mod: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LSH)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"lsh: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_RSH)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"rsh: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_AND)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"and: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_OR)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"or: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_XOR)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_n)->my_b)->my_t));
+	if ((unsigned long)(!((my_type_isint)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"xor: not an int"));
+	}
+	((my_n)->my_t)=(((my_n)->my_a)->my_t);
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CAST)))) {
+	if ((unsigned long)(!(my_rhs))) {
+	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
+	}
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
+	(my_cdie)((my_c),((unsigned char *)"not a primitive"));
+	}
+	((my_n)->my_t)=((my_prototype)((my_c),((my_n)->my_b)));
+	} else {
+	(my_cdie)((my_c),((unsigned char *)"not an expression"));
+	}
+}
+void( my_typecheck_func)(struct my_compiler* my_c,struct my_decl* my_d){
+	if ((unsigned long)(!((my_d)->my_func_def))) {
+	return;
+	}
+	(my_typecheck_stmt)((my_c),(my_d),(((my_d)->my_func_def)->my_b));
+}
+void( my_typecheck_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n){
+	struct my_decl* my_v = 0;
+	unsigned long my_kind = 0;
+	if ((unsigned long)(!(my_n))) {
+	return;
+	}
+	((my_c)->my_filename)=((my_n)->my_filename);
+	((my_c)->my_lineno)=((my_n)->my_lineno);
+	((my_c)->my_colno)=((my_n)->my_colno);
+	(my_kind)=((my_n)->my_kind);
+	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONDLIST)))) {
+	while (1) {
+	if ((unsigned long)(!(my_n))) {
+	break;
+	}
+	if (((my_n)->my_a)->my_a) {
+	(my_typecheck_expr)((my_c),(my_d),(((my_n)->my_a)->my_a),(1UL));
+	}
+	(my_typecheck_stmt)((my_c),(my_d),(((my_n)->my_a)->my_b));
+	(my_n)=((my_n)->my_b);
+	}
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_STMTLIST)))) {
+	while (1) {
+	if ((unsigned long)(!(my_n))) {
+	break;
+	}
+	(my_typecheck_stmt)((my_c),(my_d),((my_n)->my_a));
+	(my_n)=((my_n)->my_b);
+	}
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LOOP)))) {
+	(my_typecheck_stmt)((my_c),(my_d),((my_n)->my_a));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BREAK)))) {
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONTINUE)))) {
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_RETURN)))) {
+	if ((my_n)->my_a) {
+	if ((unsigned long)(((long)((((my_d)->my_func_type)->my_val)->my_kind))==((long)(my_TY_VOID)))) {
+	(my_cdie)((my_c),((unsigned char *)"returning a value in a void function"));
+	}
+	(my_call_check)((my_c),((my_n)->my_a));
+	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
+	(my_unify)((my_c),(((my_n)->my_a)->my_t),(((my_d)->my_func_type)->my_val));
+	} else {
+	if ((unsigned long)(((long)((((my_d)->my_func_type)->my_val)->my_kind))!=((long)(my_TY_VOID)))) {
+	(my_cdie)((my_c),((unsigned char *)"returning void in a non void function"));
+	}
+	}
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LABEL)))) {
+	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
+	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GOTO)))) {
+	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
+	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_goto_defined))))) {
+	(my_cdie)((my_c),((unsigned char *)"label not defined"));
+	}
+	} else if ((unsigned long)(((long)(my_kind))!=((long)(my_N_VARDECL)))) {
+	(my_call_check)((my_c),(my_n));
+	(my_typecheck_expr)((my_c),(my_d),(my_n),(1UL));
 	}
 }
 unsigned long( my_unescape)(unsigned char* my_s,unsigned long* my_i,unsigned long my_len,unsigned long* my_ok){
