@@ -5,11 +5,15 @@ struct decl {
 	l: *decl;
 	r: *decl;
 
+	used_next: *decl;
+
 	func_defined: int;
 	func_type: *type;
 	func_label: *label;
 	func_def: *node;
 	func_decl: *node;
+	func_used: int;
+	func_preamble: int;
 
 	struct_defined: int;
 	struct_size: int;
@@ -87,10 +91,13 @@ find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
 	d.l = 0:*decl;
 	d.r = 0:*decl;
 
+	d.used_next = 0:*decl;
+
 	d.func_defined = 0;
 	d.func_type = 0:*type;
 	d.func_label = mklabel(c.as);
 	d.func_def = 0:*node;
+	d.func_used = 0;
 
 	d.struct_defined = 0;
 	d.struct_size = 0;

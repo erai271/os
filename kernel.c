@@ -77,12 +77,6 @@ struct regs {
 
 taskswitch(save_regs: *regs, load_regs: *regs);
 
-_start() {
-	loop {
-		ud2();
-	}
-}
-
 _r32(p: *byte): int;
 _w32(p: *byte, x: int): int;
 

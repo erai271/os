@@ -832,10 +832,13 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 	text_size = c.at;
 
 	if (!start || !start.fixed) {
-		die("_start is not defined");
+		if !kstart {
+			die("_start is not defined");
+		}
+	} else {
+		entry = load_addr + start.at + 128 + 32;
 	}
 
-	entry = load_addr + start.at + 128 + 32;
 	text_size = text_size + 128 + 32;
 	text_end = load_addr + text_size;
 

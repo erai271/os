@@ -19,6 +19,13 @@ struct compiler {
 	// C Output
 	do_cout: int;
 	cout: *file;
+
+	// Entry points
+	start: *label;
+	kstart: *label;
+
+	// Usage stack
+	used_top: *decl;
 }
 
 cshow_context(c: *compiler) {
@@ -60,6 +67,11 @@ comp_setup(a: *alloc): *compiler {
 
 	c.do_cout = 0;
 	c.cout = 0:*file;
+
+	c.start = 0:*label;
+	c.kstart = 0:*label;
+
+	c.used_top = 0:*decl;
 
 	return c;
 }
@@ -140,6 +152,21 @@ compile(c: *compiler, p: *node) {
 		d = next_decl(c, d);
 	}
 
+	// Check usage
+	d = find(c, "_start", 0:*byte, 0);
+	if (d && d.func_defined) {
+		c.start = d.func_label;
+		mark_func_used(c, d);
+	}
+
+	d = find(c, "_kstart", 0:*byte, 0);
+	if (d && d.func_defined) {
+		c.kstart = d.func_label;
+		mark_func_used(c, d);
+	}
+
+	check_usage(c);
+
 	// Compile functions
 	d = first_decl(c);
 	loop {
@@ -147,11 +174,144 @@ compile(c: *compiler, p: *node) {
 			break;
 		}
 
-		if (d.func_defined) {
+		if d.func_used && d.func_defined {
 			compile_func(c, d);
 		}
 
 		d = next_decl(c, d);
+	}
+}
+
+mark_func_used(c: *compiler, d: *decl) {
+	if d.func_used {
+		return;
+	}
+
+	d.func_used = 1;
+	d.used_next = c.used_top;
+	c.used_top = d;
+}
+
+mark_expr_used(c: *compiler, d: *decl, n: *node) {
+	var v: *decl;
+	var kind: int;
+
+	if !n {
+		return;
+	}
+
+	kind = n.kind;
+	if kind == N_EXPRLIST {
+		loop {
+			if !n {
+				break;
+			}
+
+			mark_expr_used(c, d, n.a);
+
+			n = n.b;
+		}
+		return;
+	} else if kind == N_IDENT {
+		v = find(c, n.s, 0:*byte, 0);
+		if v && v.enum_defined {
+			return;
+		}
+
+		v = find(c, d.name, n.s, 0);
+		if v && v.var_defined {
+			return;
+		}
+
+		v = find(c, n.s, 0:*byte, 0);
+		if v && v.func_defined {
+			mark_func_used(c, v);
+			return;
+		}
+
+		cdie(c, "no such variable");
+	} else if kind == N_CALL || kind == N_ASSIGN || kind == N_INDEX
+		|| kind == N_LT || kind == N_GT || kind == N_LE
+		|| kind == N_GE || kind == N_EQ || kind == N_NE
+		|| kind == N_BOR || kind == N_BAND || kind == N_ADD
+		|| kind == N_SUB || kind == N_MUL || kind == N_DIV
+		|| kind == N_MOD || kind == N_LSH || kind == N_RSH
+		|| kind == N_AND || kind == N_OR || kind == N_XOR {
+		mark_expr_used(c, d, n.a);
+		mark_expr_used(c, d, n.b);
+		return;
+	} else if kind == N_REF || kind == N_DEREF || kind == N_BNOT
+		|| kind == N_POS || kind == N_NEG || kind == N_NOT
+		|| kind == N_CAST || kind == N_DOT {
+		mark_expr_used(c, d, n.a);
+		return;
+	} else if kind == N_SIZEOF || kind == N_STR || kind == N_NUM
+		|| kind == N_CHAR {
+		return;
+	} else {
+		cdie(c, "not an expression");
+	}
+}
+
+mark_stmt_used(c: *compiler, d: *decl, n: *node) {
+	var kind: int;
+
+	if !n {
+		return;
+	}
+
+	kind = n.kind;
+	if kind == N_CONDLIST {
+		loop {
+			if !n {
+				break;
+			}
+
+			mark_expr_used(c, d, n.a.a);
+
+			mark_stmt_used(c, d, n.a.b);
+
+			n = n.b;
+		}
+		return;
+	} else if kind == N_STMTLIST {
+		loop {
+			if !n {
+				break;
+			}
+
+			mark_stmt_used(c, d, n.a);
+
+			n = n.b;
+		}
+		return;
+	} else if kind == N_LOOP {
+		mark_stmt_used(c, d, n.a);
+		return;
+	} else if kind == N_RETURN {
+		mark_expr_used(c, d, n.a);
+		return;
+	} else if kind == N_BREAK || kind == N_CONTINUE || kind == N_LABEL || kind == N_GOTO {
+		return;
+	} else if kind != N_VARDECL {
+		mark_expr_used(c, d, n);
+		return;
+	}
+}
+
+check_usage(c: *compiler) {
+	var d: *decl;
+
+	loop {
+		d = c.used_top;
+		if !d {
+			break;
+		}
+		c.used_top = d.used_next;
+
+		if d.func_def {
+			mark_stmt_used(c, d, d.func_def.b);
+		}
 	}
 }
 
@@ -183,10 +343,48 @@ defextern(c: *compiler, n: *node): *decl {
 
 defun(c: *compiler, n: *node) {
 	var d: *decl;
+	var name: *byte;
+	var v: *decl;
+	var t: *type;
+	var offset: int;
 
 	d = defextern(c, n.a);
 
 	d.func_def = n;
+
+	n = n.a.b.a;
+
+	offset = 16;
+	loop {
+		if (!n) {
+			break;
+		}
+
+		c.filename = n.a.filename;
+		c.lineno = n.a.lineno;
+		c.colno = n.a.colno;
+
+		name = n.a.a.s;
+		t = prototype(c, n.a.b);
+
+		v = find(c, d.name, name, 1);
+		if (v.var_defined) {
+			cdie(c, "duplicate argument");
+		}
+
+		v.var_defined = 1;
+		v.var_type = t;
+		v.var_offset = offset;
+		v.var_def = n.a;
+
+		offset = offset + 8;
+		n = n.b;
+	}
+
+	// Hoist locals
+	offset = hoist_locals(c, d, d.func_def.b, 0);
+
+	d.func_preamble = offset;
 }
 
 defstruct(c: *compiler, n: *node) {
@@ -302,48 +500,11 @@ layout_struct(c: *compiler, d: *decl) {
 }
 
 compile_func(c: *compiler, d: *decl) {
-	var name: *byte;
-	var v: *decl;
-	var t: *type;
-	var offset: int;
-	var n: *node;
 	var pragma: int;
 
 	if (!d.func_def) {
 		return;
 	}
-
-	n = d.func_def.a.b.a;
-
-	offset = 16;
-	loop {
-		if (!n) {
-			break;
-		}
-
-		c.filename = n.a.filename;
-		c.lineno = n.a.lineno;
-		c.colno = n.a.colno;
-
-		name = n.a.a.s;
-		t = prototype(c, n.a.b);
-
-		v = find(c, d.name, name, 1);
-		if (v.var_defined) {
-			cdie(c, "duplicate argument");
-		}
-
-		v.var_defined = 1;
-		v.var_type = t;
-		v.var_offset = offset;
-		v.var_def = n.a;
-
-		offset = offset + 8;
-		n = n.b;
-	}
-
-	// Hoist locals
-	offset = hoist_locals(c, d, d.func_def.b, 0);
 
 	if (!strcmp(d.name, "_start")) {
 		pragma = 1;
@@ -356,7 +517,7 @@ compile_func(c: *compiler, d: *decl) {
 	// Compile the function body
 	emit_str(c.as, d.name);
 	fixup_label(c.as, d.func_label);
-	emit_preamble(c.as, offset, pragma);
+	emit_preamble(c.as, d.func_preamble, pragma);
 	compile_stmt(c, d, d.func_def.b, 0:*label, 0:*label);
 	emit_num(c.as, 0);
 
@@ -2058,9 +2219,6 @@ main(argc: int, argv: **byte, envp: **byte) {
 	var a: alloc;
 	var c: *compiler;
 	var p: *node;
-	var d: *decl;
-	var start: *label;
-	var kstart: *label;
 	var i: int;
 	var show: int;
 	var filename: *byte;
@@ -2175,19 +2333,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 
 	emit_builtin(c);
 
-	start = 0: *label;
-	d = find(c, "_start", 0:*byte, 0);
-	if (d && d.func_defined) {
-		start = d.func_label;
-	}
-
-	kstart = 0: *label;
-	d = find(c, "_kstart", 0:*byte, 0);
-	if (d && d.func_defined) {
-		kstart = d.func_label;
-	}
-
 	open_output(c.as, filename);
 
-	writeout(c.as, start, kstart);
+	writeout(c.as, c.start, c.kstart);
 }

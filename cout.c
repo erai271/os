@@ -77,7 +77,7 @@ ctranslate(c: *compiler) {
 			break;
 		}
 
-		if d.func_defined {
+		if d.func_used && d.func_defined {
 			ctranslate_type(c, d.func_type, d.name, 1, d.func_decl.b.a);
 			fputs(c.cout, ";\n");
 		}
@@ -92,7 +92,7 @@ ctranslate(c: *compiler) {
 			break;
 		}
 
-		if d.func_defined {
+		if d.func_used && d.func_defined {
 			ctranslate_func(c, d);
 		}
 
