@@ -27,3 +27,4 @@ xxd
 cat
 peg
 peg0
+*.out*
