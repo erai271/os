@@ -161,6 +161,18 @@ struct chunk {
 	cap: int;
 }
 
+struct section {
+	next: *section;
+	name: *byte;
+	start: int;
+	end: int;
+	index: int;
+	name_offset: int;
+	type: int;
+	link: int;
+	entsize: int;
+}
+
 struct assembler {
 	a: *alloc;
 	out: *file;
@@ -168,6 +180,16 @@ struct assembler {
 	text: *chunk;
 	text_end: *chunk;
 	bits32: int;
+	symbols: *symbol;
+	sections: *section;
+	num_sections: int;
+}
+
+struct symbol {
+	next: *symbol;
+	name: *byte;
+	label: *label;
+	name_offset: int;
 }
 
 setup_assembler(a: *alloc): *assembler {
@@ -175,11 +197,69 @@ setup_assembler(a: *alloc): *assembler {
 	c = alloc(a, sizeof(*c)): *assembler;
 	c.a = a;
 	c.out = 0: *file;
-	c.at = 0;
+	c.at = 160;  // elf header + program header + multiboot header
 	c.text = 0:*chunk;
 	c.text_end = 0:*chunk;
 	c.bits32 = 0;
+	c.symbols = 0:*symbol;
+	c.num_sections = 0;
+	add_section(c, "", SHT_NULL);
+	add_section(c, ".text", SHT_PROGBITS);
 	return c;
+}
+
+add_section(c: *assembler, name: *byte, type: int) {
+	var s: *section;
+	var n: *section;
+	var end: int;
+
+	end = c.at;
+
+	emit_align(c, 16, OP_NOP);
+
+	s = alloc(c.a, sizeof(*s)):*section;
+
+	s.next = 0:*section;
+	s.name = name;
+	s.start = c.at;
+	s.end = c.at;
+	s.index = c.num_sections;
+	s.type = type;
+	s.link = 0;
+	s.entsize = 0;
+
+	n = c.sections;
+	if n {
+		loop {
+			if !n.next {
+				break;
+			}
+			n = n.next;
+		}
+		n.end = end;
+		n.next = s;
+	} else {
+		c.sections = s;
+	}
+
+	c.num_sections = c.num_sections + 1;
+}
+
+find_section(c: *assembler, name: *byte): *section {
+	var n: *section;
+	n = c.sections;
+	loop {
+		if !n {
+			break;
+		}
+
+		if strcmp(n.name, name) == 0 {
+			break;
+		}
+
+		n = n.next;
+	}
+	return n;
 }
 
 putchar(c: *assembler, ch: int) {
@@ -305,6 +385,18 @@ fixup_label(c: *assembler, l: *label) {
 		fixup(c, f.ptr, l.at - f.at);
 		f = f.next;
 	}
+}
+
+add_symbol(c: *assembler, name: *byte, l: *label) {
+	var s: *symbol;
+
+	s = alloc(c.a, sizeof(*s)):*symbol;
+
+	s.next = c.symbols;
+	s.name = name;
+	s.label = l;
+
+	c.symbols = s;
 }
 
 emit_restorer(c: *assembler) {
@@ -811,6 +903,280 @@ emit_syscall(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
+emit_align(c: *assembler, n: int, b: int) {
+	var pad: int;
+
+	pad = c.at & (n - 1);
+
+	if pad == 0 {
+		return;
+	}
+
+	loop {
+		if pad == n {
+			break;
+		}
+
+		as_emit(c, b);
+
+		pad = pad + 1;
+	}
+}
+
+emit_strtab_str(c: *assembler, s: *byte): int {
+	var i: int;
+
+	i = 0;
+	loop {
+		as_emit(c, s[i]:int);
+
+		if !s[i] {
+			break;
+		}
+
+		i = i + 1;
+	}
+
+	return i + 1;
+}
+
+enum {
+	SHT_NULL = 0,
+	SHT_PROGBITS = 1,
+	SHT_SYMTAB = 2,
+	SHT_STRTAB = 3,
+}
+
+emit_sections(c: *assembler): int {
+	var at: int;
+	var s: *section;
+	var y: *symbol;
+	var n: int;
+
+	add_symbol(c, "", 0:*label);
+
+	s = find_section(c, "");
+	s.start = 0;
+	s.end = 0;
+
+	add_section(c, ".strtab", SHT_STRTAB);
+
+	y = c.symbols;
+	loop {
+		if !y {
+			break;
+		}
+
+		y.name_offset = n;
+		n = n + emit_strtab_str(c, y.name);
+
+		y = y.next;
+	}
+
+	add_section(c, ".symtab", SHT_SYMTAB);
+
+	y = c.symbols;
+	loop {
+		if !y {
+			break;
+		}
+
+		// name
+		n = y.name_offset;
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+
+		// info
+		if y.label {
+			n = 0x12;
+		} else {
+			n = 0;
+		}
+		as_emit(c, n);
+
+		// other
+		as_emit(c, 0);
+
+		// section
+		if y.label {
+			n = 1;
+		} else {
+			n = 0;
+		}
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+
+		// addr
+		if y.label {
+			n = y.label.at + 0x100000;
+		} else {
+			n = 0;
+		}
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+		as_emit(c, n >> 32);
+		as_emit(c, n >> 40);
+		as_emit(c, n >> 48);
+		as_emit(c, n >> 56);
+
+		// size
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+
+		y = y.next;
+	}
+
+	s = find_section(c, ".strtab");
+	n = s.index;
+
+	s = find_section(c, ".symtab");
+	s.link = n;
+	s.entsize = 0x18;
+
+	add_section(c, ".shstrtab", SHT_STRTAB);
+
+	s = c.sections;
+	n = 0;
+	loop {
+		if !s {
+			break;
+		}
+
+		s.name_offset = n;
+		n = n + emit_strtab_str(c, s.name);
+
+		s = s.next;
+	}
+
+	s = find_section(c, ".shstrtab");
+	s.end = c.at;
+
+	emit_align(c, 16, OP_NOP);
+
+	at = c.at;
+
+	s = c.sections;
+	loop {
+		if !s {
+			break;
+		}
+
+		// Name
+		n = s.name_offset;
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+
+		// Type
+		n = s.type;
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+
+		// Flags
+		as_emit(c, 6);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+
+		// Addr
+		if s.start == s.end {
+			 n = 0;
+		} else {
+			n = s.start + 0x100000;
+		}
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+		as_emit(c, n >> 32);
+		as_emit(c, n >> 40);
+		as_emit(c, n >> 48);
+		as_emit(c, n >> 56);
+
+		// Offset
+		n = s.start;
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+		as_emit(c, n >> 32);
+		as_emit(c, n >> 40);
+		as_emit(c, n >> 48);
+		as_emit(c, n >> 56);
+
+		// Size
+		n = s.end - s.start;
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+		as_emit(c, n >> 32);
+		as_emit(c, n >> 40);
+		as_emit(c, n >> 48);
+		as_emit(c, n >> 56);
+
+		// Link
+		n = s.link;
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+
+		// Info
+		if s.type == SHT_SYMTAB {
+			n = 1;
+		} else {
+			n = 0;
+		}
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+
+		// align
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+		as_emit(c, 0);
+
+		// entsize
+		n = s.entsize;
+		as_emit(c, n);
+		as_emit(c, n >> 8);
+		as_emit(c, n >> 16);
+		as_emit(c, n >> 24);
+		as_emit(c, n >> 32);
+		as_emit(c, n >> 40);
+		as_emit(c, n >> 48);
+		as_emit(c, n >> 56);
+
+		s = s.next;
+	}
+
+	return at;
+}
+
 writeout(c: *assembler, start: *label, kstart: *label) {
 	var b: *chunk;
 	var i: int;
@@ -823,6 +1189,8 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 	var mb_flags: int;
 	var mb_checksum: int;
 	var mb_addr: int;
+	var s: *section;
+	var shoff: int;
 
 	if (!c.out) {
 		die("output not opened");
@@ -836,10 +1204,10 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 			die("_start is not defined");
 		}
 	} else {
-		entry = load_addr + start.at + 128 + 32;
+		entry = load_addr + start.at;
 	}
 
-	text_size = text_size + 128 + 32;
+	text_size = text_size;
 	text_end = load_addr + text_size;
 
 	mb_magic = 0x1badb002;
@@ -848,11 +1216,13 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 	mb_addr = load_addr + 120;
 
 	if (kstart && kstart.fixed) {
-		kentry = load_addr + kstart.at + 128 + 32;
+		kentry = load_addr + kstart.at;
 	} else {
 		mb_magic = 0;
 		kentry = 0;
 	}
+
+	shoff = emit_sections(c: *assembler);
 
 	// magic
 	putchar(c, 0x7f);
@@ -919,14 +1289,14 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 	putchar(c, 0);
 
 	// shoff
-	putchar(c, 0);
-	putchar(c, 0);
-	putchar(c, 0);
-	putchar(c, 0);
-	putchar(c, 0);
-	putchar(c, 0);
-	putchar(c, 0);
-	putchar(c, 0);
+	putchar(c, shoff);
+	putchar(c, shoff >> 8);
+	putchar(c, shoff >> 16);
+	putchar(c, shoff >> 24);
+	putchar(c, shoff >> 32);
+	putchar(c, shoff >> 40);
+	putchar(c, shoff >> 48);
+	putchar(c, shoff >> 56);
 
 	// flags
 	putchar(c, 0);
@@ -951,12 +1321,14 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 	putchar(c, 0);
 
 	// shnum
-	putchar(c, 0);
-	putchar(c, 0);
+	putchar(c, c.num_sections);
+	putchar(c, c.num_sections >> 8);
+
+	s = find_section(c, ".shstrtab");
 
 	// shstrndx
-	putchar(c, 0);
-	putchar(c, 0);
+	putchar(c, s.index);
+	putchar(c, s.index >> 8);
 
 	// phdr[0].type
 	putchar(c, 1);

@@ -21,7 +21,9 @@ struct my_peg_compiler;
 struct my_peg_frame;
 struct my_peg_node;
 struct my_peg_op;
+struct my_section;
 struct my_sigaction;
+struct my_symbol;
 struct my_type;
 struct my_alloc {
 	struct my_page* my_page;
@@ -33,6 +35,9 @@ struct my_assembler {
 	struct my_chunk* my_text;
 	struct my_chunk* my_text_end;
 	unsigned long my_bits32;
+	struct my_symbol* my_symbols;
+	struct my_section* my_sections;
+	unsigned long my_num_sections;
 };
 struct my_chunk {
 	struct my_chunk* my_next;
@@ -187,11 +192,28 @@ struct my_peg_op {
 	unsigned long my_line;
 	unsigned long my_col;
 };
+struct my_section {
+	struct my_section* my_next;
+	unsigned char* my_name;
+	unsigned long my_start;
+	unsigned long my_end;
+	unsigned long my_index;
+	unsigned long my_name_offset;
+	unsigned long my_type;
+	unsigned long my_link;
+	unsigned long my_entsize;
+};
 struct my_sigaction {
 	unsigned long my_handler;
 	unsigned long my_flags;
 	unsigned long my_restorer;
 	unsigned long my_mask;
+};
+struct my_symbol {
+	struct my_symbol* my_next;
+	unsigned char* my_name;
+	struct my_label* my_label;
+	unsigned long my_name_offset;
 };
 struct my_type {
 	unsigned long my_kind;
@@ -494,6 +516,10 @@ enum {
 	my_R_RSI = 6,
 	my_R_RSP = 4,
 	my_R_SS = 2,
+	my_SHT_NULL = 0,
+	my_SHT_PROGBITS = 1,
+	my_SHT_STRTAB = 3,
+	my_SHT_SYMTAB = 2,
 	my_SIGALRM = 14,
 	my_SIGCHLD = 17,
 	my_SIGINT = 2,
@@ -516,6 +542,8 @@ enum {
 unsigned char*( my_PEG_tag_to_str)(unsigned long my_tag);
 unsigned char*( my_P_tag_to_str)(unsigned long my_tag);
 void( my__start)(unsigned long my_argc,unsigned char** my_argv,unsigned char** my_envp);
+void( my_add_section)(struct my_assembler* my_c,unsigned char* my_name,unsigned long my_type);
+void( my_add_symbol)(struct my_assembler* my_c,unsigned char* my_name,struct my_label* my_l);
 void( my_addfixup)(struct my_assembler* my_c,struct my_label* my_l);
 unsigned char*( my_alloc)(struct my_alloc* my_c,unsigned long my_size);
 unsigned long( my_any)(struct my_peg* my_c);
@@ -571,6 +599,7 @@ void( my_defun)(struct my_compiler* my_c,struct my_node* my_n);
 void( my_die)(unsigned char* my_msg);
 void( my_emit)(struct my_assembler* my_c,unsigned long my_x);
 void( my_emit_add)(struct my_assembler* my_c);
+void( my_emit_align)(struct my_assembler* my_c,unsigned long my_n,unsigned long my_b);
 void( my_emit_and)(struct my_assembler* my_c);
 void( my_emit_blob)(struct my_assembler* my_c,unsigned char* my_s,unsigned long my_n);
 void( my_emit_builtin)(struct my_compiler* my_c);
@@ -602,9 +631,11 @@ void( my_emit_ptr)(struct my_assembler* my_c,struct my_label* my_l);
 void( my_emit_restorer)(struct my_assembler* my_c);
 void( my_emit_ret)(struct my_assembler* my_c);
 void( my_emit_rsh)(struct my_assembler* my_c);
+unsigned long( my_emit_sections)(struct my_assembler* my_c);
 void( my_emit_ssr)(struct my_compiler* my_c);
 void( my_emit_store)(struct my_assembler* my_c,struct my_type* my_t);
 void( my_emit_str)(struct my_assembler* my_c,unsigned char* my_s);
+unsigned long( my_emit_strtab_str)(struct my_assembler* my_c,unsigned char* my_s);
 void( my_emit_sub)(struct my_assembler* my_c);
 void( my_emit_syscall)(struct my_assembler* my_c);
 void( my_emit_ud)(struct my_assembler* my_c);
@@ -621,6 +652,7 @@ void( my_fflush)(struct my_file* my_f);
 unsigned long( my_fgetc)(struct my_file* my_f);
 void( my_fillpos)(struct my_parser* my_c,struct my_node* my_n);
 struct my_decl*( my_find)(struct my_compiler* my_c,unsigned char* my_name,unsigned char* my_member_name,unsigned long my_make);
+struct my_section*( my_find_section)(struct my_assembler* my_c,unsigned char* my_name);
 struct my_decl*( my_first_decl)(struct my_compiler* my_c);
 void( my_fixup)(struct my_assembler* my_c,unsigned char* my_here,unsigned long my_delta);
 void( my_fixup_label)(struct my_assembler* my_c,struct my_label* my_l);
@@ -1144,6 +1176,44 @@ unsigned char*( my_P_tag_to_str)(unsigned long my_tag){
 void( my__start)(unsigned long my_argc,unsigned char** my_argv,unsigned char** my_envp){
 	(my_main)((my_argc),(my_argv),(my_envp));
 	(my_exit)((0UL));
+}
+void( my_add_section)(struct my_assembler* my_c,unsigned char* my_name,unsigned long my_type){
+	struct my_section* my_s = 0;
+	struct my_section* my_n = 0;
+	unsigned long my_end = 0;
+	(my_end)=((my_c)->my_at);
+	(my_emit_align)((my_c),(16UL),(my_OP_NOP));
+	(my_s)=((struct my_section*)(my_alloc)(((my_c)->my_a),(72UL)));
+	((my_s)->my_next)=((struct my_section*)0UL);
+	((my_s)->my_name)=(my_name);
+	((my_s)->my_start)=((my_c)->my_at);
+	((my_s)->my_end)=((my_c)->my_at);
+	((my_s)->my_index)=((my_c)->my_num_sections);
+	((my_s)->my_type)=(my_type);
+	((my_s)->my_link)=(0UL);
+	((my_s)->my_entsize)=(0UL);
+	(my_n)=((my_c)->my_sections);
+	if (my_n) {
+	while (1) {
+	if ((unsigned long)(!((my_n)->my_next))) {
+	break;
+	}
+	(my_n)=((my_n)->my_next);
+	}
+	((my_n)->my_end)=(my_end);
+	((my_n)->my_next)=(my_s);
+	} else {
+	((my_c)->my_sections)=(my_s);
+	}
+	((my_c)->my_num_sections)=((unsigned long)(((unsigned long)((my_c)->my_num_sections))+((unsigned long)(1UL))));
+}
+void( my_add_symbol)(struct my_assembler* my_c,unsigned char* my_name,struct my_label* my_l){
+	struct my_symbol* my_s = 0;
+	(my_s)=((struct my_symbol*)(my_alloc)(((my_c)->my_a),(32UL)));
+	((my_s)->my_next)=((my_c)->my_symbols);
+	((my_s)->my_name)=(my_name);
+	((my_s)->my_label)=(my_l);
+	((my_c)->my_symbols)=(my_s);
 }
 void( my_addfixup)(struct my_assembler* my_c,struct my_label* my_l){
 	struct my_fixup* my_f = 0;
@@ -1845,8 +1915,8 @@ void( my_compile_func)(struct my_compiler* my_c,struct my_decl* my_d){
 	} else {
 	(my_pragma)=(0UL);
 	}
-	(my_emit_str)(((my_c)->my_as),((my_d)->my_name));
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),((my_d)->my_func_preamble),(my_pragma));
 	(my_compile_stmt)((my_c),(my_d),(((my_d)->my_func_def)->my_b),((struct my_label*)0UL),((struct my_label*)0UL));
 	(my_emit_num)(((my_c)->my_as),(0UL));
@@ -2787,6 +2857,20 @@ void( my_emit_add)(struct my_assembler* my_c){
 	(my_as_modrr)((my_c),(my_OP_ADDRM),(my_R_RAX),(my_R_RDX));
 	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
 }
+void( my_emit_align)(struct my_assembler* my_c,unsigned long my_n,unsigned long my_b){
+	unsigned long my_pad = 0;
+	(my_pad)=((unsigned long)(((unsigned long)((my_c)->my_at))&((unsigned long)((unsigned long)(((unsigned long)(my_n))-((unsigned long)(1UL)))))));
+	if ((unsigned long)(((long)(my_pad))==((long)(0UL)))) {
+	return;
+	}
+	while (1) {
+	if ((unsigned long)(((long)(my_pad))==((long)(my_n)))) {
+	break;
+	}
+	(my_as_emit)((my_c),(my_b));
+	(my_pad)=((unsigned long)(((unsigned long)(my_pad))+((unsigned long)(1UL))));
+	}
+}
 void( my_emit_and)(struct my_assembler* my_c){
 	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
 	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDX));
@@ -2826,6 +2910,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"syscall"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_emit_syscall)(((my_c)->my_as));
 	(my_emit_ret)(((my_c)->my_as));
@@ -2833,11 +2918,13 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"_restorer"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_restorer)(((my_c)->my_as));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_include"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_UD2));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -2846,6 +2933,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"ud2"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_UD2));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -2854,6 +2942,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"cpuid"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
@@ -2878,6 +2967,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"inb"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_IN));
@@ -2887,6 +2977,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"outb"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
@@ -2897,6 +2988,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"inw"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_emit)(((my_c)->my_as),(my_OP_OS));
@@ -2907,6 +2999,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"outw"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
@@ -2918,6 +3011,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"ind"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_IND));
@@ -2927,6 +3021,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"outd"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
@@ -2937,6 +3032,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdmsr"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_RDMSR));
@@ -2949,6 +3045,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrmsr"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_MOVE),(my_R_RDX),(my_R_RAX));
@@ -2962,6 +3059,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr0"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR0),(my_R_RAX));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -2970,6 +3068,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr0"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR0),(my_R_RAX));
@@ -2979,6 +3078,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr2"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR2),(my_R_RAX));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -2987,6 +3087,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr2"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR2),(my_R_RAX));
@@ -2996,6 +3097,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr3"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR3),(my_R_RAX));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -3004,6 +3106,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr3"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR3),(my_R_RAX));
@@ -3013,6 +3116,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr4"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR4),(my_R_RAX));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -3021,6 +3125,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr4"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR4),(my_R_RAX));
@@ -3030,6 +3135,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"lgdt"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RSP),(16UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
@@ -3045,6 +3151,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"lidt"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RSP),(16UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
@@ -3060,6 +3167,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"lldt"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modr)(((my_c)->my_as),(my_OP_LLDTM),(my_R_RAX));
@@ -3069,6 +3177,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"ltr"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modr)(((my_c)->my_as),(my_OP_LTRM),(my_R_RAX));
@@ -3078,6 +3187,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"lseg"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_WRSR),(my_R_ES),(my_R_RAX));
@@ -3106,6 +3216,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"hlt"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_HLT));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -3114,6 +3225,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"cli"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_CLI));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -3122,6 +3234,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"sti"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_STI));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -3130,6 +3243,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdflags"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
 	(my_emit_ret)(((my_c)->my_as));
@@ -3137,6 +3251,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrflags"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
@@ -3147,6 +3262,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"wbinvld"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modm)(((my_c)->my_as),(my_OP_WBINVD),(my_R_RAX),(0UL),(0UL),(0UL));
@@ -3156,6 +3272,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"invlpg"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modm)(((my_c)->my_as),(my_OP_INVLPGM),(my_R_RAX),(0UL),(0UL),(0UL));
@@ -3165,16 +3282,19 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"_ssr0"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_ssr)((my_c));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_isr0"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_isr)((my_c));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_rgs"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_emit)(((my_c)->my_as),(my_OP_GS));
@@ -3185,6 +3305,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"_r32"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
 	(((my_c)->my_as)->my_bits32)=(1UL);
@@ -3196,6 +3317,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"_w32"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
@@ -3208,6 +3330,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"_r16"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrr)(((my_c)->my_as),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
@@ -3220,6 +3343,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"_w16"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
@@ -3232,6 +3356,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"_rdrand"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
 	(my_as_modr)(((my_c)->my_as),(my_OP_RDRAND),(my_R_RAX));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
@@ -3240,6 +3365,7 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	(my_d)=((my_find)((my_c),((unsigned char *)"taskswitch"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
 	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
 	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
 	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
 	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(24UL));
@@ -3689,6 +3815,182 @@ void( my_emit_rsh)(struct my_assembler* my_c){
 	(my_as_modr)((my_c),(my_OP_SHRM),(my_R_RAX));
 	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
 }
+unsigned long( my_emit_sections)(struct my_assembler* my_c){
+	unsigned long my_at = 0;
+	struct my_section* my_s = 0;
+	struct my_symbol* my_y = 0;
+	unsigned long my_n = 0;
+	(my_add_symbol)((my_c),((unsigned char *)""),((struct my_label*)0UL));
+	(my_s)=((my_find_section)((my_c),((unsigned char *)"")));
+	((my_s)->my_start)=(0UL);
+	((my_s)->my_end)=(0UL);
+	(my_add_section)((my_c),((unsigned char *)".strtab"),(my_SHT_STRTAB));
+	(my_y)=((my_c)->my_symbols);
+	while (1) {
+	if ((unsigned long)(!(my_y))) {
+	break;
+	}
+	((my_y)->my_name_offset)=(my_n);
+	(my_n)=((unsigned long)(((unsigned long)(my_n))+((unsigned long)((my_emit_strtab_str)((my_c),((my_y)->my_name))))));
+	(my_y)=((my_y)->my_next);
+	}
+	(my_add_section)((my_c),((unsigned char *)".symtab"),(my_SHT_SYMTAB));
+	(my_y)=((my_c)->my_symbols);
+	while (1) {
+	if ((unsigned long)(!(my_y))) {
+	break;
+	}
+	(my_n)=((my_y)->my_name_offset);
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	if ((my_y)->my_label) {
+	(my_n)=(18UL);
+	} else {
+	(my_n)=(0UL);
+	}
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),(0UL));
+	if ((my_y)->my_label) {
+	(my_n)=(1UL);
+	} else {
+	(my_n)=(0UL);
+	}
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	if ((my_y)->my_label) {
+	(my_n)=((unsigned long)(((unsigned long)(((my_y)->my_label)->my_at))+((unsigned long)(1048576UL))));
+	} else {
+	(my_n)=(0UL);
+	}
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(32UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(40UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(48UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(56UL)))));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_y)=((my_y)->my_next);
+	}
+	(my_s)=((my_find_section)((my_c),((unsigned char *)".strtab")));
+	(my_n)=((my_s)->my_index);
+	(my_s)=((my_find_section)((my_c),((unsigned char *)".symtab")));
+	((my_s)->my_link)=(my_n);
+	((my_s)->my_entsize)=(24UL);
+	(my_add_section)((my_c),((unsigned char *)".shstrtab"),(my_SHT_STRTAB));
+	(my_s)=((my_c)->my_sections);
+	(my_n)=(0UL);
+	while (1) {
+	if ((unsigned long)(!(my_s))) {
+	break;
+	}
+	((my_s)->my_name_offset)=(my_n);
+	(my_n)=((unsigned long)(((unsigned long)(my_n))+((unsigned long)((my_emit_strtab_str)((my_c),((my_s)->my_name))))));
+	(my_s)=((my_s)->my_next);
+	}
+	(my_s)=((my_find_section)((my_c),((unsigned char *)".shstrtab")));
+	((my_s)->my_end)=((my_c)->my_at);
+	(my_emit_align)((my_c),(16UL),(my_OP_NOP));
+	(my_at)=((my_c)->my_at);
+	(my_s)=((my_c)->my_sections);
+	while (1) {
+	if ((unsigned long)(!(my_s))) {
+	break;
+	}
+	(my_n)=((my_s)->my_name_offset);
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	(my_n)=((my_s)->my_type);
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	(my_as_emit)((my_c),(6UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	if ((unsigned long)(((long)((my_s)->my_start))==((long)((my_s)->my_end)))) {
+	(my_n)=(0UL);
+	} else {
+	(my_n)=((unsigned long)(((unsigned long)((my_s)->my_start))+((unsigned long)(1048576UL))));
+	}
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(32UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(40UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(48UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(56UL)))));
+	(my_n)=((my_s)->my_start);
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(32UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(40UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(48UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(56UL)))));
+	(my_n)=((unsigned long)(((unsigned long)((my_s)->my_end))-((unsigned long)((my_s)->my_start))));
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(32UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(40UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(48UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(56UL)))));
+	(my_n)=((my_s)->my_link);
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	if ((unsigned long)(((long)((my_s)->my_type))==((long)(my_SHT_SYMTAB)))) {
+	(my_n)=(1UL);
+	} else {
+	(my_n)=(0UL);
+	}
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_as_emit)((my_c),(0UL));
+	(my_n)=((my_s)->my_entsize);
+	(my_as_emit)((my_c),(my_n));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(8UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(16UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(24UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(32UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(40UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(48UL)))));
+	(my_as_emit)((my_c),((unsigned long)(((unsigned long)(my_n))>>((unsigned long)(56UL)))));
+	(my_s)=((my_s)->my_next);
+	}
+	return my_at;
+}
 void( my_emit_ssr)(struct my_compiler* my_c){
 	struct my_decl* my_d = 0;
 	struct my_decl* my_v = 0;
@@ -3811,6 +4113,18 @@ void( my_emit_str)(struct my_assembler* my_c,unsigned char* my_s){
 	(my_as_op)((my_c),(my_OP_NOP));
 	(my_fixup_label)((my_c),(my_b));
 	(my_emit_ptr)((my_c),(my_a));
+}
+unsigned long( my_emit_strtab_str)(struct my_assembler* my_c,unsigned char* my_s){
+	unsigned long my_i = 0;
+	(my_i)=(0UL);
+	while (1) {
+	(my_as_emit)((my_c),((unsigned long)(my_s)[my_i]));
+	if ((unsigned long)(!((my_s)[my_i]))) {
+	break;
+	}
+	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
+	}
+	return (unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL)));
 }
 void( my_emit_sub)(struct my_assembler* my_c){
 	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
@@ -4031,6 +4345,20 @@ struct my_decl*( my_find)(struct my_compiler* my_c,unsigned char* my_name,unsign
 	((my_d)->my_goto_label)=((my_mklabel)(((my_c)->my_as)));
 	(*(my_link))=(my_d);
 	return my_d;
+}
+struct my_section*( my_find_section)(struct my_assembler* my_c,unsigned char* my_name){
+	struct my_section* my_n = 0;
+	(my_n)=((my_c)->my_sections);
+	while (1) {
+	if ((unsigned long)(!(my_n))) {
+	break;
+	}
+	if ((unsigned long)(((long)((my_strcmp)(((my_n)->my_name),(my_name))))==((long)(0UL)))) {
+	break;
+	}
+	(my_n)=((my_n)->my_next);
+	}
+	return my_n;
 }
 struct my_decl*( my_first_decl)(struct my_compiler* my_c){
 	struct my_decl* my_d = 0;
@@ -8737,13 +9065,17 @@ void( my_setup_alloc)(struct my_alloc* my_c){
 }
 struct my_assembler*( my_setup_assembler)(struct my_alloc* my_a){
 	struct my_assembler* my_c = 0;
-	(my_c)=((struct my_assembler*)(my_alloc)((my_a),(48UL)));
+	(my_c)=((struct my_assembler*)(my_alloc)((my_a),(72UL)));
 	((my_c)->my_a)=(my_a);
 	((my_c)->my_out)=((struct my_file*)0UL);
-	((my_c)->my_at)=(0UL);
+	((my_c)->my_at)=(160UL);
 	((my_c)->my_text)=((struct my_chunk*)0UL);
 	((my_c)->my_text_end)=((struct my_chunk*)0UL);
 	((my_c)->my_bits32)=(0UL);
+	((my_c)->my_symbols)=((struct my_symbol*)0UL);
+	((my_c)->my_num_sections)=(0UL);
+	(my_add_section)((my_c),((unsigned char *)""),(my_SHT_NULL));
+	(my_add_section)((my_c),((unsigned char *)".text"),(my_SHT_PROGBITS));
 	return my_c;
 }
 struct my_parser*( my_setup_parser)(struct my_alloc* my_a){
@@ -9184,10 +9516,7 @@ void( my_typecheck_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my
 	}
 	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
 	if ((unsigned long)((my_v)&&((my_v)->my_var_defined))) {
-	(my_emit_lea)(((my_c)->my_as),((my_v)->my_var_offset));
 	(((my_n)->my_a)->my_t)=((my_v)->my_var_type);
-	(my_emit_load)(((my_c)->my_as),(((my_n)->my_a)->my_t));
-	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
 	} else if ((unsigned long)(!((my_strcmp)((((my_n)->my_a)->my_s),((unsigned char *)"_include"))))) {
 	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
 	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_func_defined))))) {
@@ -9200,11 +9529,9 @@ void( my_typecheck_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my
 	(my_cdie)((my_c),((unsigned char *)"no such function"));
 	}
 	(((my_n)->my_a)->my_t)=((my_v)->my_func_type);
-	(my_emit_lcall)(((my_c)->my_as),((my_v)->my_func_label),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
 	}
 	} else {
 	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
 	}
 	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_FUNC)))) {
 	(my_cdie)((my_c),((unsigned char *)"calling not a function"));
@@ -9356,7 +9683,6 @@ void( my_typecheck_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my
 	(my_cdie)((my_c),((unsigned char *)"not lexpr"));
 	}
 	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_num)(((my_c)->my_as),(1UL));
 	if ((unsigned long)(!((my_type_isprim)((((my_n)->my_a)->my_t))))) {
 	(my_cdie)((my_c),((unsigned char *)"not an prim"));
 	}
@@ -9702,6 +10028,8 @@ void( my_writeout)(struct my_assembler* my_c,struct my_label* my_start,struct my
 	unsigned long my_mb_flags = 0;
 	unsigned long my_mb_checksum = 0;
 	unsigned long my_mb_addr = 0;
+	struct my_section* my_s = 0;
+	unsigned long my_shoff = 0;
 	if ((unsigned long)(!((my_c)->my_out))) {
 	(my_die)(((unsigned char *)"output not opened"));
 	}
@@ -9712,20 +10040,21 @@ void( my_writeout)(struct my_assembler* my_c,struct my_label* my_start,struct my
 	(my_die)(((unsigned char *)"_start is not defined"));
 	}
 	} else {
-	(my_entry)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)((my_start)->my_at)))))+((unsigned long)(128UL)))))+((unsigned long)(32UL))));
+	(my_entry)=((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)((my_start)->my_at))));
 	}
-	(my_text_size)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_text_size))+((unsigned long)(128UL)))))+((unsigned long)(32UL))));
+	(my_text_size)=(my_text_size);
 	(my_text_end)=((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)(my_text_size))));
 	(my_mb_magic)=(464367618UL);
 	(my_mb_flags)=(65539UL);
 	(my_mb_checksum)=((unsigned long)(-(unsigned long)((unsigned long)(((unsigned long)(my_mb_magic))+((unsigned long)(my_mb_flags))))));
 	(my_mb_addr)=((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)(120UL))));
 	if ((unsigned long)((my_kstart)&&((my_kstart)->my_fixed))) {
-	(my_kentry)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)((my_kstart)->my_at)))))+((unsigned long)(128UL)))))+((unsigned long)(32UL))));
+	(my_kentry)=((unsigned long)(((unsigned long)(my_load_addr))+((unsigned long)((my_kstart)->my_at))));
 	} else {
 	(my_mb_magic)=(0UL);
 	(my_kentry)=(0UL);
 	}
+	(my_shoff)=((my_emit_sections)(((struct my_assembler*)my_c)));
 	(my_putchar)((my_c),(127UL));
 	(my_putchar)((my_c),(69));
 	(my_putchar)((my_c),(76));
@@ -9766,14 +10095,14 @@ void( my_writeout)(struct my_assembler* my_c,struct my_label* my_start,struct my
 	(my_putchar)((my_c),(0UL));
 	(my_putchar)((my_c),(0UL));
 	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
+	(my_putchar)((my_c),(my_shoff));
+	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_shoff))>>((unsigned long)(8UL)))));
+	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_shoff))>>((unsigned long)(16UL)))));
+	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_shoff))>>((unsigned long)(24UL)))));
+	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_shoff))>>((unsigned long)(32UL)))));
+	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_shoff))>>((unsigned long)(40UL)))));
+	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_shoff))>>((unsigned long)(48UL)))));
+	(my_putchar)((my_c),((unsigned long)(((unsigned long)(my_shoff))>>((unsigned long)(56UL)))));
 	(my_putchar)((my_c),(0UL));
 	(my_putchar)((my_c),(0UL));
 	(my_putchar)((my_c),(0UL));
@@ -9786,10 +10115,11 @@ void( my_writeout)(struct my_assembler* my_c,struct my_label* my_start,struct my
 	(my_putchar)((my_c),(0UL));
 	(my_putchar)((my_c),(64UL));
 	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
-	(my_putchar)((my_c),(0UL));
+	(my_putchar)((my_c),((my_c)->my_num_sections));
+	(my_putchar)((my_c),((unsigned long)(((unsigned long)((my_c)->my_num_sections))>>((unsigned long)(8UL)))));
+	(my_s)=((my_find_section)((my_c),((unsigned char *)".shstrtab")));
+	(my_putchar)((my_c),((my_s)->my_index));
+	(my_putchar)((my_c),((unsigned long)(((unsigned long)((my_s)->my_index))>>((unsigned long)(8UL)))));
 	(my_putchar)((my_c),(1UL));
 	(my_putchar)((my_c),(0UL));
 	(my_putchar)((my_c),(0UL));

@@ -537,8 +537,8 @@ compile_func(c: *compiler, d: *decl) {
 	}
 
 	// Compile the function body
-	emit_str(c.as, d.name);
 	fixup_label(c.as, d.func_label);
+	add_symbol(c.as, d.name, d.func_label);
 	emit_preamble(c.as, d.func_preamble, pragma);
 	compile_stmt(c, d, d.func_def.b, 0:*label, 0:*label);
 	emit_num(c.as, 0);
@@ -610,10 +610,7 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 
 			v = find(c, d.name, n.a.s, 0);
 			if (v && v.var_defined) {
-				emit_lea(c.as, v.var_offset);
 				n.a.t = v.var_type;
-				emit_load(c.as, n.a.t);
-				emit_call(c.as, count_args(c, n.a.t.arg));
 			} else if !strcmp(n.a.s, "_include") {
 				v = find(c, n.a.s, 0:*byte, 0);
 				if (!v || !v.func_defined) {
@@ -626,11 +623,9 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 					cdie(c, "no such function");
 				}
 				n.a.t = v.func_type;
-				emit_lcall(c.as, v.func_label, count_args(c, n.a.t.arg));
 			}
 		} else {
 			typecheck_expr(c, d, n.a, 1);
-			emit_call(c.as, count_args(c, n.a.t.arg));
 		}
 
 		if (n.a.t.kind != TY_FUNC) {
@@ -830,8 +825,6 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		}
 
 		typecheck_expr(c, d, n.a, 1);
-
-		emit_num(c.as, 1);
 
 		if (!type_isprim(n.a.t)) {
 			cdie(c, "not an prim");
@@ -1903,6 +1896,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "syscall", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		emit_syscall(c.as);
 		emit_ret(c.as);
@@ -1911,12 +1905,14 @@ emit_builtin(c: *compiler) {
 	d = find(c, "_restorer", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_restorer(c.as);
 	}
 
 	d = find(c, "_include", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_op(c.as, OP_UD2);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -1926,6 +1922,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "ud2", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_op(c.as, OP_UD2);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -1935,6 +1932,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "cpuid", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RDI, 0, 0, 0);
@@ -1960,6 +1958,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "inb", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
 		as_op(c.as, OP_IN);
@@ -1970,6 +1969,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "outb", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
@@ -1981,6 +1981,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "inw", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
 		as_emit(c.as, OP_OS);
@@ -1992,6 +1993,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "outw", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
@@ -2004,6 +2006,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "ind", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
 		as_op(c.as, OP_IND);
@@ -2014,6 +2017,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "outd", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
@@ -2025,6 +2029,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "rdmsr", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
 		as_op(c.as, OP_RDMSR);
@@ -2038,6 +2043,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "wrmsr", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
 		as_modrr(c.as, OP_MOVE, R_RDX, R_RAX);
@@ -2052,6 +2058,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "rdcr0", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrr(c.as, OP_RDCRR, R_CR0, R_RAX);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -2061,6 +2068,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "wrcr0", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
 		as_modrr(c.as, OP_WRCRR, R_CR0, R_RAX);
@@ -2071,6 +2079,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "rdcr2", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrr(c.as, OP_RDCRR, R_CR2, R_RAX);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -2080,6 +2089,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "wrcr2", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
 		as_modrr(c.as, OP_WRCRR, R_CR2, R_RAX);
@@ -2090,6 +2100,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "rdcr3", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrr(c.as, OP_RDCRR, R_CR3, R_RAX);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -2099,6 +2110,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "wrcr3", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
 		as_modrr(c.as, OP_WRCRR, R_CR3, R_RAX);
@@ -2109,6 +2121,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "rdcr4", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrr(c.as, OP_RDCRR, R_CR4, R_RAX);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -2118,6 +2131,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "wrcr4", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
 		as_modrr(c.as, OP_WRCRR, R_CR4, R_RAX);
@@ -2128,6 +2142,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "lgdt", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modri(c.as, OP_SUBI, R_RSP, 16);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
@@ -2144,6 +2159,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "lidt", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modri(c.as, OP_SUBI, R_RSP, 16);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
@@ -2160,6 +2176,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "lldt", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
 		as_modr(c.as, OP_LLDTM, R_RAX);
@@ -2170,6 +2187,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "ltr", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
 		as_modr(c.as, OP_LTRM, R_RAX);
@@ -2180,6 +2198,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "lseg", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
                 // es ds fs gs
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
@@ -2215,6 +2234,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "hlt", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_op(c.as, OP_HLT);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -2224,6 +2244,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "cli", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_op(c.as, OP_CLI);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -2233,6 +2254,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "sti", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_op(c.as, OP_STI);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -2242,6 +2264,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "rdflags", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_op(c.as, OP_PUSHF);
 		emit_ret(c.as);
@@ -2250,6 +2273,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "wrflags", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_op(c.as, OP_PUSHF);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
@@ -2261,6 +2285,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "wbinvld", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
 		as_modm(c.as, OP_WBINVD, R_RAX, 0, 0, 0);
@@ -2271,6 +2296,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "invlpg", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
 		as_modm(c.as, OP_INVLPGM, R_RAX, 0, 0, 0);
@@ -2281,18 +2307,21 @@ emit_builtin(c: *compiler) {
 	d = find(c, "_ssr0", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_ssr(c);
 	}
 
 	d = find(c, "_isr0", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
                 emit_isr(c);
 	}
 
 	d = find(c, "_rgs", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
 		as_emit(c.as, OP_GS);
@@ -2304,6 +2333,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "_r32", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
 		c.as.bits32 = 1;
@@ -2316,6 +2346,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "_w32", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
@@ -2329,6 +2360,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "_r16", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
 		as_modrr(c.as, OP_XORRM, R_RAX, R_RAX);
@@ -2342,6 +2374,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "_w16", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
 		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
@@ -2355,6 +2388,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "_rdrand", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 		emit_preamble(c.as, 0, 0);
 		as_modr(c.as, OP_RDRAND, R_RAX);
 		as_opr(c.as, OP_PUSHR, R_RAX);
@@ -2364,6 +2398,7 @@ emit_builtin(c: *compiler) {
 	d = find(c, "taskswitch", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.as, d.func_label);
+		add_symbol(c.as, d.name, d.func_label);
 
 		as_opr(c.as, OP_PUSHR, R_RBP);
 		as_op(c.as, OP_PUSHF);
