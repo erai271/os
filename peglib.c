@@ -19,6 +19,9 @@ struct peg_op {
 struct peg {
 	a: *alloc;
 
+	grammar: (func(c:*peg):int);
+	tag_to_str: (func(t:int):*byte);
+
 	filename: *byte;
 
 	src: *byte;
@@ -288,12 +291,15 @@ construct(c: *peg, sp: int): *peg_node {
 	}
 }
 
-peg_new(filename: *byte, src: *byte, len: int, a: *alloc): *peg {
+peg_new(filename: *byte, src: *byte, len: int, a: *alloc, grammar: (func(c:*peg):int), tag_to_str: (func(t:int):*byte)): *peg {
 	var c: *peg;
 
 	c = alloc(a, sizeof(*c)):*peg;
 
 	c.a = a;
+
+	c.grammar = grammar;
+	c.tag_to_str = tag_to_str;
 
 	c.filename = filename;
 
@@ -327,9 +333,9 @@ peg_new(filename: *byte, src: *byte, len: int, a: *alloc): *peg {
 	return c;
 }
 
-peg_parse(c: *peg, sp: int, grammar: (func(c:*peg):int)): *peg_node {
+peg_parse(c: *peg, sp: int): *peg_node {
 	choice(c);
-	if !grammar(c) {
+	if !c.grammar(c) {
 		fdputs(2, "syntax error at ");
 		fdputs(2, c.filename);
 		fdputs(2, ":");
@@ -337,7 +343,7 @@ peg_parse(c: *peg, sp: int, grammar: (func(c:*peg):int)): *peg_node {
 		fdputs(2, ":");
 		fdputd(2, c.fail_col);
 		fdputs(2, " expected ");
-		fdputs(2, P_tag_to_str(c.fail_tag));
+		fdputs(2, c.tag_to_str(c.fail_tag));
 		if c.fail_literal {
 			fdputs(2, " '");
 			fdputs(2, c.fail_literal);

@@ -136,6 +136,8 @@ struct my_parser {
 };
 struct my_peg {
 	struct my_alloc* my_a;
+	unsigned long(* my_grammar)(struct my_peg*);
+	unsigned char*(* my_tag_to_str)(unsigned long);
 	unsigned char* my_filename;
 	unsigned char* my_src;
 	unsigned long my_size;
@@ -795,9 +797,9 @@ unsigned long( my_peg_P_var_stmt)(struct my_peg* my_c);
 unsigned long( my_peg_P_void)(struct my_peg* my_c);
 unsigned long( my_peg_P_xor_op)(struct my_peg* my_c);
 void( my_peg_compile)(struct my_peg_compiler* my_c,unsigned char* my_filename);
-struct my_peg*( my_peg_new)(unsigned char* my_filename,unsigned char* my_src,unsigned long my_len,struct my_alloc* my_a);
+struct my_peg*( my_peg_new)(unsigned char* my_filename,unsigned char* my_src,unsigned long my_len,struct my_alloc* my_a,unsigned long(* my_grammar)(struct my_peg*),unsigned char*(* my_tag_to_str)(unsigned long));
 void( my_peg_open_output)(struct my_peg_compiler* my_c,unsigned char* my_filename);
-struct my_peg_node*( my_peg_parse)(struct my_peg* my_c,unsigned long my_sp,unsigned long(* my_grammar)(struct my_peg*));
+struct my_peg_node*( my_peg_parse)(struct my_peg* my_c,unsigned long my_sp);
 void( my_peg_reset)(struct my_peg* my_c,unsigned char* my_filename,unsigned char* my_src,unsigned long my_len);
 struct my_type*( my_prototype)(struct my_compiler* my_c,struct my_node* my_n);
 void( my_putchar)(struct my_assembler* my_c,unsigned long my_ch);
@@ -5226,7 +5228,7 @@ struct my_node*( my_parse)(struct my_parser* my_c,unsigned char* my_filename){
 	(my_src)=((my_freadall)((my_f),(&(my_len))));
 	(my_fclose)((my_f));
 	(my_peg_reset)(((my_c)->my_p),(my_filename),(my_src),(my_len));
-	(my_pn)=((my_peg_parse)(((my_c)->my_p),(my_P_sp),(my_peg_P_grammar)));
+	(my_pn)=((my_peg_parse)(((my_c)->my_p),(my_P_sp)));
 	return (my_reconstruct)((my_c),(my_pn));
 }
 unsigned long( my_parse_escape)(unsigned char* my_s,unsigned long* my_i,unsigned long my_n){
@@ -8121,15 +8123,17 @@ void( my_peg_compile)(struct my_peg_compiler* my_c,unsigned char* my_filename){
 	(my_f)=((my_fopen)((my_fd),((my_c)->my_a)));
 	(my_src)=((my_freadall)((my_f),(&(my_len))));
 	(my_fclose)((my_f));
-	((my_c)->my_p)=((my_peg_new)((my_filename),(my_src),(my_len),((my_c)->my_a)));
-	(my_node)=((my_peg_parse)(((my_c)->my_p),(my_PEG_sp),(my_peg_PEG_grammar)));
+	((my_c)->my_p)=((my_peg_new)((my_filename),(my_src),(my_len),((my_c)->my_a),(my_peg_PEG_grammar),(my_PEG_tag_to_str)));
+	(my_node)=((my_peg_parse)(((my_c)->my_p),(my_PEG_sp)));
 	(my_translate)((my_c),(my_node));
 	(my_fflush)(((my_c)->my_out));
 }
-struct my_peg*( my_peg_new)(unsigned char* my_filename,unsigned char* my_src,unsigned long my_len,struct my_alloc* my_a){
+struct my_peg*( my_peg_new)(unsigned char* my_filename,unsigned char* my_src,unsigned long my_len,struct my_alloc* my_a,unsigned long(* my_grammar)(struct my_peg*),unsigned char*(* my_tag_to_str)(unsigned long)){
 	struct my_peg* my_c = 0;
-	(my_c)=((struct my_peg*)(my_alloc)((my_a),(184UL)));
+	(my_c)=((struct my_peg*)(my_alloc)((my_a),(200UL)));
 	((my_c)->my_a)=(my_a);
+	((my_c)->my_grammar)=(my_grammar);
+	((my_c)->my_tag_to_str)=(my_tag_to_str);
 	((my_c)->my_filename)=(my_filename);
 	((my_c)->my_src)=(my_src);
 	((my_c)->my_size)=(my_len);
@@ -8166,9 +8170,9 @@ void( my_peg_open_output)(struct my_peg_compiler* my_c,unsigned char* my_filenam
 	(my_f)=((my_fopen)((my_fd),((my_c)->my_a)));
 	((my_c)->my_out)=(my_f);
 }
-struct my_peg_node*( my_peg_parse)(struct my_peg* my_c,unsigned long my_sp,unsigned long(* my_grammar)(struct my_peg*)){
+struct my_peg_node*( my_peg_parse)(struct my_peg* my_c,unsigned long my_sp){
 	(my_choice)((my_c));
-	if ((unsigned long)(!((my_grammar)((my_c))))) {
+	if ((unsigned long)(!(((my_c)->my_grammar)((my_c))))) {
 	(my_fdputs)((2UL),((unsigned char *)"syntax error at "));
 	(my_fdputs)((2UL),((my_c)->my_filename));
 	(my_fdputs)((2UL),((unsigned char *)":"));
@@ -8176,7 +8180,7 @@ struct my_peg_node*( my_peg_parse)(struct my_peg* my_c,unsigned long my_sp,unsig
 	(my_fdputs)((2UL),((unsigned char *)":"));
 	(my_fdputd)((2UL),((my_c)->my_fail_col));
 	(my_fdputs)((2UL),((unsigned char *)" expected "));
-	(my_fdputs)((2UL),((my_P_tag_to_str)(((my_c)->my_fail_tag))));
+	(my_fdputs)((2UL),(((my_c)->my_tag_to_str)(((my_c)->my_fail_tag))));
 	if ((my_c)->my_fail_literal) {
 	(my_fdputs)((2UL),((unsigned char *)" '"));
 	(my_fdputs)((2UL),((my_c)->my_fail_literal));
@@ -9082,7 +9086,7 @@ struct my_parser*( my_setup_parser)(struct my_alloc* my_a){
 	struct my_parser* my_c = 0;
 	(my_c)=((struct my_parser*)(my_alloc)((my_a),(16UL)));
 	((my_c)->my_a)=(my_a);
-	((my_c)->my_p)=((my_peg_new)(((unsigned char *)""),((unsigned char *)""),(0UL),(my_a)));
+	((my_c)->my_p)=((my_peg_new)(((unsigned char *)""),((unsigned char *)""),(0UL),(my_a),(my_peg_P_grammar),(my_P_tag_to_str)));
 	return my_c;
 }
 struct my_peg_compiler*( my_setup_peg)(struct my_alloc* my_a,unsigned char* my_prefix){

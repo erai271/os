@@ -490,9 +490,9 @@ peg_compile(c: *peg_compiler, filename: *byte) {
 	src = freadall(f, &len);
 	fclose(f);
 
-	c.p = peg_new(filename, src, len, c.a);
+	c.p = peg_new(filename, src, len, c.a, peg_PEG_grammar, PEG_tag_to_str);
 
-	node = peg_parse(c.p, PEG_sp, peg_PEG_grammar);
+	node = peg_parse(c.p, PEG_sp);
 	translate(c, node);
 
 	fflush(c.out);
