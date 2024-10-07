@@ -1,9 +1,9 @@
 #!/bin/sh
 
-LIBS="bufio.c lib.c alloc.c syscall.c"
+LIBS="peglib.c bufio.c lib.c alloc.c syscall.c"
 CRYPTO="ed25519.c sha512.c sha256.c chacha20.c poly1305.c"
 CC="cc1.c type.c as.c decl.c node.c"
-PEG="peg.c peglib.c parsepeg.c"
+PEG="peg.c parsepeg.c"
 SSHD="chacha20.c poly1305.c sha256.c sha512.c ed25519.c sshd.c"
 KERNEL="kernel.c"
 SHELL="echo.c cmp.c rm.c ls.c cat.c xxd.c mv.c mkdir.c cpio.c sh.c"

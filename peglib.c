@@ -383,13 +383,13 @@ peg_free(c: *peg) {
 	free(c.a, c: *byte);
 }
 
-peg_show(out: *file, n: *peg_node) {
+peg_show(c: *peg, out: *file, n: *peg_node) {
 	var i: int;
 	var ch: int;
 	var hex: *byte;
 	hex = "0123456789abcdef";
 	fputs(out, "(");
-	fputs(out, P_tag_to_str(n.tag));
+	fputs(out, c.tag_to_str(n.tag));
 	if n.child {
 		n = n.child;
 		loop {
@@ -398,7 +398,7 @@ peg_show(out: *file, n: *peg_node) {
 			}
 
 			fputc(out, ' ');
-			peg_show(out, n);
+			peg_show(c, out, n);
 
 			n = n.next;
 		}

@@ -23,7 +23,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	peg_free(peg);
 
 	out = fopen(1, &a);
-	peg_show(out, node);
+	peg_show(peg, out, node);
 	fputc(out, '\n');
 
 	fflush(out);

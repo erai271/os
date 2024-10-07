@@ -28,3 +28,4 @@ cat
 peg
 peg0
 *.out*
+*_peg.c
