@@ -402,7 +402,7 @@ kputd(x: int) {
 	kputc('0' + a);
 }
 
-find_xsdt(): int {
+find_rsdt(): int {
 	var p: int;
 	var v: *byte;
 	var len: int;
@@ -425,52 +425,38 @@ find_xsdt(): int {
 		p = p + 16;
 	}
 
-	// Revision
-	if v[15]:int != 2 {
-		return 0;
-	}
-
-	len = _r32(&v[20]);
-	if len < 36 || len > 128 {
-		return 0;
-	}
-
-	if bytesum(v, len) {
-		return 0;
-	}
-
-	p = (&v[24]):*int[0];
-	if valid_table(p, "XSDT") == 0 {
+	p = _r32(&v[16]);
+	if valid_table(p, "RSDT") == 0 {
 		return 0;
 	}
 
 	return p;
 }
 
-find_acpi(xsdt: int, sig: *byte): int {
+find_acpi(rsdt: int, sig: *byte): int {
 	var i: int;
 	var len: int;
 	var p: int;
 
-	if xsdt == 0 {
+	if rsdt == 0 {
 		return 0;
 	}
 
 	i = 36;
-	len = acpi_len(xsdt);
+	len = acpi_len(rsdt);
 
 	loop {
 		if i >= len {
 			return 0;
 		}
 
-		p = ptov(xsdt + i):*int[0];
+		p = _r32(ptov(rsdt + i));
 
 		if valid_table(p, sig) != 0 {
 			return p;
 		}
 
-		i = i + 8;
+		i = i + 4;
 	}
 }
 
@@ -4811,7 +4797,7 @@ _kstart(mb: int) {
 	var idt_size: int;
 	var gdt: *int;
 	var gdt_size: int;
-        var xsdt: int;
+        var rsdt: int;
         var mcfg: int;
 	var pcip: int;
 	var pci: *byte;
@@ -5002,12 +4988,12 @@ _kstart(mb: int) {
 	sti();
 
         // Find ACPI tables
-	xsdt = find_xsdt();
-	if !xsdt {
-		kdie("No xsdt?\n");
+	rsdt = find_rsdt();
+	if !rsdt {
+		kdie("No rsdt?\n");
 	}
 
-        mcfg = find_acpi(xsdt, "MCFG");
+        mcfg = find_acpi(rsdt, "MCFG");
 	if !mcfg {
 		kdie("No mcfg?\n");
 	}
