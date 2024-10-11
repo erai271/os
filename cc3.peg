@@ -1,10 +1,11 @@
-grammar <- sp (enum_decl / struct_decl / func_decl)* !.
+grammar <- sp (enum_decl / struct_decl / union_decl / func_decl)* !.
 
 enum_item <- ident sp ('=' sp expr)?
 enum_decl <- enum sp '{' sp (enum_item (',' sp enum_item)*)? (',' sp)? '}' sp
 
 member_decl <- ident sp ':' sp type ';' sp
 struct_decl <- struct sp ident sp '{' sp member_decl* '}' sp
+union_decl <- union sp ident sp '{' sp member_decl* '}' sp
 
 func_decl <- ident sp func_type (';' sp / compound_stmt)
 

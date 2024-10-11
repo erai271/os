@@ -69,6 +69,8 @@ reconstruct(c: *parser, pn: *peg_node): *node {
 			n = reconstruct_enum(c, pn);
 		} else if pn.tag == P_struct_decl {
 			n = reconstruct_struct(c, pn);
+		} else if pn.tag == P_union_decl {
+			n = reconstruct_union(c, pn);
 		} else if pn.tag == P_func_decl {
 			n = reconstruct_func(c, pn);
 		} else {
@@ -281,6 +283,18 @@ reconstruct_struct(c: *parser, pn: *peg_node): *node {
 	a = reconstruct_ident(c, pn.child.next);
 	b = reconstruct_member_list(c, pn.child.next.next);
 	n = mknode(c, N_STRUCT, a, b);
+	copypos(n, pn);
+	return n;
+}
+
+reconstruct_union(c: *parser, pn: *peg_node): *node {
+	var n: *node;
+	var a: *node;
+	var b: *node;
+	assert(pn.tag == P_union_decl, "union_def");
+	a = reconstruct_ident(c, pn.child.next);
+	b = reconstruct_member_list(c, pn.child.next.next);
+	n = mknode(c, N_UNION, a, b);
 	copypos(n, pn);
 	return n;
 }

@@ -112,6 +112,8 @@ compile(c: *compiler, p: *node) {
 		kind = n.a.kind;
 		if (kind == N_STRUCT) {
 			defstruct(c, n.a);
+		} else if (kind == N_UNION) {
+			defunion(c, n.a);
 		} else if (kind == N_ENUM) {
 			defenum(c, n.a);
 		} else if (kind != N_FUNC && kind != N_FUNCDECL) {
@@ -433,6 +435,30 @@ defstruct(c: *compiler, n: *node) {
 	d.struct_def = n;
 }
 
+defunion(c: *compiler, n: *node) {
+	var name: *byte;
+	var d: *decl;
+
+	name = n.a.s;
+
+	c.filename = n.filename;
+	c.lineno = n.lineno;
+	c.colno = n.colno;
+
+	if (!strcmp(name, "int") || !strcmp(name, "byte") || !strcmp(name, "func")) {
+		cdie(c, "reserved word");
+	}
+
+	d = find(c, name, 0:*byte, 1);
+
+	if (d.struct_defined) {
+		cdie(c, "duplicate struct");
+	}
+
+	d.struct_defined = 1;
+	d.struct_def = n;
+}
+
 defenum(c: *compiler, n: *node) {
 	var d: *decl;
 	var i: int;
@@ -518,6 +544,62 @@ layout_struct(c: *compiler, d: *decl) {
 	}
 
 	d.struct_size = offset;
+	d.struct_layout_done = 1;
+}
+
+layout_union(c: *compiler, d: *decl) {
+	var m: *node;
+	var size: int;
+	var member_size: int;
+	var name: *byte;
+	var md: *decl;
+	var t: *type;
+
+	if (d.struct_layout_done) {
+		if (d.struct_layout_done == 2) {
+			cdie(c, "circular struct definition");
+		}
+
+		return;
+	}
+
+	d.struct_layout_done = 2;
+
+	m = d.struct_def.b;
+
+	size = 0;
+	loop {
+		if (!m) {
+			break;
+		}
+
+		c.filename = m.a.filename;
+		c.lineno = m.a.lineno;
+		c.colno = m.a.colno;
+
+		name = m.a.a.s;
+		t = prototype(c, m.a.b);
+
+		md = find(c, d.name, name, 1);
+
+		if (d.member_defined) {
+			cdie(c, "duplicate member");
+		}
+
+		md.member_defined = 1;
+		md.member_type = t;
+		md.member_offset = 0;
+		md.member_def = m;
+
+		member_size = type_sizeof(c, t);
+		if member_size > size {
+			size = member_size;
+		}
+
+		m = m.b;
+	}
+
+	d.struct_size = size;
 	d.struct_layout_done = 1;
 }
 

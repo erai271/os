@@ -13,6 +13,7 @@ enum {
 	TY_ARG,
 	TY_FUNC,
 	TY_STRUCT,
+	TY_UNION,
 }
 
 type_sizeof(c: *compiler, t: *type): int {
@@ -29,6 +30,9 @@ type_sizeof(c: *compiler, t: *type): int {
 		return 8;
 	} else if (kind == TY_STRUCT) {
 		layout_struct(c, t.st);
+		return t.st.struct_size;
+	} else if (kind == TY_UNION) {
+		layout_union(c, t.st);
 		return t.st.struct_size;
 	} else {
 		cdie(c, "sizeof: invalid type");
@@ -57,6 +61,10 @@ unify(c: *compiler, a: *type, b: *type) {
 		unify(c, a.val, b.val);
 		unify(c, a.arg, b.arg);
 	} else if (kind == TY_STRUCT) {
+		if (a.st != b.st) {
+			cdie(c, "type error");
+		}
+	} else if (kind == TY_UNION) {
 		if (a.st != b.st) {
 			cdie(c, "type error");
 		}
@@ -98,6 +106,10 @@ mktype_struct(c: *compiler, st: *decl): *type {
 	return mktype(c, TY_STRUCT, 0:*type, 0:*type, st);
 }
 
+mktype_union(c: *compiler, st: *decl): *type {
+	return mktype(c, TY_UNION, 0:*type, 0:*type, st);
+}
+
 mktype0(c: *compiler, kind: int): *type {
 	return mktype(c, kind, 0:*type, 0:*type, 0:*decl);
 }
@@ -115,7 +127,7 @@ type_isint(t: *type): int {
 }
 
 type_isprim(t: *type): int {
-	return t.kind != TY_VOID && t.kind != TY_STRUCT;
+	return t.kind != TY_VOID && t.kind != TY_STRUCT && t.kind != TY_UNION;
 }
 
 prototype(c: *compiler, n: *node): *type {
@@ -150,7 +162,11 @@ prototype(c: *compiler, n: *node): *type {
 			cdie(c, "unknown struct");
 		}
 
-		return mktype_struct(c, st);
+		if st.struct_def.kind == N_STRUCT {
+			return mktype_struct(c, st);
+		} else {
+			return mktype_union(c, st);
+		}
 	} else if (kind == N_ARGLIST) {
 		a = prototype(c, n.a.b);
 		b = prototype(c, n.b);

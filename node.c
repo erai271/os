@@ -27,6 +27,7 @@ enum {
 	N_FUNCTYPE,
 	N_PTRTYPE,
 	N_STRUCT,
+	N_UNION,
 	N_MEMBERDECL,
 	N_MEMBERLIST,
 	N_CONDLIST,
@@ -137,6 +138,7 @@ node_to_str(kind: int): *byte {
 	if kind == N_FUNCTYPE { return "N_FUNCTYPE"; }
 	if kind == N_PTRTYPE { return "N_PTRTYPE"; }
 	if kind == N_STRUCT { return "N_STRUCT"; }
+	if kind == N_UNION { return "N_UNION"; }
 	if kind == N_MEMBERDECL { return "N_MEMBERDECL"; }
 	if kind == N_MEMBERLIST { return "N_MEMBERLIST"; }
 	if kind == N_CONDLIST { return "N_CONDLIST"; }

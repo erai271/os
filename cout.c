@@ -18,7 +18,11 @@ ctranslate(c: *compiler) {
 		}
 
 		if d.struct_defined {
-			fputs(c.cout, "struct my_");
+			if d.struct_def.kind == N_UNION {
+				fputs(c.cout, "union my_");
+			} else {
+				fputs(c.cout, "struct my_");
+			}
 			fputs(c.cout, d.name);
 			fputs(c.cout, ";\n");
 		}
@@ -124,6 +128,9 @@ ctranslate_type1(c: *compiler, ty: *type, name: *byte, decl: int) {
 	} else if ty.kind == TY_STRUCT {
 		fputs(c.cout, "struct my_");
 		fputs(c.cout, ty.st.name);
+	} else if ty.kind == TY_UNION {
+		fputs(c.cout, "union my_");
+		fputs(c.cout, ty.st.name);
 	} else {
 		die("invalid type");
 	}
@@ -198,6 +205,18 @@ ctranslate_zero(c: *compiler, ty: *type) {
 			n = n.b;
 		}
 		fputs(c.cout, "}");
+	} else if ty.kind == TY_UNION {
+		fputs(c.cout, "{");
+		n = ty.st.struct_def.b;
+		loop {
+			if !n {
+				break;
+			}
+			v = find(c, ty.st.name, n.a.a.s, 0);
+			ctranslate_zero(c, v.member_type);
+			n = n.b;
+		}
+		fputs(c.cout, "}");
 	} else {
 		die("invalid type");
 	}
@@ -206,7 +225,11 @@ ctranslate_zero(c: *compiler, ty: *type) {
 ctranslate_struct(c: *compiler, d: *decl) {
 	var v: *decl;
 	var n: *node;
-	fputs(c.cout, "struct my_");
+	if d.struct_def.kind == N_UNION {
+		fputs(c.cout, "union my_");
+	} else {
+		fputs(c.cout, "struct my_");
+	}
 	fputs(c.cout, d.name);
 	fputs(c.cout, " {\n");
 	n = d.struct_def.b;
