@@ -96,13 +96,13 @@ primary <- ident sp / hex sp / dec sp / str sp / char sp
 
 sizeof_expr <- sizeof sp '(' sp expr ')' sp
 
-hex <- '0x'[0-9a-fA-F]+
-dec <- [0-9]+
+hex <- '0x'[0-9a-fA-F_]+
+dec <- !'_' [0-9_]+
 str <- ["] ([\\] . / !["] .)* ["]
 char <- ['] ([\\] . / !['] .)+ [']
 
 reserved <- return / break / sizeof / if / else / loop / continue / goto
-          / var / enum / struct / byte / int / void / func
+          / var / enum / struct / union / byte / int / void / func
 
 return <- 'return' ![a-zA-Z0-9_]
 break <- 'break' ![a-zA-Z0-9_]
@@ -115,6 +115,7 @@ goto <- 'goto' ![a-zA-Z0-9_]
 var <- 'var' ![a-zA-Z0-9_]
 enum <- 'enum' ![a-zA-Z0-9_]
 struct <- 'struct' ![a-zA-Z0-9_]
+union <- 'union' ![a-zA-Z0-9_]
 byte <- 'byte' ![a-zA-Z0-9_]
 int <- 'int' ![a-zA-Z0-9_]
 void <- 'void' ![a-zA-Z0-9_]

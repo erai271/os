@@ -413,7 +413,7 @@ enum {
 	my_P_bor_op = 27,
 	my_P_break = 69,
 	my_P_break_stmt = 15,
-	my_P_byte = 79,
+	my_P_byte = 80,
 	my_P_call_expr = 57,
 	my_P_cast_expr = 59,
 	my_P_char = 66,
@@ -434,7 +434,7 @@ enum {
 	my_P_eq_op = 33,
 	my_P_expr = 25,
 	my_P_expr_stmt = 22,
-	my_P_func = 82,
+	my_P_func = 83,
 	my_P_func_decl = 5,
 	my_P_func_type = 9,
 	my_P_ge_op = 30,
@@ -443,11 +443,11 @@ enum {
 	my_P_grammar = 0,
 	my_P_gt_op = 32,
 	my_P_hex = 63,
-	my_P_ident = 83,
+	my_P_ident = 84,
 	my_P_if = 71,
 	my_P_if_stmt = 13,
 	my_P_index_expr = 56,
-	my_P_int = 80,
+	my_P_int = 81,
 	my_P_label_stmt = 19,
 	my_P_le_op = 29,
 	my_P_loop = 73,
@@ -475,7 +475,7 @@ enum {
 	my_P_shift_expr = 48,
 	my_P_sizeof = 70,
 	my_P_sizeof_expr = 62,
-	my_P_sp = 84,
+	my_P_sp = 85,
 	my_P_stmt = 10,
 	my_P_str = 65,
 	my_P_struct = 78,
@@ -483,9 +483,10 @@ enum {
 	my_P_sub_op = 37,
 	my_P_type = 6,
 	my_P_unary_expr = 55,
+	my_P_union = 79,
 	my_P_var = 76,
 	my_P_var_stmt = 18,
-	my_P_void = 81,
+	my_P_void = 82,
 	my_P_xor_op = 39,
 	my_R_CR0 = 0,
 	my_R_CR1 = 1,
@@ -792,6 +793,7 @@ unsigned long( my_peg_P_struct_decl)(struct my_peg* my_c);
 unsigned long( my_peg_P_sub_op)(struct my_peg* my_c);
 unsigned long( my_peg_P_type)(struct my_peg* my_c);
 unsigned long( my_peg_P_unary_expr)(struct my_peg* my_c);
+unsigned long( my_peg_P_union)(struct my_peg* my_c);
 unsigned long( my_peg_P_var)(struct my_peg* my_c);
 unsigned long( my_peg_P_var_stmt)(struct my_peg* my_c);
 unsigned long( my_peg_P_void)(struct my_peg* my_c);
@@ -1154,6 +1156,9 @@ unsigned char*( my_P_tag_to_str)(unsigned long my_tag){
 	}
 	if ((unsigned long)(((long)(my_tag))==((long)(my_P_struct)))) {
 	return (unsigned char *)"struct";
+	}
+	if ((unsigned long)(((long)(my_tag))==((long)(my_P_union)))) {
+	return (unsigned char *)"union";
 	}
 	if ((unsigned long)(((long)(my_tag))==((long)(my_P_byte)))) {
 	return (unsigned char *)"byte";
@@ -2685,7 +2690,10 @@ unsigned long( my_dec2int)(unsigned char* my_s,unsigned long my_len,unsigned lon
 	break;
 	}
 	(my_d)=((unsigned long)(my_s)[my_i]);
-	if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)(48))))&&((unsigned long)(((long)(my_d))<=((long)(57)))))) {
+	if ((unsigned long)(((long)(my_d))==((long)(95)))) {
+	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
+	continue;
+	} else if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)(48))))&&((unsigned long)(((long)(my_d))<=((long)(57)))))) {
 	(my_d)=((unsigned long)(((unsigned long)(my_d))-((unsigned long)(48))));
 	} else {
 	(*(my_ok))=(0UL);
@@ -4519,7 +4527,10 @@ unsigned long( my_hex2int)(unsigned char* my_s,unsigned long my_len,unsigned lon
 	break;
 	}
 	(my_d)=((unsigned long)(my_s)[my_i]);
-	if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)(48))))&&((unsigned long)(((long)(my_d))<=((long)(57)))))) {
+	if ((unsigned long)(((long)(my_d))==((long)(95)))) {
+	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
+	continue;
+	} else if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)(48))))&&((unsigned long)(((long)(my_d))<=((long)(57)))))) {
 	(my_d)=((unsigned long)(((unsigned long)(my_d))-((unsigned long)(48))));
 	} else if ((unsigned long)(((unsigned long)(((long)(my_d))>=((long)(97))))&&((unsigned long)(((long)(my_d))<=((long)(102)))))) {
 	(my_d)=((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(my_d))-((unsigned long)(97)))))+((unsigned long)(10UL))));
@@ -6260,16 +6271,27 @@ unsigned long( my_peg_P_continue_stmt)(struct my_peg* my_c){
 unsigned long( my_peg_P_dec)(struct my_peg* my_c){
 	unsigned long my_ok = 0;
 	(my_enter)((my_c),(my_P_dec));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789")));
+	(my_choice)((my_c));
+	(my_ok)=((my_literal)((my_c),((unsigned char *)"_")));
+	if (my_ok) {
+	(my_fail)((my_c));
+	(my_fail)((my_c));
+	(my_ok)=(0UL);
+	} else {
+	(my_ok)=(1UL);
+	}
+	if (my_ok) {
+	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789_")));
 	if (my_ok) {
 	while (1) {
 	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789")));
+	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789_")));
 	if ((unsigned long)(!(my_ok))) {
 	(my_ok)=(1UL);
 	break;
 	}
 	(my_commit)((my_c));
+	}
 	}
 	}
 	if (my_ok) {
@@ -6817,11 +6839,11 @@ unsigned long( my_peg_P_hex)(struct my_peg* my_c){
 	(my_enter)((my_c),(my_P_hex));
 	(my_ok)=((my_literal)((my_c),((unsigned char *)"0x")));
 	if (my_ok) {
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFabcdef")));
+	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEF_abcdef")));
 	if (my_ok) {
 	while (1) {
 	(my_choice)((my_c));
-	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFabcdef")));
+	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEF_abcdef")));
 	if ((unsigned long)(!(my_ok))) {
 	(my_ok)=(1UL);
 	break;
@@ -7477,6 +7499,10 @@ unsigned long( my_peg_P_reserved)(struct my_peg* my_c){
 	}
 	if ((unsigned long)(!(my_ok))) {
 	(my_choice)((my_c));
+	(my_ok)=((my_peg_P_union)((my_c)));
+	}
+	if ((unsigned long)(!(my_ok))) {
+	(my_choice)((my_c));
 	(my_ok)=((my_peg_P_byte)((my_c)));
 	}
 	if ((unsigned long)(!(my_ok))) {
@@ -8011,6 +8037,28 @@ unsigned long( my_peg_P_unary_expr)(struct my_peg* my_c){
 	}
 	if (my_ok) {
 	(my_leave)((my_c),(my_P_unary_expr));
+	} else {
+	(my_fail)((my_c));
+	}
+	return my_ok;
+}
+unsigned long( my_peg_P_union)(struct my_peg* my_c){
+	unsigned long my_ok = 0;
+	(my_enter)((my_c),(my_P_union));
+	(my_ok)=((my_literal)((my_c),((unsigned char *)"union")));
+	if (my_ok) {
+	(my_choice)((my_c));
+	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
+	if (my_ok) {
+	(my_fail)((my_c));
+	(my_fail)((my_c));
+	(my_ok)=(0UL);
+	} else {
+	(my_ok)=(1UL);
+	}
+	}
+	if (my_ok) {
+	(my_leave)((my_c),(my_P_union));
 	} else {
 	(my_fail)((my_c));
 	}

@@ -101,35 +101,17 @@ fdputs(fd: int, msg: *byte) {
 }
 
 fdputh(fd: int, n: int) {
-	var c: int;
-	var r: int;
+	var d: int;
 
-	r = 0;
-	loop {
-		if (n == 0) {
-			break;
-		}
+	d = n & 15;
 
-		r = (r << 4) + (n & 15);
-		n = n >> 4;
+	n = n >> 4;
+
+	if n {
+		fdputh(fd, n);
 	}
 
-	n = r;
-
-	loop {
-		c = n & 15;
-		n = n >> 4;
-
-		if (c < 10) {
-			fdputc(fd, c + '0');
-		} else {
-			fdputc(fd, c + ('a' - 10));
-		}
-
-		if (n == 0) {
-			break;
-		}
-	}
+	fdputc(fd, "0123456789abcdef"[d]:int);
 }
 
 fdputhn(fd: int, x: int, d: int) {
@@ -508,7 +490,10 @@ hex2int(s: *byte, len: int, ok: *int): int {
 
 		d = s[i]:int;
 
-		if d >= '0' && d <= '9' {
+		if d == '_' {
+			i = i + 1;
+			continue;
+		} else if d >= '0' && d <= '9' {
 			d = d - '0';
 		} else if d >= 'a' && d <= 'f' {
 			d = d - 'a' + 10;
@@ -546,7 +531,10 @@ dec2int(s: *byte, len: int, ok: *int): int {
 		}
 
 		d = s[i]:int;
-		if d >= '0' && d <= '9' {
+		if d == '_' {
+			i = i + 1;
+			continue;
+		} else if d >= '0' && d <= '9' {
 			d = d - '0';
 		} else {
 			*ok = 0;
