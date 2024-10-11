@@ -588,7 +588,7 @@ emit_kstart(c: *assembler) {
 
 	// Enable paging
 	as_modrr(c, OP_RDCRR, R_CR0, R_RAX);
-	as_modri(c, OP_ORI, R_RAX, (-0x8000 << 16) | (0x0001));
+	as_modri(c, OP_ORI, R_RAX, (-0x80000000) | 0x0001);
 	as_modrr(c, OP_WRCRR, R_CR0, R_RAX);
 
 	// flags
@@ -606,7 +606,7 @@ emit_kstart(c: *assembler) {
 	as_jmp(c, OP_CALL, do_ret);
 
 	// Reload the gdt in the top half
-	as_modri(c, OP_ORI, R_RBP, (-0x8000 << 16));
+	as_modri(c, OP_ORI, R_RBP, -0x80000000);
 	as_modri(c, OP_MOVI, R_RAX, 23);
 	as_modrm(c, OP_STORE, R_RAX, R_RBP, 0, 0, 0);
 	as_modrm(c, OP_LEA, R_RAX, R_RBP, 0, 0, 8);
@@ -623,7 +623,7 @@ emit_kstart(c: *assembler) {
 	as_modrr(c, OP_MOVE, R_RSP, R_RSP);
 
 	// Reload stack in the top half
-	as_modri(c, OP_ORI, R_RSP, (-0x8000 << 16));
+	as_modri(c, OP_ORI, R_RSP, -0x80000000);
 
 	// Kill the lower mapping
 	as_modri(c, OP_MOVI, R_RAX, 0);
@@ -649,7 +649,7 @@ emit_kstart(c: *assembler) {
 	// ret to top half
 	fixup_label(c, do_ret);
 	as_opr(c, OP_POPR, R_RAX);
-	as_modri(c, OP_ORI, R_RAX, (-0x8000 << 16));
+	as_modri(c, OP_ORI, R_RAX, -0x80000000);
 	as_opr(c, OP_PUSHR, R_RAX);
 	as_op(c, OP_RET);
 

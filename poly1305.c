@@ -147,10 +147,10 @@ poly1305_mul(a: *int, r: *int) {
 poly1305_truncate(dest: *int, key: *byte) {
 	poly1305_load(dest, key, 4);
 
-	dest[0] = dest[0] & ((0x0fff << 16) | 0xffff);
-	dest[1] = dest[1] & ((0x0fff << 16) | 0xfffc);
-	dest[2] = dest[2] & ((0x0fff << 16) | 0xfffc);
-	dest[3] = dest[3] & ((0x0fff << 16) | 0xfffc);
+	dest[0] = dest[0] & 0x0fffffff;
+	dest[1] = dest[1] & 0x0ffffffc;
+	dest[2] = dest[2] & 0x0ffffffc;
+	dest[3] = dest[3] & 0x0ffffffc;
 	dest[4] = 0;
 }
 

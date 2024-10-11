@@ -504,14 +504,21 @@ hex2int(s: *byte, len: int, ok: *int): int {
 			return 0;
 		}
 
-		x = x * 16;
-		x = x + d;
-		i = i + 1;
-
-		if x > 0x7fffffff {
+		if x > (1 << 59) - 1 {
 			*ok = 0;
 			return 0;
 		}
+
+		x = x * 16;
+
+		if x > ((1 << 63) - 1) - d {
+			*ok = 0;
+			return 0;
+		}
+
+		x = x + d;
+
+		i = i + 1;
 	}
 
 	*ok = 1;
@@ -541,15 +548,20 @@ dec2int(s: *byte, len: int, ok: *int): int {
 			return 0;
 		}
 
-		x = x * 10;
-
-		x = x + d;
-		i = i + 1;
-
-		if x > 0x7fffffff {
+		if x > 461168601842738790 {
 			*ok = 0;
 			return 0;
 		}
+
+		x = x * 10;
+
+		if x > ((1 << 63) - 1) - d {
+			*ok = 0;
+			return 0;
+		}
+
+		x = x + d;
+		i = i + 1;
 	}
 
 	*ok = 1;

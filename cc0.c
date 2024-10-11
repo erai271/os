@@ -2699,13 +2699,17 @@ unsigned long( my_dec2int)(unsigned char* my_s,unsigned long my_len,unsigned lon
 	(*(my_ok))=(0UL);
 	return 0UL;
 	}
-	(my_x)=((unsigned long)(((long)(my_x))*((long)(10UL))));
-	(my_x)=((unsigned long)(((unsigned long)(my_x))+((unsigned long)(my_d))));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_x))>((long)(2147483647UL)))) {
+	if ((unsigned long)(((long)(my_x))>((long)(461168601842738790UL)))) {
 	(*(my_ok))=(0UL);
 	return 0UL;
 	}
+	(my_x)=((unsigned long)(((long)(my_x))*((long)(10UL))));
+	if ((unsigned long)(((long)(my_x))>((long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(1UL))<<((unsigned long)(63UL)))))-((unsigned long)(1UL)))))-((unsigned long)(my_d))))))) {
+	(*(my_ok))=(0UL);
+	return 0UL;
+	}
+	(my_x)=((unsigned long)(((unsigned long)(my_x))+((unsigned long)(my_d))));
+	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
 	}
 	(*(my_ok))=(1UL);
 	return my_x;
@@ -3642,7 +3646,7 @@ void( my_emit_kstart)(struct my_assembler* my_c){
 	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RAX),(256UL));
 	(my_as_op)((my_c),(my_OP_WRMSR));
 	(my_as_modrr)((my_c),(my_OP_RDCRR),(my_R_CR0),(my_R_RAX));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RAX),((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(32768UL))))<<((unsigned long)(16UL)))))|((unsigned long)(1UL)))));
+	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RAX),((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(2147483648UL))))|((unsigned long)(1UL)))));
 	(my_as_modrr)((my_c),(my_OP_WRCRR),(my_R_CR0),(my_R_RAX));
 	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(0UL));
 	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
@@ -3651,7 +3655,7 @@ void( my_emit_kstart)(struct my_assembler* my_c){
 	(my_as_jmp)((my_c),(my_OP_CALL),(my_do_iret));
 	((my_c)->my_bits32)=(0UL);
 	(my_as_jmp)((my_c),(my_OP_CALL),(my_do_ret));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RBP),((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(32768UL))))<<((unsigned long)(16UL)))));
+	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RBP),((unsigned long)(-(unsigned long)(2147483648UL))));
 	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(23UL));
 	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
 	(my_as_modrm)((my_c),(my_OP_LEA),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(8UL));
@@ -3664,7 +3668,7 @@ void( my_emit_kstart)(struct my_assembler* my_c){
 	(my_as_modrr)((my_c),(my_OP_WRSR),(my_R_GS),(my_R_RAX));
 	(my_as_modrr)((my_c),(my_OP_WRSR),(my_R_SS),(my_R_RAX));
 	(my_as_modrr)((my_c),(my_OP_MOVE),(my_R_RSP),(my_R_RSP));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RSP),((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(32768UL))))<<((unsigned long)(16UL)))));
+	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RSP),((unsigned long)(-(unsigned long)(2147483648UL))));
 	(my_as_modri)((my_c),(my_OP_MOVI),(my_R_RAX),(0UL));
 	(my_as_modrm)((my_c),(my_OP_LEA),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(64UL));
 	(my_as_modrm)((my_c),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(4096UL));
@@ -3680,7 +3684,7 @@ void( my_emit_kstart)(struct my_assembler* my_c){
 	(my_as_op)((my_c),(my_OP_IRET));
 	(my_fixup_label)((my_c),(my_do_ret));
 	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RAX));
-	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RAX),((unsigned long)(((unsigned long)((unsigned long)(-(unsigned long)(32768UL))))<<((unsigned long)(16UL)))));
+	(my_as_modri)((my_c),(my_OP_ORI),(my_R_RAX),((unsigned long)(-(unsigned long)(2147483648UL))));
 	(my_as_opr)((my_c),(my_OP_PUSHR),(my_R_RAX));
 	(my_as_op)((my_c),(my_OP_RET));
 	(my_fixup_label)((my_c),(my_done));
@@ -4540,13 +4544,17 @@ unsigned long( my_hex2int)(unsigned char* my_s,unsigned long my_len,unsigned lon
 	(*(my_ok))=(0UL);
 	return 0UL;
 	}
-	(my_x)=((unsigned long)(((long)(my_x))*((long)(16UL))));
-	(my_x)=((unsigned long)(((unsigned long)(my_x))+((unsigned long)(my_d))));
-	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
-	if ((unsigned long)(((long)(my_x))>((long)(2147483647UL)))) {
+	if ((unsigned long)(((long)(my_x))>((long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(1UL))<<((unsigned long)(59UL)))))-((unsigned long)(1UL))))))) {
 	(*(my_ok))=(0UL);
 	return 0UL;
 	}
+	(my_x)=((unsigned long)(((long)(my_x))*((long)(16UL))));
+	if ((unsigned long)(((long)(my_x))>((long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)((unsigned long)(((unsigned long)(1UL))<<((unsigned long)(63UL)))))-((unsigned long)(1UL)))))-((unsigned long)(my_d))))))) {
+	(*(my_ok))=(0UL);
+	return 0UL;
+	}
+	(my_x)=((unsigned long)(((unsigned long)(my_x))+((unsigned long)(my_d))));
+	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
 	}
 	(*(my_ok))=(1UL);
 	return my_x;

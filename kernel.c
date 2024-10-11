@@ -305,7 +305,7 @@ bytesum(a: *byte, n: int): byte {
 
 ptov(p: int): *byte {
 	if p < (1 << 30) {
-		return (p + (-0x8000 << 16)): *byte;
+		return (p - 0x80000000): *byte;
 	} else {
 		return (p + (-1 << 47)): *byte;
 	}
@@ -4834,7 +4834,7 @@ _kstart(mb: int) {
 	global.ip_gw = (192 << 24) + (168 << 16) + (1 << 8) + 1;
 	global.ip_mask = 20;
 	global.curtask = &task;
-	wrmsr((0xc000 << 16) + 0x0101, global.ptr:int);
+	wrmsr(0xc0000101, global.ptr:int);
 
 	global.mmio = -(1 << 31);
 
@@ -4851,7 +4851,7 @@ _kstart(mb: int) {
 	global.kpt = rdcr3();
 
 	mbinfo = ptov(mb);
-	mmap = ptov(_r32(&mbinfo[48])): *int;
+	mmap = ptov(_r32(&mbinfo[48]) + 4): *int;
 	mmap_len = _r32(&mbinfo[44]);
 	mmap_count = mmap_len / 24;
 
@@ -4936,19 +4936,19 @@ _kstart(mb: int) {
 	// Load gdt idt tss and segments
 	lgdt(gdt, gdt_size);
 	lseg(8, 16);
-	wrmsr((0xc000 << 16) + 0x0101, global.ptr:int);
+	wrmsr(0xc0000101, global.ptr:int);
 	lldt(0);
 	ltr(7 * 8);
 	lidt(idt, idt_size);
 
 	// STAR
-	wrmsr((0xc000 << 16) + 0x0081, ((24 + 3) << 48) | (8 << 32));
+	wrmsr(0xc0000081, ((24 + 3) << 48) | (8 << 32));
 	// LSTAR
-	wrmsr((0xc000 << 16) + 0x0082, (_ssr0): int);
+	wrmsr(0xc0000082, (_ssr0): int);
 	// FMASK
-	wrmsr((0xc000 << 16) + 0x0084, -1);
+	wrmsr(0xc0000084, -1);
 	// EFER
-	wrmsr((0xc000 << 16) + 0x0080, rdmsr((0xc000 << 16) + 0x0080) | 1);
+	wrmsr(0xc0000080, rdmsr(0xc0000080) | 1);
 
 	// interrupt stack
 	brk = (brk + 4095) & -4096;
