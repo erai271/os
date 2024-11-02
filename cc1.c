@@ -725,13 +725,13 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		typecheck_expr(c, d, n.a, 0);
 
 		if (n.a.t.kind == TY_PTR) {
-			if (n.a.t.val.kind != TY_STRUCT) {
+			if (n.a.t.val.kind != TY_STRUCT && n.a.t.val.kind != TY_UNION) {
 				cdie(c, "dot not a struct");
 			}
 
 			v = find(c, n.a.t.val.st.name, n.b.s, 0);
 		} else {
-			if (n.a.t.kind != TY_STRUCT) {
+			if (n.a.t.kind != TY_STRUCT && n.a.t.kind != TY_UNION) {
 				cdie(c, "dot not a struct");
 			}
 
