@@ -414,8 +414,8 @@ download:
 	mov word [di], 0		; status
 	mov byte [di + 2], 192		; server ip
 	mov byte [di + 3], 168
-	mov byte [di + 4], 1
-	mov byte [di + 5], 178
+	mov byte [di + 4], 30
+	mov byte [di + 5], 1
 	mov dword [di + 6], 0		; gateway ip
 	mov word [di + 138], 69		; port
 	mov word [di + 140], 512	; packet size
@@ -807,7 +807,7 @@ parse_mb:
 	mov ax, cs
 	shl eax, 4
 	add eax, ebx
-	add eax, (mmap + 4 - .1)
+	add eax, (mmap - .1)
 	mov dword ds:[edi + 48], eax
 
 	popf
