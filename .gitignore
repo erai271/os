@@ -1,14 +1,10 @@
 a.out
 kernel
 disk
-cc0
-cc1
-cc2
+cc[012]
 cc2.c
-gencc
-parse3.c
-parsepeg.c
-parsepeg2.c
+parse3.om
+parsepeg.om
 pxe
 cmp
 cpio

@@ -1,13 +1,13 @@
 #!/bin/sh
 
 BOOTSTRAP="cc0.c"
-LIBS="bufio.c lib.c alloc.c syscall.c"
-SOURCES="cc1.c type.c parse2.c parse3.c peglib.c as.c decl.c node.c cout.c peg.c parsepeg.c"
+LIBS="bufio.om lib.om alloc.om syscall.om"
+SOURCES="cc1.om type.om parse2.om parse3.om peglib.om as.om decl.om node.om cout.om peg.om parsepeg.om"
 
 # Build the bootstrap compiler from c
 gcc -std=c99 ${BOOTSTRAP} -o cc0
-./cc0 -P P_ cc3.peg -o parse3.c
-./cc0 -P PEG_ peg.peg -o parsepeg.c
+./cc0 -P P_ cc3.peg -o parse3.om
+./cc0 -P PEG_ peg.peg -o parsepeg.om
 ./cc0 ${LIBS} ${SOURCES} -o cc1
 
 # Double check the bootstrap and self hosting compiler have the same output
