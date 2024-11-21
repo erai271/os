@@ -11,7 +11,7 @@ struct compiler {
 	colno: int;
 
 	// Assembler
-	as: *assembler;
+	s: *assembler;
 
 	// Namespace
 	decls: *decl;
@@ -61,7 +61,7 @@ comp_setup(a: *alloc): *compiler {
 	c.lineno = 0;
 	c.colno = 0;
 
-	c.as = setup_assembler(a);
+	c.s = setup_assembler(a);
 
 	c.decls = 0:*decl;
 
@@ -619,17 +619,17 @@ compile_func(c: *compiler, d: *decl) {
 	}
 
 	// Compile the function body
-	fixup_label(c.as, d.func_label);
-	add_symbol(c.as, d.name, d.func_label);
-	emit_preamble(c.as, d.func_preamble, pragma);
+	fixup_label(c.s, d.func_label);
+	add_symbol(c.s, d.name, d.func_label);
+	emit_preamble(c.s, d.func_preamble, pragma);
 	compile_stmt(c, d, d.func_def.b, 0:*label, 0:*label);
-	emit_num(c.as, 0);
+	emit_num(c.s, 0);
 
 	if (pragma) {
-		emit_ud(c.as);
+		emit_ud(c.s);
 	}
 
-	emit_ret(c.as);
+	emit_ret(c.s);
 }
 
 typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
@@ -1311,11 +1311,11 @@ compile_include(c: *compiler, n: *node) {
 
 	close(fd);
 
-	as_opr(c.as, OP_POPR, R_RAX);
-	as_opr(c.as, OP_POPR, R_RDI);
-	as_opri64(c.as, OP_MOVABS, R_RAX, len);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
-	emit_blob(c.as, blob, len);
+	as_opr(c.s, OP_POPR, R_RAX);
+	as_opr(c.s, OP_POPR, R_RDI);
+	as_opri64(c.s, OP_MOVABS, R_RAX, len);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
+	emit_blob(c.s, blob, len);
 
 	free(c.a, blob);
 }
@@ -1333,11 +1333,11 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 
 	kind = n.kind;
 	if (kind == N_STR) {
-		emit_str(c.as, n.s);
+		emit_str(c.s, n.s);
 	} else if (kind == N_NUM) {
-		emit_num(c.as, n.n);
+		emit_num(c.s, n.n);
 	} else if (kind == N_CHAR) {
-		emit_num(c.as, n.n);
+		emit_num(c.s, n.n);
 	} else if (kind == N_EXPRLIST) {
 		if (n.b) {
 			compile_expr(c, d, n.b, 1);
@@ -1357,19 +1357,19 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 
 			v = find(c, d.name, n.a.s, 0);
 			if (v && v.var_defined) {
-				emit_lea(c.as, v.var_offset);
-				emit_load(c.as, n.a.t);
-				emit_call(c.as, count_args(c, n.a.t.arg));
+				emit_lea(c.s, v.var_offset);
+				emit_load(c.s, n.a.t);
+				emit_call(c.s, count_args(c, n.a.t.arg));
 			} else if !strcmp(n.a.s, "_include") {
 				v = find(c, n.a.s, 0:*byte, 0);
 				compile_include(c, n);
 			} else {
 				v = find(c, n.a.s, 0:*byte, 0);
-				emit_lcall(c.as, v.func_label, count_args(c, n.a.t.arg));
+				emit_lcall(c.s, v.func_label, count_args(c, n.a.t.arg));
 			}
 		} else {
 			compile_expr(c, d, n.a, 1);
-			emit_call(c.as, count_args(c, n.a.t.arg));
+			emit_call(c.s, count_args(c, n.a.t.arg));
 		}
 
 		if (n.b) {
@@ -1382,56 +1382,56 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 
 		if (n.a.t.kind == TY_PTR) {
 			v = find(c, n.a.t.val.st.name, n.b.s, 0);
-			emit_load(c.as, n.a.t);
+			emit_load(c.s, n.a.t);
 		} else {
 			v = find(c, n.a.t.st.name, n.b.s, 0);
 		}
 
-		emit_num(c.as, v.member_offset);
-		emit_add(c.as);
+		emit_num(c.s, v.member_offset);
+		emit_add(c.s);
 
 		if (rhs) {
-			emit_load(c.as, n.t);
+			emit_load(c.s, n.t);
 		}
 	} else if (kind == N_IDENT) {
 		v = find(c, n.s, 0:*byte, 0);
 		if (v && v.enum_defined) {
-			emit_num(c.as, v.enum_value);
+			emit_num(c.s, v.enum_value);
 			return;
 		}
 
 		v = find(c, d.name, n.s, 0);
 		if (v && v.var_defined) {
-			emit_lea(c.as, v.var_offset);
+			emit_lea(c.s, v.var_offset);
 			if (rhs) {
-				emit_load(c.as, n.t);
+				emit_load(c.s, n.t);
 			}
 			return;
 		}
 
 		v = find(c, n.s, 0:*byte, 0);
 		if (v && v.func_defined) {
-			emit_ptr(c.as, v.func_label);
+			emit_ptr(c.s, v.func_label);
 			return;
 		}
 	} else if (kind == N_ASSIGN) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 0);
 
-		emit_store(c.as, n.t);
+		emit_store(c.s, n.t);
 	} else if (kind == N_SIZEOF) {
-		out = mklabel(c.as);
+		out = mklabel(c.s);
 
-		emit_jmp(c.as, out);
+		emit_jmp(c.s, out);
 
 		compile_expr(c, d, n.a, 0);
 
-		fixup_label(c.as, out);
+		fixup_label(c.s, out);
 
 		if (n.a.t.kind == TY_BYTE) {
-			emit_num(c.as, 1);
+			emit_num(c.s, 1);
 		} else {
-			emit_num(c.as, type_sizeof(c, n.a.t));
+			emit_num(c.s, type_sizeof(c, n.a.t));
 		}
 	} else if (kind == N_REF) {
 		compile_expr(c, d, n.a, 0);
@@ -1439,146 +1439,146 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		compile_expr(c, d, n.a, 1);
 
 		if (rhs) {
-			emit_load(c.as, n.t);
+			emit_load(c.s, n.t);
 		}
 	} else if (kind == N_INDEX) {
 		compile_expr(c, d, n.a, 1);
 		compile_expr(c, d, n.b, 1);
 
 		if (n.t.kind == TY_BYTE) {
-			emit_num(c.as, 1);
+			emit_num(c.s, 1);
 		} else {
-			emit_num(c.as, type_sizeof(c, n.t));
+			emit_num(c.s, type_sizeof(c, n.t));
 		}
 
-		emit_mul(c.as);
-		emit_add(c.as);
+		emit_mul(c.s);
+		emit_add(c.s);
 
 		if (rhs) {
-			emit_load(c.as, n.t);
+			emit_load(c.s, n.t);
 		}
 	} else if (kind == N_LT) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_lt(c.as);
+		emit_lt(c.s);
 	} else if (kind == N_GT) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_gt(c.as);
+		emit_gt(c.s);
 	} else if (kind == N_LE) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_le(c.as);
+		emit_le(c.s);
 	} else if (kind == N_GE) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_ge(c.as);
+		emit_ge(c.s);
 	} else if (kind == N_EQ) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_eq(c.as);
+		emit_eq(c.s);
 	} else if (kind == N_NE) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_ne(c.as);
+		emit_ne(c.s);
 	} else if (kind == N_BNOT) {
-		no = mklabel(c.as);
-		out = mklabel(c.as);
+		no = mklabel(c.s);
+		out = mklabel(c.s);
 
 		compile_expr(c, d, n.a, 1);
 
-		emit_jz(c.as, no);
-		emit_num(c.as, 0);
-		emit_jmp(c.as, out);
-		fixup_label(c.as, no);
-		emit_num(c.as, 1);
-		fixup_label(c.as, out);
+		emit_jz(c.s, no);
+		emit_num(c.s, 0);
+		emit_jmp(c.s, out);
+		fixup_label(c.s, no);
+		emit_num(c.s, 1);
+		fixup_label(c.s, out);
 	} else if (kind == N_BOR) {
-		no = mklabel(c.as);
-		out = mklabel(c.as);
+		no = mklabel(c.s);
+		out = mklabel(c.s);
 
 		compile_expr(c, d, n.a, 1);
-		emit_jz(c.as, no);
-		emit_num(c.as, 1);
-		emit_jmp(c.as, out);
+		emit_jz(c.s, no);
+		emit_num(c.s, 1);
+		emit_jmp(c.s, out);
 
-		fixup_label(c.as, no);
-		no = mklabel(c.as);
+		fixup_label(c.s, no);
+		no = mklabel(c.s);
 
 		compile_expr(c, d, n.b, 1);
-		emit_jz(c.as, no);
-		emit_num(c.as, 1);
-		emit_jmp(c.as, out);
+		emit_jz(c.s, no);
+		emit_num(c.s, 1);
+		emit_jmp(c.s, out);
 
-		fixup_label(c.as, no);
-		emit_num(c.as, 0);
+		fixup_label(c.s, no);
+		emit_num(c.s, 0);
 
-		fixup_label(c.as, out);
+		fixup_label(c.s, out);
 	} else if (kind == N_BAND) {
-		no = mklabel(c.as);
-		out = mklabel(c.as);
+		no = mklabel(c.s);
+		out = mklabel(c.s);
 
 		compile_expr(c, d, n.a, 1);
-		emit_jz(c.as, no);
+		emit_jz(c.s, no);
 
 		compile_expr(c, d, n.b, 1);
-		emit_jz(c.as, no);
+		emit_jz(c.s, no);
 
-		emit_num(c.as, 1);
-		emit_jmp(c.as, out);
+		emit_num(c.s, 1);
+		emit_jmp(c.s, out);
 
-		fixup_label(c.as, no);
-		emit_num(c.as, 0);
+		fixup_label(c.s, no);
+		emit_num(c.s, 0);
 
-		fixup_label(c.as, out);
+		fixup_label(c.s, out);
 	} else if (kind == N_POS) {
 		compile_expr(c, d, n.a, 1);
 	} else if (kind == N_NEG) {
 		compile_expr(c, d, n.a, 1);
-		emit_neg(c.as);
+		emit_neg(c.s);
 	} else if (kind == N_NOT) {
 		compile_expr(c, d, n.a, 1);
-		emit_not(c.as);
+		emit_not(c.s);
 	} else if (kind == N_ADD) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_add(c.as);
+		emit_add(c.s);
 	} else if (kind == N_SUB) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_sub(c.as);
+		emit_sub(c.s);
 	} else if (kind == N_MUL) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_mul(c.as);
+		emit_mul(c.s);
 	} else if (kind == N_DIV) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_div(c.as);
+		emit_div(c.s);
 	} else if (kind == N_MOD) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_mod(c.as);
+		emit_mod(c.s);
 	} else if (kind == N_LSH) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_lsh(c.as);
+		emit_lsh(c.s);
 	} else if (kind == N_RSH) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_rsh(c.as);
+		emit_rsh(c.s);
 	} else if (kind == N_AND) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_and(c.as);
+		emit_and(c.s);
 	} else if (kind == N_OR) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_or(c.as);
+		emit_or(c.s);
 	} else if (kind == N_XOR) {
 		compile_expr(c, d, n.b, 1);
 		compile_expr(c, d, n.a, 1);
-		emit_xor(c.as);
+		emit_xor(c.s);
 	} else if (kind == N_CAST) {
 		compile_expr(c, d, n.a, 1);
 	} else {
@@ -1662,30 +1662,30 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 
 	kind = n.kind;
 	if (kind == N_CONDLIST) {
-		ifout = mklabel(c.as);
+		ifout = mklabel(c.s);
 		no = 0: *label;
 		loop {
 			if (no) {
-				fixup_label(c.as, no);
+				fixup_label(c.s, no);
 			}
 
 			if (!n) {
 				break;
 			}
 
-			no = mklabel(c.as);
+			no = mklabel(c.s);
 
 			if (n.a.a) {
 				compile_expr(c, d, n.a.a, 1);
-				emit_jz(c.as, no);
+				emit_jz(c.s, no);
 			}
 
 			compile_stmt(c, d, n.a.b, top, out);
-			emit_jmp(c.as, ifout);
+			emit_jmp(c.s, ifout);
 
 			n = n.b;
 		}
-		fixup_label(c.as, ifout);
+		fixup_label(c.s, ifout);
 	} else if (kind == N_STMTLIST) {
 		loop {
 			if (!n) {
@@ -1695,22 +1695,22 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 			n = n.b;
 		}
 	} else if (kind == N_LOOP) {
-		top = mklabel(c.as);
-		out = mklabel(c.as);
-		fixup_label(c.as, top);
+		top = mklabel(c.s);
+		out = mklabel(c.s);
+		fixup_label(c.s, top);
 		compile_stmt(c, d, n.a, top, out);
-		emit_jmp(c.as, top);
-		fixup_label(c.as, out);
+		emit_jmp(c.s, top);
+		fixup_label(c.s, out);
 	} else if (kind == N_BREAK) {
 		if (!out) {
 			cdie(c, "break outside loop");
 		}
-		emit_jmp(c.as, out);
+		emit_jmp(c.s, out);
 	} else if (kind == N_CONTINUE) {
 		if (!top) {
 			cdie(c, "continue outside loop");
 		}
-		emit_jmp(c.as, top);
+		emit_jmp(c.s, top);
 	} else if (kind == N_RETURN) {
 		if (n.a) {
 			if (d.func_type.val.kind == TY_VOID) {
@@ -1721,21 +1721,21 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 			if (d.func_type.val.kind != TY_VOID) {
 				cdie(c, "returning void in a non void function");
 			}
-			emit_num(c.as, 0);
+			emit_num(c.s, 0);
 		}
-		emit_ret(c.as);
+		emit_ret(c.s);
 	} else if (kind == N_LABEL) {
 		v = find(c, d.name, n.a.s, 0);
-		fixup_label(c.as, v.goto_label);
+		fixup_label(c.s, v.goto_label);
 	} else if (kind == N_GOTO) {
 		v = find(c, d.name, n.a.s, 0);
 		if (!v || !v.goto_defined) {
 			cdie(c, "label not defined");
 		}
-		emit_jmp(c.as, v.goto_label);
+		emit_jmp(c.s, v.goto_label);
 	} else if (kind != N_VARDECL) {
 		compile_expr(c, d, n, 1);
-		emit_pop(c.as, 1);
+		emit_pop(c.s, 1);
 	}
 }
 
@@ -1748,99 +1748,99 @@ emit_ssr(c: *compiler) {
 		cdie(c, "no _save");
 	}
 
-	as_emit(c.as, OP_GS);
-	as_modra(c.as, OP_STORE, R_RSP, v.member_offset);
+	as_emit(c.s, OP_GS);
+	as_modra(c.s, OP_STORE, R_RSP, v.member_offset);
 
 	v = find(c, "global", "curtask", 0);
 	if (!v || !v.member_defined) {
 		cdie(c, "no global.curtask");
 	}
 
-	as_emit(c.as, OP_GS);
-	as_modra(c.as, OP_LOAD, R_RSP, v.member_offset);
+	as_emit(c.s, OP_GS);
+	as_modra(c.s, OP_LOAD, R_RSP, v.member_offset);
 
 	v = find(c, "task", "stack", 0);
 	if (!v || !v.member_defined) {
 		cdie(c, "no task.stack");
 	}
 
-	as_modrm(c.as, OP_LOAD, R_RSP, R_RSP, 0, 0, v.member_offset);
-	as_modri(c.as, OP_ADDI, R_RSP, 4096 - 176);
+	as_modrm(c.s, OP_LOAD, R_RSP, R_RSP, 0, 0, v.member_offset);
+	as_modri(c.s, OP_ADDI, R_RSP, 4096 - 176);
 
-	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
-	as_modrm(c.as, OP_STORE, R_RDX, R_RSP, 0, 0, 16);
-	as_modrm(c.as, OP_STORE, R_RBX, R_RSP, 0, 0, 24);
-	as_modrm(c.as, OP_STORE, R_RBP, R_RSP, 0, 0, 40);
-	as_modrm(c.as, OP_STORE, R_RSI, R_RSP, 0, 0, 48);
-	as_modrm(c.as, OP_STORE, R_RDI, R_RSP, 0, 0, 56);
-	as_modrm(c.as, OP_STORE, R_R8, R_RSP, 0, 0, 64);
-	as_modrm(c.as, OP_STORE, R_R9, R_RSP, 0, 0, 72);
-	as_modrm(c.as, OP_STORE, R_R10, R_RSP, 0, 0, 80);
-	as_modrm(c.as, OP_STORE, R_R12, R_RSP, 0, 0, 96);
-	as_modrm(c.as, OP_STORE, R_R13, R_RSP, 0, 0, 104);
-	as_modrm(c.as, OP_STORE, R_R14, R_RSP, 0, 0, 112);
-	as_modrm(c.as, OP_STORE, R_R15, R_RSP, 0, 0, 120);
-	as_modrm(c.as, OP_STORE, R_RCX, R_RSP, 0, 0, 128);
-	as_modrm(c.as, OP_STORE, R_R11, R_RSP, 0, 0, 136);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
+	as_modrm(c.s, OP_STORE, R_RDX, R_RSP, 0, 0, 16);
+	as_modrm(c.s, OP_STORE, R_RBX, R_RSP, 0, 0, 24);
+	as_modrm(c.s, OP_STORE, R_RBP, R_RSP, 0, 0, 40);
+	as_modrm(c.s, OP_STORE, R_RSI, R_RSP, 0, 0, 48);
+	as_modrm(c.s, OP_STORE, R_RDI, R_RSP, 0, 0, 56);
+	as_modrm(c.s, OP_STORE, R_R8, R_RSP, 0, 0, 64);
+	as_modrm(c.s, OP_STORE, R_R9, R_RSP, 0, 0, 72);
+	as_modrm(c.s, OP_STORE, R_R10, R_RSP, 0, 0, 80);
+	as_modrm(c.s, OP_STORE, R_R12, R_RSP, 0, 0, 96);
+	as_modrm(c.s, OP_STORE, R_R13, R_RSP, 0, 0, 104);
+	as_modrm(c.s, OP_STORE, R_R14, R_RSP, 0, 0, 112);
+	as_modrm(c.s, OP_STORE, R_R15, R_RSP, 0, 0, 120);
+	as_modrm(c.s, OP_STORE, R_RCX, R_RSP, 0, 0, 128);
+	as_modrm(c.s, OP_STORE, R_R11, R_RSP, 0, 0, 136);
 
-	as_modrr(c.as, OP_XORRM, R_RAX, R_RAX);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 8);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 88);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 160);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 168);
+	as_modrr(c.s, OP_XORRM, R_RAX, R_RAX);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 8);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 88);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 160);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 168);
 
-	as_modri(c.as, OP_MOVI, R_RAX, 43);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 144);
-	as_modri(c.as, OP_MOVI, R_RAX, 35);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 152);
+	as_modri(c.s, OP_MOVI, R_RAX, 43);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 144);
+	as_modri(c.s, OP_MOVI, R_RAX, 35);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 152);
 
 	v = find(c, "global", "_save", 0);
 	if (!v || !v.member_defined) {
 		cdie(c, "no _save");
 	}
 
-	as_emit(c.as, OP_GS);
-	as_modra(c.as, OP_LOAD, R_RAX, v.member_offset);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 32);
-	as_modrr(c.as, OP_MOVE, R_RAX, R_RSP);
+	as_emit(c.s, OP_GS);
+	as_modra(c.s, OP_LOAD, R_RAX, v.member_offset);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 32);
+	as_modrr(c.s, OP_MOVE, R_RAX, R_RSP);
 
-	as_modrr(c.as, OP_XORRM, R_RBP, R_RBP);
-	as_opr(c.as, OP_PUSHR, R_RBP);
-	as_opr(c.as, OP_PUSHR, R_RBP);
-	as_modrr(c.as, OP_MOVE, R_RBP, R_RSP);
+	as_modrr(c.s, OP_XORRM, R_RBP, R_RBP);
+	as_opr(c.s, OP_PUSHR, R_RBP);
+	as_opr(c.s, OP_PUSHR, R_RBP);
+	as_modrr(c.s, OP_MOVE, R_RBP, R_RSP);
 
-	as_opr(c.as, OP_PUSHR, R_RAX);
+	as_opr(c.s, OP_PUSHR, R_RAX);
 
 	d = find(c, "_ssr", 0:*byte, 1);
 	if (d.func_defined && d.func_label.fixed) {
-		as_jmp(c.as, OP_CALL, d.func_label);
+		as_jmp(c.s, OP_CALL, d.func_label);
 	}
 
-	as_op(c.as, OP_CLI);
+	as_op(c.s, OP_CLI);
 
-	as_modri(c.as, OP_ADDI, R_RSP, 3 * 8);
+	as_modri(c.s, OP_ADDI, R_RSP, 3 * 8);
 
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RSP, 0, 0, 0);
-	as_modrm(c.as, OP_LOAD, R_RDX, R_RSP, 0, 0, 16);
-	as_modrm(c.as, OP_LOAD, R_RBX, R_RSP, 0, 0, 24);
-	as_modrm(c.as, OP_LOAD, R_RBP, R_RSP, 0, 0, 40);
-	as_modrm(c.as, OP_LOAD, R_RSI, R_RSP, 0, 0, 48);
-	as_modrm(c.as, OP_LOAD, R_RDI, R_RSP, 0, 0, 56);
-	as_modrm(c.as, OP_LOAD, R_R8, R_RSP, 0, 0, 64);
-	as_modrm(c.as, OP_LOAD, R_R9, R_RSP, 0, 0, 72);
-	as_modrm(c.as, OP_LOAD, R_R10, R_RSP, 0, 0, 80);
-	as_modrm(c.as, OP_LOAD, R_R12, R_RSP, 0, 0, 96);
-	as_modrm(c.as, OP_LOAD, R_R13, R_RSP, 0, 0, 104);
-	as_modrm(c.as, OP_LOAD, R_R14, R_RSP, 0, 0, 112);
-	as_modrm(c.as, OP_LOAD, R_R15, R_RSP, 0, 0, 120);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RSP, 0, 0, 0);
+	as_modrm(c.s, OP_LOAD, R_RDX, R_RSP, 0, 0, 16);
+	as_modrm(c.s, OP_LOAD, R_RBX, R_RSP, 0, 0, 24);
+	as_modrm(c.s, OP_LOAD, R_RBP, R_RSP, 0, 0, 40);
+	as_modrm(c.s, OP_LOAD, R_RSI, R_RSP, 0, 0, 48);
+	as_modrm(c.s, OP_LOAD, R_RDI, R_RSP, 0, 0, 56);
+	as_modrm(c.s, OP_LOAD, R_R8, R_RSP, 0, 0, 64);
+	as_modrm(c.s, OP_LOAD, R_R9, R_RSP, 0, 0, 72);
+	as_modrm(c.s, OP_LOAD, R_R10, R_RSP, 0, 0, 80);
+	as_modrm(c.s, OP_LOAD, R_R12, R_RSP, 0, 0, 96);
+	as_modrm(c.s, OP_LOAD, R_R13, R_RSP, 0, 0, 104);
+	as_modrm(c.s, OP_LOAD, R_R14, R_RSP, 0, 0, 112);
+	as_modrm(c.s, OP_LOAD, R_R15, R_RSP, 0, 0, 120);
 
-	as_modrm(c.as, OP_LOAD, R_RCX, R_RSP, 0, 0, 128);
-	as_modrm(c.as, OP_LOAD, R_R11, R_RSP, 0, 0, 136);
+	as_modrm(c.s, OP_LOAD, R_RCX, R_RSP, 0, 0, 128);
+	as_modrm(c.s, OP_LOAD, R_R11, R_RSP, 0, 0, 136);
 
-	as_modrm(c.as, OP_LOAD, R_RSP, R_RSP, 0, 0, 32);
+	as_modrm(c.s, OP_LOAD, R_RSP, R_RSP, 0, 0, 32);
 
-	as_rex(c.as, OP_SYSRET, 0, 0, 0);
-	as_op(c.as, OP_SYSRET);
+	as_rex(c.s, OP_SYSRET, 0, 0, 0);
+	as_op(c.s, OP_SYSRET);
 }
 
 emit_isr(c: *compiler) {
@@ -1848,128 +1848,128 @@ emit_isr(c: *compiler) {
 	var out: *label;
 	var i: int;
 
-	out = mklabel(c.as);
+	out = mklabel(c.s);
 
 	i = 0;
 	loop {
 		if i == 256 {
 			break;
 		}
-		reserve(c.as, 16);
+		reserve(c.s, 16);
 		if i == 8 || i == 10 || i == 11 || i == 12
 				|| i == 13 || i == 14 || i == 17 || i == 21
 				|| i == 29 || i == 30 {
-			as_emit(c.as, 0x90);
-			as_emit(c.as, 0x90);
+			as_emit(c.s, 0x90);
+			as_emit(c.s, 0x90);
 		} else {
-			as_emit(c.as, 0x6a);
-			as_emit(c.as, 0x00);
+			as_emit(c.s, 0x6a);
+			as_emit(c.s, 0x00);
 		}
-		as_emit(c.as, 0x68);
-		as_emit(c.as, i);
-		as_emit(c.as, 0x00);
-		as_emit(c.as, 0x00);
-		as_emit(c.as, 0x00);
-		as_emit(c.as, 0xe9);
-		as_emit(c.as, 0x00);
-		as_emit(c.as, 0x00);
-		as_emit(c.as, 0x00);
-		as_emit(c.as, 0x00);
-		addfixup(c.as, out);
-		as_emit(c.as, 0x90);
-		as_emit(c.as, 0x90);
-		as_emit(c.as, 0x90);
-		as_emit(c.as, 0x90);
+		as_emit(c.s, 0x68);
+		as_emit(c.s, i);
+		as_emit(c.s, 0x00);
+		as_emit(c.s, 0x00);
+		as_emit(c.s, 0x00);
+		as_emit(c.s, 0xe9);
+		as_emit(c.s, 0x00);
+		as_emit(c.s, 0x00);
+		as_emit(c.s, 0x00);
+		as_emit(c.s, 0x00);
+		addfixup(c.s, out);
+		as_emit(c.s, 0x90);
+		as_emit(c.s, 0x90);
+		as_emit(c.s, 0x90);
+		as_emit(c.s, 0x90);
 		i = i + 1;
 	}
 
-	fixup_label(c.as, out);
+	fixup_label(c.s, out);
 
 	// save regs
-	as_modri(c.as, OP_SUBI, R_RSP, 176);
-	as_modrm(c.as, OP_STORE, R_RBP, R_RSP, 0, 0, 40);
-	as_modrr(c.as, OP_MOVE, R_RBP, R_RSP);
-	as_opr(c.as, OP_PUSHR, R_RBP);
+	as_modri(c.s, OP_SUBI, R_RSP, 176);
+	as_modrm(c.s, OP_STORE, R_RBP, R_RSP, 0, 0, 40);
+	as_modrr(c.s, OP_MOVE, R_RBP, R_RSP);
+	as_opr(c.s, OP_PUSHR, R_RBP);
 
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 0);
-	as_modrm(c.as, OP_STORE, R_RCX, R_RBP, 0, 0, 8);
-	as_modrm(c.as, OP_STORE, R_RDX, R_RBP, 0, 0, 16);
-	as_modrm(c.as, OP_STORE, R_RBX, R_RBP, 0, 0, 24);
-	as_modrm(c.as, OP_STORE, R_RSI, R_RBP, 0, 0, 48);
-	as_modrm(c.as, OP_STORE, R_RDI, R_RBP, 0, 0, 56);
-	as_modrm(c.as, OP_STORE, R_R8, R_RBP, 0, 0, 64);
-	as_modrm(c.as, OP_STORE, R_R9, R_RBP, 0, 0, 72);
-	as_modrm(c.as, OP_STORE, R_R10, R_RBP, 0, 0, 80);
-	as_modrm(c.as, OP_STORE, R_R11, R_RBP, 0, 0, 88);
-	as_modrm(c.as, OP_STORE, R_R12, R_RBP, 0, 0, 96);
-	as_modrm(c.as, OP_STORE, R_R13, R_RBP, 0, 0, 104);
-	as_modrm(c.as, OP_STORE, R_R14, R_RBP, 0, 0, 112);
-	as_modrm(c.as, OP_STORE, R_R15, R_RBP, 0, 0, 120);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 0);
+	as_modrm(c.s, OP_STORE, R_RCX, R_RBP, 0, 0, 8);
+	as_modrm(c.s, OP_STORE, R_RDX, R_RBP, 0, 0, 16);
+	as_modrm(c.s, OP_STORE, R_RBX, R_RBP, 0, 0, 24);
+	as_modrm(c.s, OP_STORE, R_RSI, R_RBP, 0, 0, 48);
+	as_modrm(c.s, OP_STORE, R_RDI, R_RBP, 0, 0, 56);
+	as_modrm(c.s, OP_STORE, R_R8, R_RBP, 0, 0, 64);
+	as_modrm(c.s, OP_STORE, R_R9, R_RBP, 0, 0, 72);
+	as_modrm(c.s, OP_STORE, R_R10, R_RBP, 0, 0, 80);
+	as_modrm(c.s, OP_STORE, R_R11, R_RBP, 0, 0, 88);
+	as_modrm(c.s, OP_STORE, R_R12, R_RBP, 0, 0, 96);
+	as_modrm(c.s, OP_STORE, R_R13, R_RBP, 0, 0, 104);
+	as_modrm(c.s, OP_STORE, R_R14, R_RBP, 0, 0, 112);
+	as_modrm(c.s, OP_STORE, R_R15, R_RBP, 0, 0, 120);
 
 	// trap
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 0);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 160);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 0);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 160);
 	// err
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 8);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 168);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 8);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 168);
 	// rip
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 16);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 128);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 16);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 128);
 	// cs
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 24);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 144);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 24);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 144);
 	// flags
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 32);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 136);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 32);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 136);
 	// rsp
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 40);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 32);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 40);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 32);
 	// ss
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 48);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 152);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 48);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 152);
 
 	d = find(c, "_isr", 0:*byte, 1);
 	if (d.func_defined && d.func_label.fixed) {
-		as_jmp(c.as, OP_CALL, d.func_label);
+		as_jmp(c.s, OP_CALL, d.func_label);
 	}
 
 	// rip
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 128);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 16);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 128);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 16);
 	// cs
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 144);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 24);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 144);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 24);
 	// flags
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 136);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 32);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 136);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 32);
 	// rsp
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 32);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 40);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 32);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 40);
 	// ss
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 152);
-	as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 48);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 152);
+	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 176 + 48);
 
 	// restore regs
-	as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 0);
-	as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 8);
-	as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
-	as_modrm(c.as, OP_LOAD, R_RBX, R_RBP, 0, 0, 24);
-	as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 48);
-	as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 56);
-	as_modrm(c.as, OP_LOAD, R_R8, R_RBP, 0, 0, 64);
-	as_modrm(c.as, OP_LOAD, R_R9, R_RBP, 0, 0, 72);
-	as_modrm(c.as, OP_LOAD, R_R10, R_RBP, 0, 0, 80);
-	as_modrm(c.as, OP_LOAD, R_R11, R_RBP, 0, 0, 88);
-	as_modrm(c.as, OP_LOAD, R_R12, R_RBP, 0, 0, 96);
-	as_modrm(c.as, OP_LOAD, R_R13, R_RBP, 0, 0, 104);
-	as_modrm(c.as, OP_LOAD, R_R14, R_RBP, 0, 0, 112);
-	as_modrm(c.as, OP_LOAD, R_R15, R_RBP, 0, 0, 120);
+	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 0);
+	as_modrm(c.s, OP_LOAD, R_RCX, R_RBP, 0, 0, 8);
+	as_modrm(c.s, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+	as_modrm(c.s, OP_LOAD, R_RBX, R_RBP, 0, 0, 24);
+	as_modrm(c.s, OP_LOAD, R_RSI, R_RBP, 0, 0, 48);
+	as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 56);
+	as_modrm(c.s, OP_LOAD, R_R8, R_RBP, 0, 0, 64);
+	as_modrm(c.s, OP_LOAD, R_R9, R_RBP, 0, 0, 72);
+	as_modrm(c.s, OP_LOAD, R_R10, R_RBP, 0, 0, 80);
+	as_modrm(c.s, OP_LOAD, R_R11, R_RBP, 0, 0, 88);
+	as_modrm(c.s, OP_LOAD, R_R12, R_RBP, 0, 0, 96);
+	as_modrm(c.s, OP_LOAD, R_R13, R_RBP, 0, 0, 104);
+	as_modrm(c.s, OP_LOAD, R_R14, R_RBP, 0, 0, 112);
+	as_modrm(c.s, OP_LOAD, R_R15, R_RBP, 0, 0, 120);
 
-	as_modrm(c.as, OP_LOAD, R_RBP, R_RBP, 0, 0, 40);
+	as_modrm(c.s, OP_LOAD, R_RBP, R_RBP, 0, 0, 40);
 
-	as_modri(c.as, OP_ADDI, R_RSP, 176 + 3 * 8);
+	as_modri(c.s, OP_ADDI, R_RSP, 176 + 3 * 8);
 
-	as_op(c.as, OP_IRETQ);
+	as_op(c.s, OP_IRETQ);
 }
 
 emit_builtin(c: *compiler) {
@@ -1977,596 +1977,596 @@ emit_builtin(c: *compiler) {
 
 	d = find(c, "syscall", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		emit_syscall(c.as);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		emit_syscall(c.s);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "_restorer", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_restorer(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_restorer(c.s);
 	}
 
 	d = find(c, "_include", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_op(c.as, OP_UD2);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_op(c.s, OP_UD2);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "ud2", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_op(c.as, OP_UD2);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_op(c.s, OP_UD2);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "cpuid", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RDI, 0, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 24);
-		as_modrm(c.as, OP_LOAD, R_RCX, R_RDI, 0, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 32);
-		as_modrm(c.as, OP_LOAD, R_RDX, R_RDI, 0, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 40);
-		as_modrm(c.as, OP_LOAD, R_RBX, R_RDI, 0, 0, 0);
-		as_op(c.as, OP_CPUID);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 24);
-		as_modrm(c.as, OP_STORE, R_RCX, R_RDI, 0, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 32);
-		as_modrm(c.as, OP_STORE, R_RDX, R_RDI, 0, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 40);
-		as_modrm(c.as, OP_STORE, R_RBX, R_RDI, 0, 0, 0);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RDI, 0, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 24);
+		as_modrm(c.s, OP_LOAD, R_RCX, R_RDI, 0, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 32);
+		as_modrm(c.s, OP_LOAD, R_RDX, R_RDI, 0, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 40);
+		as_modrm(c.s, OP_LOAD, R_RBX, R_RDI, 0, 0, 0);
+		as_op(c.s, OP_CPUID);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 24);
+		as_modrm(c.s, OP_STORE, R_RCX, R_RDI, 0, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 32);
+		as_modrm(c.s, OP_STORE, R_RDX, R_RDI, 0, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 40);
+		as_modrm(c.s, OP_STORE, R_RBX, R_RDI, 0, 0, 0);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "inb", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
-		as_op(c.as, OP_IN);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_op(c.s, OP_IN);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "outb", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
-		as_op(c.as, OP_OUT);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		as_op(c.s, OP_OUT);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "inw", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
-		as_emit(c.as, OP_OS);
-		as_op(c.as, OP_IND);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_emit(c.s, OP_OS);
+		as_op(c.s, OP_IND);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "outw", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
-		as_emit(c.as, OP_OS);
-		as_op(c.as, OP_OUTD);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		as_emit(c.s, OP_OS);
+		as_op(c.s, OP_OUTD);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "ind", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
-		as_op(c.as, OP_IND);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_op(c.s, OP_IND);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "outd", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
-		as_op(c.as, OP_OUTD);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		as_op(c.s, OP_OUTD);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "rdmsr", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
-		as_op(c.as, OP_RDMSR);
-		as_modri(c.as, OP_MOVI, R_RCX, 32);
-		as_modr(c.as, OP_SHLM, R_RDX);
-		as_modrr(c.as, OP_ORRM, R_RAX, R_RDX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
+		as_op(c.s, OP_RDMSR);
+		as_modri(c.s, OP_MOVI, R_RCX, 32);
+		as_modr(c.s, OP_SHLM, R_RDX);
+		as_modrr(c.s, OP_ORRM, R_RAX, R_RDX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "wrmsr", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
-		as_modrr(c.as, OP_MOVE, R_RDX, R_RAX);
-		as_modri(c.as, OP_MOVI, R_RCX, 32);
-		as_modr(c.as, OP_SHRM, R_RDX);
-		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
-		as_op(c.as, OP_WRMSR);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		as_modrr(c.s, OP_MOVE, R_RDX, R_RAX);
+		as_modri(c.s, OP_MOVI, R_RCX, 32);
+		as_modr(c.s, OP_SHRM, R_RDX);
+		as_modrm(c.s, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
+		as_op(c.s, OP_WRMSR);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "rdcr0", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrr(c.as, OP_RDCRR, R_CR0, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrr(c.s, OP_RDCRR, R_CR0, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "wrcr0", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
-		as_modrr(c.as, OP_WRCRR, R_CR0, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
+		as_modrr(c.s, OP_WRCRR, R_CR0, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "rdcr2", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrr(c.as, OP_RDCRR, R_CR2, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrr(c.s, OP_RDCRR, R_CR2, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "wrcr2", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
-		as_modrr(c.as, OP_WRCRR, R_CR2, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
+		as_modrr(c.s, OP_WRCRR, R_CR2, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "rdcr3", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrr(c.as, OP_RDCRR, R_CR3, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrr(c.s, OP_RDCRR, R_CR3, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "wrcr3", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
-		as_modrr(c.as, OP_WRCRR, R_CR3, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
+		as_modrr(c.s, OP_WRCRR, R_CR3, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "rdcr4", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrr(c.as, OP_RDCRR, R_CR4, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrr(c.s, OP_RDCRR, R_CR4, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "wrcr4", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
-		as_modrr(c.as, OP_WRCRR, R_CR4, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RCX, R_RBP, 0, 0, 16);
+		as_modrr(c.s, OP_WRCRR, R_CR4, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "lgdt", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modri(c.as, OP_SUBI, R_RSP, 16);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
-		as_modri(c.as, OP_SUBI, R_RAX, 1);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 2);
-		as_modm(c.as, OP_LGDTM, R_RSP, 0, 0, 0);
-		as_modri(c.as, OP_ADDI, R_RSP, 16);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modri(c.s, OP_SUBI, R_RSP, 16);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		as_modri(c.s, OP_SUBI, R_RAX, 1);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 2);
+		as_modm(c.s, OP_LGDTM, R_RSP, 0, 0, 0);
+		as_modri(c.s, OP_ADDI, R_RSP, 16);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "lidt", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modri(c.as, OP_SUBI, R_RSP, 16);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
-		as_modri(c.as, OP_SUBI, R_RAX, 1);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RSP, 0, 0, 2);
-		as_modm(c.as, OP_LIDTM, R_RSP, 0, 0, 0);
-		as_modri(c.as, OP_ADDI, R_RSP, 16);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modri(c.s, OP_SUBI, R_RSP, 16);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		as_modri(c.s, OP_SUBI, R_RAX, 1);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RSP, 0, 0, 2);
+		as_modm(c.s, OP_LIDTM, R_RSP, 0, 0, 0);
+		as_modri(c.s, OP_ADDI, R_RSP, 16);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "lldt", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
-		as_modr(c.as, OP_LLDTM, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
+		as_modr(c.s, OP_LLDTM, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "ltr", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
-		as_modr(c.as, OP_LTRM, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
+		as_modr(c.s, OP_LTRM, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "lseg", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
                 // es ds fs gs
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
-                as_modrr(c.as, OP_WRSR, R_ES, R_RAX);
-                as_modrr(c.as, OP_WRSR, R_DS, R_RAX);
-                as_modrr(c.as, OP_WRSR, R_FS, R_RAX);
-                as_modrr(c.as, OP_WRSR, R_GS, R_RAX);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+                as_modrr(c.s, OP_WRSR, R_ES, R_RAX);
+                as_modrr(c.s, OP_WRSR, R_DS, R_RAX);
+                as_modrr(c.s, OP_WRSR, R_FS, R_RAX);
+                as_modrr(c.s, OP_WRSR, R_GS, R_RAX);
                 // ss
-                as_opr(c.as, OP_PUSHR, R_RAX);
+                as_opr(c.s, OP_PUSHR, R_RAX);
 		// rsp
-		as_opr(c.as, OP_PUSHR, R_RBP);
+		as_opr(c.s, OP_PUSHR, R_RBP);
                 // flags
-		as_op(c.as, OP_PUSHF);
+		as_op(c.s, OP_PUSHF);
 		// cs
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
-                as_opr(c.as, OP_PUSHR, R_RAX);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
+                as_opr(c.s, OP_PUSHR, R_RAX);
 		// rip
-                as_op(c.as, OP_CALL);
-                as_emit(c.as, 5);
-                as_emit(c.as, 0);
-                as_emit(c.as, 0);
-                as_emit(c.as, 0);
-                as_op(c.as, OP_JMP);
-                as_emit(c.as, 2);
-                as_emit(c.as, 0);
-                as_emit(c.as, 0);
-                as_emit(c.as, 0);
-                as_op(c.as, OP_IRETQ);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+                as_op(c.s, OP_CALL);
+                as_emit(c.s, 5);
+                as_emit(c.s, 0);
+                as_emit(c.s, 0);
+                as_emit(c.s, 0);
+                as_op(c.s, OP_JMP);
+                as_emit(c.s, 2);
+                as_emit(c.s, 0);
+                as_emit(c.s, 0);
+                as_emit(c.s, 0);
+                as_op(c.s, OP_IRETQ);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "hlt", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_op(c.as, OP_HLT);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_op(c.s, OP_HLT);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "cli", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_op(c.as, OP_CLI);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_op(c.s, OP_CLI);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "sti", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_op(c.as, OP_STI);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_op(c.s, OP_STI);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "rdflags", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_op(c.as, OP_PUSHF);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_op(c.s, OP_PUSHF);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "wrflags", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_op(c.as, OP_PUSHF);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		as_op(c.as, OP_POPF);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_op(c.s, OP_PUSHF);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		as_op(c.s, OP_POPF);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "wbinvld", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
-		as_modm(c.as, OP_WBINVD, R_RAX, 0, 0, 0);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
+		as_modm(c.s, OP_WBINVD, R_RAX, 0, 0, 0);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "invlpg", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
-		as_modm(c.as, OP_INVLPGM, R_RAX, 0, 0, 0);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
+		as_modm(c.s, OP_INVLPGM, R_RAX, 0, 0, 0);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "_ssr0", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
 		emit_ssr(c);
 	}
 
 	d = find(c, "_isr0", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
                 emit_isr(c);
 	}
 
 	d = find(c, "_rgs", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
-		as_emit(c.as, OP_GS);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RSI, 0, 0, 0);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
+		as_emit(c.s, OP_GS);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RSI, 0, 0, 0);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "_r32", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
-		c.as.bits32 = 1;
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RSI, 0, 0, 0);
-		c.as.bits32 = 0;
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
+		c.s.bits32 = 1;
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RSI, 0, 0, 0);
+		c.s.bits32 = 0;
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "_w32", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
-		c.as.bits32 = 1;
-		as_modrm(c.as, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
-		c.as.bits32 = 0;
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		c.s.bits32 = 1;
+		as_modrm(c.s, OP_STORE, R_RAX, R_RDI, 0, 0, 0);
+		c.s.bits32 = 0;
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "_r16", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
-		as_modrr(c.as, OP_XORRM, R_RAX, R_RAX);
-		c.as.bits32 = 1;
-		as_modrm(c.as, OP_LOAD16, R_RAX, R_RDI, 0, 0, 0);
-		c.as.bits32 = 0;
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RSI, R_RBP, 0, 0, 16);
+		as_modrr(c.s, OP_XORRM, R_RAX, R_RAX);
+		c.s.bits32 = 1;
+		as_modrm(c.s, OP_LOAD16, R_RAX, R_RDI, 0, 0, 0);
+		c.s.bits32 = 0;
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "_w16", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
-		c.as.bits32 = 1;
-		as_modrm(c.as, OP_STORE16, R_RAX, R_RDI, 0, 0, 0);
-		c.as.bits32 = 0;
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 24);
+		c.s.bits32 = 1;
+		as_modrm(c.s, OP_STORE16, R_RAX, R_RDI, 0, 0, 0);
+		c.s.bits32 = 0;
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "_rdrand", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
-		emit_preamble(c.as, 0, 0);
-		as_modr(c.as, OP_RDRAND, R_RAX);
-		as_opr(c.as, OP_PUSHR, R_RAX);
-		emit_ret(c.as);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
+		emit_preamble(c.s, 0, 0);
+		as_modr(c.s, OP_RDRAND, R_RAX);
+		as_opr(c.s, OP_PUSHR, R_RAX);
+		emit_ret(c.s);
 	}
 
 	d = find(c, "taskswitch", 0:*byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
-		fixup_label(c.as, d.func_label);
-		add_symbol(c.as, d.name, d.func_label);
+		fixup_label(c.s, d.func_label);
+		add_symbol(c.s, d.name, d.func_label);
 
-		as_opr(c.as, OP_PUSHR, R_RBP);
-		as_op(c.as, OP_PUSHF);
+		as_opr(c.s, OP_PUSHR, R_RBP);
+		as_op(c.s, OP_PUSHF);
 
-		as_modrm(c.as, OP_LOAD, R_RBP, R_RSP, 0, 0, 24);
+		as_modrm(c.s, OP_LOAD, R_RBP, R_RSP, 0, 0, 24);
 
 		// save
-		as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 0);
-		as_modrm(c.as, OP_STORE, R_RCX, R_RBP, 0, 0, 8);
-		as_modrm(c.as, OP_STORE, R_RDX, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_STORE, R_RBX, R_RBP, 0, 0, 24);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 0);
+		as_modrm(c.s, OP_STORE, R_RCX, R_RBP, 0, 0, 8);
+		as_modrm(c.s, OP_STORE, R_RDX, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_STORE, R_RBX, R_RBP, 0, 0, 24);
 
 		// rsp
-		as_modrm(c.as, OP_LEA, R_RAX, R_RSP, 0, 0, 24);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 32);
+		as_modrm(c.s, OP_LEA, R_RAX, R_RSP, 0, 0, 24);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 32);
 
 		// rbp
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RSP, 0, 0, 8);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 40);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RSP, 0, 0, 8);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 40);
 
-		as_modrm(c.as, OP_STORE, R_RSI, R_RBP, 0, 0, 48);
-		as_modrm(c.as, OP_STORE, R_RDI, R_RBP, 0, 0, 56);
-		as_modrm(c.as, OP_STORE, R_R8, R_RBP, 0, 0, 64);
-		as_modrm(c.as, OP_STORE, R_R9, R_RBP, 0, 0, 72);
-		as_modrm(c.as, OP_STORE, R_R10, R_RBP, 0, 0, 80);
-		as_modrm(c.as, OP_STORE, R_R11, R_RBP, 0, 0, 88);
-		as_modrm(c.as, OP_STORE, R_R12, R_RBP, 0, 0, 96);
-		as_modrm(c.as, OP_STORE, R_R13, R_RBP, 0, 0, 104);
-		as_modrm(c.as, OP_STORE, R_R14, R_RBP, 0, 0, 112);
-		as_modrm(c.as, OP_STORE, R_R15, R_RBP, 0, 0, 120);
+		as_modrm(c.s, OP_STORE, R_RSI, R_RBP, 0, 0, 48);
+		as_modrm(c.s, OP_STORE, R_RDI, R_RBP, 0, 0, 56);
+		as_modrm(c.s, OP_STORE, R_R8, R_RBP, 0, 0, 64);
+		as_modrm(c.s, OP_STORE, R_R9, R_RBP, 0, 0, 72);
+		as_modrm(c.s, OP_STORE, R_R10, R_RBP, 0, 0, 80);
+		as_modrm(c.s, OP_STORE, R_R11, R_RBP, 0, 0, 88);
+		as_modrm(c.s, OP_STORE, R_R12, R_RBP, 0, 0, 96);
+		as_modrm(c.s, OP_STORE, R_R13, R_RBP, 0, 0, 104);
+		as_modrm(c.s, OP_STORE, R_R14, R_RBP, 0, 0, 112);
+		as_modrm(c.s, OP_STORE, R_R15, R_RBP, 0, 0, 120);
 
 		// rip
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RSP, 0, 0, 16);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 128);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RSP, 0, 0, 16);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 128);
 
 		// flags
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RSP, 0, 0, 0);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 136);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RSP, 0, 0, 0);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 136);
 
 		// cs
-		as_modrr(c.as, OP_RDSR, R_CS, R_RAX);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 144);
+		as_modrr(c.s, OP_RDSR, R_CS, R_RAX);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 144);
 
 		// ss
-		as_modrr(c.as, OP_RDSR, R_SS, R_RAX);
-		as_modrm(c.as, OP_STORE, R_RAX, R_RBP, 0, 0, 152);
+		as_modrr(c.s, OP_RDSR, R_SS, R_RAX);
+		as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 152);
 
-		as_modrm(c.as, OP_LOAD, R_RBP, R_RSP, 0, 0, 32);
+		as_modrm(c.s, OP_LOAD, R_RBP, R_RSP, 0, 0, 32);
 
 		// restore
-		as_modrm(c.as, OP_LOAD, R_RCX, R_RBP, 0, 0, 8);
-		as_modrm(c.as, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
-		as_modrm(c.as, OP_LOAD, R_RBX, R_RBP, 0, 0, 24);
-		as_modrm(c.as, OP_LOAD, R_RSI, R_RBP, 0, 0, 48);
-		as_modrm(c.as, OP_LOAD, R_RDI, R_RBP, 0, 0, 56);
-		as_modrm(c.as, OP_LOAD, R_R8, R_RBP, 0, 0, 64);
-		as_modrm(c.as, OP_LOAD, R_R9, R_RBP, 0, 0, 72);
-		as_modrm(c.as, OP_LOAD, R_R10, R_RBP, 0, 0, 80);
-		as_modrm(c.as, OP_LOAD, R_R11, R_RBP, 0, 0, 88);
-		as_modrm(c.as, OP_LOAD, R_R12, R_RBP, 0, 0, 96);
-		as_modrm(c.as, OP_LOAD, R_R13, R_RBP, 0, 0, 104);
-		as_modrm(c.as, OP_LOAD, R_R14, R_RBP, 0, 0, 112);
-		as_modrm(c.as, OP_LOAD, R_R15, R_RBP, 0, 0, 120);
+		as_modrm(c.s, OP_LOAD, R_RCX, R_RBP, 0, 0, 8);
+		as_modrm(c.s, OP_LOAD, R_RDX, R_RBP, 0, 0, 16);
+		as_modrm(c.s, OP_LOAD, R_RBX, R_RBP, 0, 0, 24);
+		as_modrm(c.s, OP_LOAD, R_RSI, R_RBP, 0, 0, 48);
+		as_modrm(c.s, OP_LOAD, R_RDI, R_RBP, 0, 0, 56);
+		as_modrm(c.s, OP_LOAD, R_R8, R_RBP, 0, 0, 64);
+		as_modrm(c.s, OP_LOAD, R_R9, R_RBP, 0, 0, 72);
+		as_modrm(c.s, OP_LOAD, R_R10, R_RBP, 0, 0, 80);
+		as_modrm(c.s, OP_LOAD, R_R11, R_RBP, 0, 0, 88);
+		as_modrm(c.s, OP_LOAD, R_R12, R_RBP, 0, 0, 96);
+		as_modrm(c.s, OP_LOAD, R_R13, R_RBP, 0, 0, 104);
+		as_modrm(c.s, OP_LOAD, R_R14, R_RBP, 0, 0, 112);
+		as_modrm(c.s, OP_LOAD, R_R15, R_RBP, 0, 0, 120);
 
 		// ss
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 152);
-		as_opr(c.as, OP_PUSHR, R_RAX);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 152);
+		as_opr(c.s, OP_PUSHR, R_RAX);
 		// rsp
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 32);
-		as_opr(c.as, OP_PUSHR, R_RAX);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 32);
+		as_opr(c.s, OP_PUSHR, R_RAX);
 		// flags
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 136);
-		as_opr(c.as, OP_PUSHR, R_RAX);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 136);
+		as_opr(c.s, OP_PUSHR, R_RAX);
 		// cs
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 144);
-		as_opr(c.as, OP_PUSHR, R_RAX);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 144);
+		as_opr(c.s, OP_PUSHR, R_RAX);
 		// rip
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 128);
-		as_opr(c.as, OP_PUSHR, R_RAX);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 128);
+		as_opr(c.s, OP_PUSHR, R_RAX);
 
 		// finish up restore
-		as_modrm(c.as, OP_LOAD, R_RAX, R_RBP, 0, 0, 0);
-		as_modrm(c.as, OP_LOAD, R_RBP, R_RBP, 0, 0, 40);
+		as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 0);
+		as_modrm(c.s, OP_LOAD, R_RBP, R_RBP, 0, 0, 40);
 
 		// iretq
-		as_op(c.as, OP_IRETQ);
+		as_op(c.s, OP_IRETQ);
 	}
 }
 
@@ -2693,7 +2693,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 
 	emit_builtin(c);
 
-	open_output(c.as, filename);
+	open_output(c.s, filename);
 
-	writeout(c.as, c.start, c.kstart);
+	writeout(c.s, c.start, c.kstart);
 }

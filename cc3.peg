@@ -89,7 +89,7 @@ unary_expr <- ((ref_op / deref_op / pos_op / neg_op / not_op / bnot_op) sp)* pos
 index_expr <- '[' sp expr ']' sp
 call_expr <- '(' sp ( expr (',' sp expr)* )? (',' sp)? ')' sp
 member_expr <-  '.' sp ident sp
-cast_expr <- ':' sp type
+cast_expr <- (':' / 'as') sp type
 post_expr <- primary (index_expr / call_expr / member_expr / cast_expr)*
 
 primary <- ident sp / hex sp / dec sp / str sp / char sp
@@ -103,7 +103,7 @@ str <- ["] ([\\] . / !["] .)* ["]
 char <- ['] ([\\] . / !['] .)+ [']
 
 reserved <- return / break / sizeof / if / else / loop / continue / goto
-          / var / enum / struct / union / byte / int / void / func
+          / var / enum / struct / union / byte / int / void / func / as
 
 return <- 'return' ![a-zA-Z0-9_]
 break <- 'break' ![a-zA-Z0-9_]
@@ -121,6 +121,8 @@ byte <- 'byte' ![a-zA-Z0-9_]
 int <- 'int' ![a-zA-Z0-9_]
 void <- 'void' ![a-zA-Z0-9_]
 func <- 'func' ![a-zA-Z0-9_]
+as <- 'as' ![a-zA-Z0-9_]
+nil <- 'nil' ![a-zA-Z0-9_]
 
 ident <- !reserved [a-zA-Z_][a-zA-Z0-9_]*
 

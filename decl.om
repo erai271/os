@@ -95,7 +95,7 @@ find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
 
 	d.func_defined = 0;
 	d.func_type = 0:*type;
-	d.func_label = mklabel(c.as);
+	d.func_label = mklabel(c.s);
 	d.func_def = 0:*node;
 	d.func_used = 0;
 
@@ -119,7 +119,7 @@ find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
 	d.var_def = 0:*node;
 
 	d.goto_defined = 0;
-	d.goto_label = mklabel(c.as);
+	d.goto_label = mklabel(c.s);
 
 	*link = d;
 

@@ -21,6 +21,8 @@ syn keyword oByte byte
 syn keyword oInt int
 syn keyword oVoid void
 syn keyword oFunc func
+syn keyword oAs as
+syn keyword oNil nil
 
 syn keyword oTodo contained TODO FIXME XXX BUG
 syn cluster oCommentGroup contains=oTodo
@@ -58,6 +60,9 @@ hi def link oContinue Statement
 hi def link oGoto Statement
 
 hi def link oVar Keyword
+hi def link oAs Keyword
+hi def link oNil Keyword
+hi def link oFunc Keyword
 
 hi def link oEnum Structure
 hi def link oStruct Structure
@@ -66,6 +71,5 @@ hi def link oUnion Structure
 hi def link oByte Type
 hi def link oInt Type
 hi def link oVoid Type
-hi def link oFunc Type
 
 let b:current_syntax = "omiltem"

@@ -51,7 +51,7 @@ struct my_compiler {
 	unsigned char* my_filename;
 	unsigned long my_lineno;
 	unsigned long my_colno;
-	struct my_assembler* my_as;
+	struct my_assembler* my_s;
 	struct my_decl* my_decls;
 	unsigned long my_do_cout;
 	struct my_file* my_cout;
@@ -407,6 +407,7 @@ enum {
 	my_P_add_op = 37,
 	my_P_and_op = 45,
 	my_P_arg_decl = 9,
+	my_P_as = 85,
 	my_P_assign_stmt = 22,
 	my_P_band_op = 27,
 	my_P_bnot_op = 55,
@@ -444,7 +445,7 @@ enum {
 	my_P_grammar = 0,
 	my_P_gt_op = 33,
 	my_P_hex = 64,
-	my_P_ident = 85,
+	my_P_ident = 87,
 	my_P_if = 72,
 	my_P_if_stmt = 14,
 	my_P_index_expr = 57,
@@ -462,6 +463,7 @@ enum {
 	my_P_mul_op = 42,
 	my_P_ne_op = 35,
 	my_P_neg_op = 53,
+	my_P_nil = 86,
 	my_P_not_op = 54,
 	my_P_or_op = 39,
 	my_P_pos_op = 52,
@@ -476,7 +478,7 @@ enum {
 	my_P_shift_expr = 49,
 	my_P_sizeof = 71,
 	my_P_sizeof_expr = 63,
-	my_P_sp = 86,
+	my_P_sp = 88,
 	my_P_stmt = 11,
 	my_P_str = 66,
 	my_P_struct = 79,
@@ -722,6 +724,7 @@ unsigned long( my_peg_P_add_expr)(struct my_peg* my_c);
 unsigned long( my_peg_P_add_op)(struct my_peg* my_c);
 unsigned long( my_peg_P_and_op)(struct my_peg* my_c);
 unsigned long( my_peg_P_arg_decl)(struct my_peg* my_c);
+unsigned long( my_peg_P_as)(struct my_peg* my_c);
 unsigned long( my_peg_P_assign_stmt)(struct my_peg* my_c);
 unsigned long( my_peg_P_band_op)(struct my_peg* my_c);
 unsigned long( my_peg_P_bnot_op)(struct my_peg* my_c);
@@ -1183,6 +1186,12 @@ unsigned char*( my_P_tag_to_str)(unsigned long my_tag){
 	if ((unsigned long)(((long)(my_tag))==((long)(my_P_func)))) {
 	return (unsigned char *)"func";
 	}
+	if ((unsigned long)(((long)(my_tag))==((long)(my_P_as)))) {
+	return (unsigned char *)"as";
+	}
+	if ((unsigned long)(((long)(my_tag))==((long)(my_P_nil)))) {
+	return (unsigned char *)"nil";
+	}
 	if ((unsigned long)(((long)(my_tag))==((long)(my_P_ident)))) {
 	return (unsigned char *)"ident";
 	}
@@ -1606,7 +1615,7 @@ struct my_compiler*( my_comp_setup)(struct my_alloc* my_a){
 	((my_c)->my_filename)=((unsigned char*)0UL);
 	((my_c)->my_lineno)=(0UL);
 	((my_c)->my_colno)=(0UL);
-	((my_c)->my_as)=((my_setup_assembler)((my_a)));
+	((my_c)->my_s)=((my_setup_assembler)((my_a)));
 	((my_c)->my_decls)=((struct my_decl*)0UL);
 	((my_c)->my_do_cout)=(0UL);
 	((my_c)->my_cout)=((struct my_file*)0UL);
@@ -1701,11 +1710,11 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	((my_c)->my_colno)=((my_n)->my_colno);
 	(my_kind)=((my_n)->my_kind);
 	if ((unsigned long)(((long)(my_kind))==((long)(my_N_STR)))) {
-	(my_emit_str)(((my_c)->my_as),((my_n)->my_s));
+	(my_emit_str)(((my_c)->my_s),((my_n)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NUM)))) {
-	(my_emit_num)(((my_c)->my_as),((my_n)->my_n));
+	(my_emit_num)(((my_c)->my_s),((my_n)->my_n));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CHAR)))) {
-	(my_emit_num)(((my_c)->my_as),((my_n)->my_n));
+	(my_emit_num)(((my_c)->my_s),((my_n)->my_n));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_EXPRLIST)))) {
 	if ((my_n)->my_b) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
@@ -1722,19 +1731,19 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	}
 	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
 	if ((unsigned long)((my_v)&&((my_v)->my_var_defined))) {
-	(my_emit_lea)(((my_c)->my_as),((my_v)->my_var_offset));
-	(my_emit_load)(((my_c)->my_as),(((my_n)->my_a)->my_t));
-	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
+	(my_emit_lea)(((my_c)->my_s),((my_v)->my_var_offset));
+	(my_emit_load)(((my_c)->my_s),(((my_n)->my_a)->my_t));
+	(my_emit_call)(((my_c)->my_s),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
 	} else if ((unsigned long)(!((my_strcmp)((((my_n)->my_a)->my_s),((unsigned char *)"_include"))))) {
 	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
 	(my_compile_include)((my_c),(my_n));
 	} else {
 	(my_v)=((my_find)((my_c),(((my_n)->my_a)->my_s),((unsigned char*)0UL),(0UL)));
-	(my_emit_lcall)(((my_c)->my_as),((my_v)->my_func_label),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
+	(my_emit_lcall)(((my_c)->my_s),((my_v)->my_func_label),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
 	}
 	} else {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_call)(((my_c)->my_as),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
+	(my_emit_call)(((my_c)->my_s),((my_count_args)((my_c),((((my_n)->my_a)->my_t)->my_arg))));
 	}
 	if ((my_n)->my_b) {
 	(my_unify)((my_c),((((my_n)->my_a)->my_t)->my_arg),(((my_n)->my_b)->my_t));
@@ -1745,178 +1754,178 @@ void( my_compile_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
 	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))==((long)(my_TY_PTR)))) {
 	(my_v)=((my_find)((my_c),((((((my_n)->my_a)->my_t)->my_val)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
-	(my_emit_load)(((my_c)->my_as),(((my_n)->my_a)->my_t));
+	(my_emit_load)(((my_c)->my_s),(((my_n)->my_a)->my_t));
 	} else {
 	(my_v)=((my_find)((my_c),(((((my_n)->my_a)->my_t)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
 	}
-	(my_emit_num)(((my_c)->my_as),((my_v)->my_member_offset));
-	(my_emit_add)(((my_c)->my_as));
+	(my_emit_num)(((my_c)->my_s),((my_v)->my_member_offset));
+	(my_emit_add)(((my_c)->my_s));
 	if (my_rhs) {
-	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
+	(my_emit_load)(((my_c)->my_s),((my_n)->my_t));
 	}
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_IDENT)))) {
 	(my_v)=((my_find)((my_c),((my_n)->my_s),((unsigned char*)0UL),(0UL)));
 	if ((unsigned long)((my_v)&&((my_v)->my_enum_defined))) {
-	(my_emit_num)(((my_c)->my_as),((my_v)->my_enum_value));
+	(my_emit_num)(((my_c)->my_s),((my_v)->my_enum_value));
 	return;
 	}
 	(my_v)=((my_find)((my_c),((my_d)->my_name),((my_n)->my_s),(0UL)));
 	if ((unsigned long)((my_v)&&((my_v)->my_var_defined))) {
-	(my_emit_lea)(((my_c)->my_as),((my_v)->my_var_offset));
+	(my_emit_lea)(((my_c)->my_s),((my_v)->my_var_offset));
 	if (my_rhs) {
-	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
+	(my_emit_load)(((my_c)->my_s),((my_n)->my_t));
 	}
 	return;
 	}
 	(my_v)=((my_find)((my_c),((my_n)->my_s),((unsigned char*)0UL),(0UL)));
 	if ((unsigned long)((my_v)&&((my_v)->my_func_defined))) {
-	(my_emit_ptr)(((my_c)->my_as),((my_v)->my_func_label));
+	(my_emit_ptr)(((my_c)->my_s),((my_v)->my_func_label));
 	return;
 	}
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ASSIGN)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
-	(my_emit_store)(((my_c)->my_as),((my_n)->my_t));
+	(my_emit_store)(((my_c)->my_s),((my_n)->my_t));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_SIZEOF)))) {
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
+	(my_out)=((my_mklabel)(((my_c)->my_s)));
+	(my_emit_jmp)(((my_c)->my_s),(my_out));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
+	(my_fixup_label)(((my_c)->my_s),(my_out));
 	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))==((long)(my_TY_BYTE)))) {
-	(my_emit_num)(((my_c)->my_as),(1UL));
+	(my_emit_num)(((my_c)->my_s),(1UL));
 	} else {
-	(my_emit_num)(((my_c)->my_as),((my_type_sizeof)((my_c),(((my_n)->my_a)->my_t))));
+	(my_emit_num)(((my_c)->my_s),((my_type_sizeof)((my_c),(((my_n)->my_a)->my_t))));
 	}
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_REF)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DEREF)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	if (my_rhs) {
-	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
+	(my_emit_load)(((my_c)->my_s),((my_n)->my_t));
 	}
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_INDEX)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	if ((unsigned long)(((long)(((my_n)->my_t)->my_kind))==((long)(my_TY_BYTE)))) {
-	(my_emit_num)(((my_c)->my_as),(1UL));
+	(my_emit_num)(((my_c)->my_s),(1UL));
 	} else {
-	(my_emit_num)(((my_c)->my_as),((my_type_sizeof)((my_c),((my_n)->my_t))));
+	(my_emit_num)(((my_c)->my_s),((my_type_sizeof)((my_c),((my_n)->my_t))));
 	}
-	(my_emit_mul)(((my_c)->my_as));
-	(my_emit_add)(((my_c)->my_as));
+	(my_emit_mul)(((my_c)->my_s));
+	(my_emit_add)(((my_c)->my_s));
 	if (my_rhs) {
-	(my_emit_load)(((my_c)->my_as),((my_n)->my_t));
+	(my_emit_load)(((my_c)->my_s),((my_n)->my_t));
 	}
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LT)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_lt)(((my_c)->my_as));
+	(my_emit_lt)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GT)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_gt)(((my_c)->my_as));
+	(my_emit_gt)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LE)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_le)(((my_c)->my_as));
+	(my_emit_le)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GE)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_ge)(((my_c)->my_as));
+	(my_emit_ge)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_EQ)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_eq)(((my_c)->my_as));
+	(my_emit_eq)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NE)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_ne)(((my_c)->my_as));
+	(my_emit_ne)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BNOT)))) {
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
+	(my_no)=((my_mklabel)(((my_c)->my_s)));
+	(my_out)=((my_mklabel)(((my_c)->my_s)));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(0UL));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	(my_fixup_label)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
+	(my_emit_jz)(((my_c)->my_s),(my_no));
+	(my_emit_num)(((my_c)->my_s),(0UL));
+	(my_emit_jmp)(((my_c)->my_s),(my_out));
+	(my_fixup_label)(((my_c)->my_s),(my_no));
+	(my_emit_num)(((my_c)->my_s),(1UL));
+	(my_fixup_label)(((my_c)->my_s),(my_out));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BOR)))) {
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
+	(my_no)=((my_mklabel)(((my_c)->my_s)));
+	(my_out)=((my_mklabel)(((my_c)->my_s)));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	(my_fixup_label)(((my_c)->my_as),(my_no));
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
+	(my_emit_jz)(((my_c)->my_s),(my_no));
+	(my_emit_num)(((my_c)->my_s),(1UL));
+	(my_emit_jmp)(((my_c)->my_s),(my_out));
+	(my_fixup_label)(((my_c)->my_s),(my_no));
+	(my_no)=((my_mklabel)(((my_c)->my_s)));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	(my_fixup_label)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(0UL));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
+	(my_emit_jz)(((my_c)->my_s),(my_no));
+	(my_emit_num)(((my_c)->my_s),(1UL));
+	(my_emit_jmp)(((my_c)->my_s),(my_out));
+	(my_fixup_label)(((my_c)->my_s),(my_no));
+	(my_emit_num)(((my_c)->my_s),(0UL));
+	(my_fixup_label)(((my_c)->my_s),(my_out));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BAND)))) {
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
+	(my_no)=((my_mklabel)(((my_c)->my_s)));
+	(my_out)=((my_mklabel)(((my_c)->my_s)));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
+	(my_emit_jz)(((my_c)->my_s),(my_no));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(1UL));
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
-	(my_fixup_label)(((my_c)->my_as),(my_no));
-	(my_emit_num)(((my_c)->my_as),(0UL));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
+	(my_emit_jz)(((my_c)->my_s),(my_no));
+	(my_emit_num)(((my_c)->my_s),(1UL));
+	(my_emit_jmp)(((my_c)->my_s),(my_out));
+	(my_fixup_label)(((my_c)->my_s),(my_no));
+	(my_emit_num)(((my_c)->my_s),(0UL));
+	(my_fixup_label)(((my_c)->my_s),(my_out));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_POS)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NEG)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_neg)(((my_c)->my_as));
+	(my_emit_neg)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_NOT)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_not)(((my_c)->my_as));
+	(my_emit_not)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_ADD)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_add)(((my_c)->my_as));
+	(my_emit_add)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_SUB)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_sub)(((my_c)->my_as));
+	(my_emit_sub)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_MUL)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_mul)(((my_c)->my_as));
+	(my_emit_mul)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DIV)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_div)(((my_c)->my_as));
+	(my_emit_div)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_MOD)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_mod)(((my_c)->my_as));
+	(my_emit_mod)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LSH)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_lsh)(((my_c)->my_as));
+	(my_emit_lsh)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_RSH)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_rsh)(((my_c)->my_as));
+	(my_emit_rsh)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_AND)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_and)(((my_c)->my_as));
+	(my_emit_and)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_OR)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_or)(((my_c)->my_as));
+	(my_emit_or)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_XOR)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_b),(1UL));
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
-	(my_emit_xor)(((my_c)->my_as));
+	(my_emit_xor)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CAST)))) {
 	(my_compile_expr)((my_c),(my_d),((my_n)->my_a),(1UL));
 	} else {
@@ -1935,15 +1944,15 @@ void( my_compile_func)(struct my_compiler* my_c,struct my_decl* my_d){
 	} else {
 	(my_pragma)=(0UL);
 	}
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),((my_d)->my_func_preamble),(my_pragma));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),((my_d)->my_func_preamble),(my_pragma));
 	(my_compile_stmt)((my_c),(my_d),(((my_d)->my_func_def)->my_b),((struct my_label*)0UL),((struct my_label*)0UL));
-	(my_emit_num)(((my_c)->my_as),(0UL));
+	(my_emit_num)(((my_c)->my_s),(0UL));
 	if (my_pragma) {
-	(my_emit_ud)(((my_c)->my_as));
+	(my_emit_ud)(((my_c)->my_s));
 	}
-	(my_emit_ret)(((my_c)->my_as));
+	(my_emit_ret)(((my_c)->my_s));
 }
 void( my_compile_include)(struct my_compiler* my_c,struct my_node* my_n){
 	unsigned char* my_filename = 0;
@@ -1960,11 +1969,11 @@ void( my_compile_include)(struct my_compiler* my_c,struct my_node* my_n){
 	}
 	(my_blob)=((my_readall)((my_fd),(&(my_len)),((my_c)->my_a)));
 	(my_close)((my_fd));
-	(my_as_opr)(((my_c)->my_as),(my_OP_POPR),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_POPR),(my_R_RDI));
-	(my_as_opri64)(((my_c)->my_as),(my_OP_MOVABS),(my_R_RAX),(my_len));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_emit_blob)(((my_c)->my_as),(my_blob),(my_len));
+	(my_as_opr)(((my_c)->my_s),(my_OP_POPR),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_POPR),(my_R_RDI));
+	(my_as_opri64)(((my_c)->my_s),(my_OP_MOVABS),(my_R_RAX),(my_len));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(my_emit_blob)(((my_c)->my_s),(my_blob),(my_len));
 	(my_free)(((my_c)->my_a),(my_blob));
 }
 void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n,struct my_label* my_top,struct my_label* my_out){
@@ -1980,25 +1989,25 @@ void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	((my_c)->my_colno)=((my_n)->my_colno);
 	(my_kind)=((my_n)->my_kind);
 	if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONDLIST)))) {
-	(my_ifout)=((my_mklabel)(((my_c)->my_as)));
+	(my_ifout)=((my_mklabel)(((my_c)->my_s)));
 	(my_no)=((struct my_label*)0UL);
 	while (1) {
 	if (my_no) {
-	(my_fixup_label)(((my_c)->my_as),(my_no));
+	(my_fixup_label)(((my_c)->my_s),(my_no));
 	}
 	if ((unsigned long)(!(my_n))) {
 	break;
 	}
-	(my_no)=((my_mklabel)(((my_c)->my_as)));
+	(my_no)=((my_mklabel)(((my_c)->my_s)));
 	if (((my_n)->my_a)->my_a) {
 	(my_compile_expr)((my_c),(my_d),(((my_n)->my_a)->my_a),(1UL));
-	(my_emit_jz)(((my_c)->my_as),(my_no));
+	(my_emit_jz)(((my_c)->my_s),(my_no));
 	}
 	(my_compile_stmt)((my_c),(my_d),(((my_n)->my_a)->my_b),(my_top),(my_out));
-	(my_emit_jmp)(((my_c)->my_as),(my_ifout));
+	(my_emit_jmp)(((my_c)->my_s),(my_ifout));
 	(my_n)=((my_n)->my_b);
 	}
-	(my_fixup_label)(((my_c)->my_as),(my_ifout));
+	(my_fixup_label)(((my_c)->my_s),(my_ifout));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_STMTLIST)))) {
 	while (1) {
 	if ((unsigned long)(!(my_n))) {
@@ -2008,22 +2017,22 @@ void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	(my_n)=((my_n)->my_b);
 	}
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LOOP)))) {
-	(my_top)=((my_mklabel)(((my_c)->my_as)));
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
-	(my_fixup_label)(((my_c)->my_as),(my_top));
+	(my_top)=((my_mklabel)(((my_c)->my_s)));
+	(my_out)=((my_mklabel)(((my_c)->my_s)));
+	(my_fixup_label)(((my_c)->my_s),(my_top));
 	(my_compile_stmt)((my_c),(my_d),((my_n)->my_a),(my_top),(my_out));
-	(my_emit_jmp)(((my_c)->my_as),(my_top));
-	(my_fixup_label)(((my_c)->my_as),(my_out));
+	(my_emit_jmp)(((my_c)->my_s),(my_top));
+	(my_fixup_label)(((my_c)->my_s),(my_out));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_BREAK)))) {
 	if ((unsigned long)(!(my_out))) {
 	(my_cdie)((my_c),((unsigned char *)"break outside loop"));
 	}
-	(my_emit_jmp)(((my_c)->my_as),(my_out));
+	(my_emit_jmp)(((my_c)->my_s),(my_out));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_CONTINUE)))) {
 	if ((unsigned long)(!(my_top))) {
 	(my_cdie)((my_c),((unsigned char *)"continue outside loop"));
 	}
-	(my_emit_jmp)(((my_c)->my_as),(my_top));
+	(my_emit_jmp)(((my_c)->my_s),(my_top));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_RETURN)))) {
 	if ((my_n)->my_a) {
 	if ((unsigned long)(((long)((((my_d)->my_func_type)->my_val)->my_kind))==((long)(my_TY_VOID)))) {
@@ -2034,21 +2043,21 @@ void( my_compile_stmt)(struct my_compiler* my_c,struct my_decl* my_d,struct my_n
 	if ((unsigned long)(((long)((((my_d)->my_func_type)->my_val)->my_kind))!=((long)(my_TY_VOID)))) {
 	(my_cdie)((my_c),((unsigned char *)"returning void in a non void function"));
 	}
-	(my_emit_num)(((my_c)->my_as),(0UL));
+	(my_emit_num)(((my_c)->my_s),(0UL));
 	}
-	(my_emit_ret)(((my_c)->my_as));
+	(my_emit_ret)(((my_c)->my_s));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_LABEL)))) {
 	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
-	(my_fixup_label)(((my_c)->my_as),((my_v)->my_goto_label));
+	(my_fixup_label)(((my_c)->my_s),((my_v)->my_goto_label));
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_GOTO)))) {
 	(my_v)=((my_find)((my_c),((my_d)->my_name),(((my_n)->my_a)->my_s),(0UL)));
 	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_goto_defined))))) {
 	(my_cdie)((my_c),((unsigned char *)"label not defined"));
 	}
-	(my_emit_jmp)(((my_c)->my_as),((my_v)->my_goto_label));
+	(my_emit_jmp)(((my_c)->my_s),((my_v)->my_goto_label));
 	} else if ((unsigned long)(((long)(my_kind))!=((long)(my_N_VARDECL)))) {
 	(my_compile_expr)((my_c),(my_d),(my_n),(1UL));
-	(my_emit_pop)(((my_c)->my_as),(1UL));
+	(my_emit_pop)(((my_c)->my_s),(1UL));
 	}
 }
 struct my_node*( my_concat_program)(struct my_node* my_a,struct my_node* my_b){
@@ -2976,519 +2985,519 @@ void( my_emit_builtin)(struct my_compiler* my_c){
 	struct my_decl* my_d = 0;
 	(my_d)=((my_find)((my_c),((unsigned char *)"syscall"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_emit_syscall)(((my_c)->my_as));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_emit_syscall)(((my_c)->my_s));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_restorer"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_restorer)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_restorer)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_include"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_UD2));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_UD2));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"ud2"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_UD2));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_UD2));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"cpuid"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_CPUID));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RCX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(32UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(40UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RBX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_CPUID));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RCX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(32UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RDX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(40UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RBX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"inb"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_IN));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_IN));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"outb"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_OUT));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_OUT));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"inw"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_emit)(((my_c)->my_as),(my_OP_OS));
-	(my_as_op)(((my_c)->my_as),(my_OP_IND));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_emit)(((my_c)->my_s),(my_OP_OS));
+	(my_as_op)(((my_c)->my_s),(my_OP_IND));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"outw"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_emit)(((my_c)->my_as),(my_OP_OS));
-	(my_as_op)(((my_c)->my_as),(my_OP_OUTD));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_emit)(((my_c)->my_s),(my_OP_OS));
+	(my_as_op)(((my_c)->my_s),(my_OP_OUTD));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"ind"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_IND));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_IND));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"outd"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_OUTD));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_OUTD));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdmsr"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_RDMSR));
-	(my_as_modri)(((my_c)->my_as),(my_OP_MOVI),(my_R_RCX),(32UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_SHLM),(my_R_RDX));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_ORRM),(my_R_RAX),(my_R_RDX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_RDMSR));
+	(my_as_modri)(((my_c)->my_s),(my_OP_MOVI),(my_R_RCX),(32UL));
+	(my_as_modr)(((my_c)->my_s),(my_OP_SHLM),(my_R_RDX));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_ORRM),(my_R_RAX),(my_R_RDX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrmsr"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_MOVE),(my_R_RDX),(my_R_RAX));
-	(my_as_modri)(((my_c)->my_as),(my_OP_MOVI),(my_R_RCX),(32UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_SHRM),(my_R_RDX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_WRMSR));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_MOVE),(my_R_RDX),(my_R_RAX));
+	(my_as_modri)(((my_c)->my_s),(my_OP_MOVI),(my_R_RCX),(32UL));
+	(my_as_modr)(((my_c)->my_s),(my_OP_SHRM),(my_R_RDX));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_WRMSR));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr0"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR0),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_RDCRR),(my_R_CR0),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr0"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR0),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_WRCRR),(my_R_CR0),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr2"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR2),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_RDCRR),(my_R_CR2),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr2"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR2),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_WRCRR),(my_R_CR2),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr3"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR3),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_RDCRR),(my_R_CR3),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr3"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR3),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_WRCRR),(my_R_CR3),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdcr4"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDCRR),(my_R_CR4),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_RDCRR),(my_R_CR4),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrcr4"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRCRR),(my_R_CR4),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_WRCRR),(my_R_CR4),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"lgdt"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RSP),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RAX),(1UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(2UL));
-	(my_as_modm)(((my_c)->my_as),(my_OP_LGDTM),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),(16UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modri)(((my_c)->my_s),(my_OP_SUBI),(my_R_RSP),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modri)(((my_c)->my_s),(my_OP_SUBI),(my_R_RAX),(1UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(2UL));
+	(my_as_modm)(((my_c)->my_s),(my_OP_LGDTM),(my_R_RSP),(0UL),(0UL),(0UL));
+	(my_as_modri)(((my_c)->my_s),(my_OP_ADDI),(my_R_RSP),(16UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"lidt"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RSP),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RAX),(1UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(2UL));
-	(my_as_modm)(((my_c)->my_as),(my_OP_LIDTM),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),(16UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modri)(((my_c)->my_s),(my_OP_SUBI),(my_R_RSP),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modri)(((my_c)->my_s),(my_OP_SUBI),(my_R_RAX),(1UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(2UL));
+	(my_as_modm)(((my_c)->my_s),(my_OP_LIDTM),(my_R_RSP),(0UL),(0UL),(0UL));
+	(my_as_modri)(((my_c)->my_s),(my_OP_ADDI),(my_R_RSP),(16UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"lldt"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_LLDTM),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modr)(((my_c)->my_s),(my_OP_LLDTM),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"ltr"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_LTRM),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modr)(((my_c)->my_s),(my_OP_LTRM),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"lseg"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRSR),(my_R_ES),(my_R_RAX));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRSR),(my_R_DS),(my_R_RAX));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRSR),(my_R_FS),(my_R_RAX));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_WRSR),(my_R_GS),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_op)(((my_c)->my_as),(my_OP_CALL));
-	(my_as_emit)(((my_c)->my_as),(5UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_JMP));
-	(my_as_emit)(((my_c)->my_as),(2UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_IRETQ));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_WRSR),(my_R_ES),(my_R_RAX));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_WRSR),(my_R_DS),(my_R_RAX));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_WRSR),(my_R_FS),(my_R_RAX));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_WRSR),(my_R_GS),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RBP));
+	(my_as_op)(((my_c)->my_s),(my_OP_PUSHF));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_as_op)(((my_c)->my_s),(my_OP_CALL));
+	(my_as_emit)(((my_c)->my_s),(5UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_JMP));
+	(my_as_emit)(((my_c)->my_s),(2UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_IRETQ));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"hlt"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_HLT));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_HLT));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"cli"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_CLI));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_CLI));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"sti"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_STI));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_STI));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"rdflags"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_PUSHF));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"wrflags"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_op)(((my_c)->my_as),(my_OP_POPF));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_PUSHF));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_as_op)(((my_c)->my_s),(my_OP_POPF));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"wbinvld"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modm)(((my_c)->my_as),(my_OP_WBINVD),(my_R_RAX),(0UL),(0UL),(0UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modm)(((my_c)->my_s),(my_OP_WBINVD),(my_R_RAX),(0UL),(0UL),(0UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"invlpg"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modm)(((my_c)->my_as),(my_OP_INVLPGM),(my_R_RAX),(0UL),(0UL),(0UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modm)(((my_c)->my_s),(my_OP_INVLPGM),(my_R_RAX),(0UL),(0UL),(0UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_ssr0"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_ssr)((my_c));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_isr0"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
 	(my_emit_isr)((my_c));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_rgs"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_emit)(((my_c)->my_as),(my_OP_GS));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSI),(0UL),(0UL),(0UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_emit)(((my_c)->my_s),(my_OP_GS));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RSI),(0UL),(0UL),(0UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_r32"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(((my_c)->my_as)->my_bits32)=(1UL);
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSI),(0UL),(0UL),(0UL));
-	(((my_c)->my_as)->my_bits32)=(0UL);
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
+	(((my_c)->my_s)->my_bits32)=(1UL);
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RSI),(0UL),(0UL),(0UL));
+	(((my_c)->my_s)->my_bits32)=(0UL);
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_w32"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(((my_c)->my_as)->my_bits32)=(1UL);
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(((my_c)->my_as)->my_bits32)=(0UL);
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(((my_c)->my_s)->my_bits32)=(1UL);
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(((my_c)->my_s)->my_bits32)=(0UL);
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_r16"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(((my_c)->my_as)->my_bits32)=(1UL);
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD16),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(((my_c)->my_as)->my_bits32)=(0UL);
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
+	(((my_c)->my_s)->my_bits32)=(1UL);
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD16),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(((my_c)->my_s)->my_bits32)=(0UL);
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_w16"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(((my_c)->my_as)->my_bits32)=(1UL);
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE16),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
-	(((my_c)->my_as)->my_bits32)=(0UL);
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(((my_c)->my_s)->my_bits32)=(1UL);
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE16),(my_R_RAX),(my_R_RDI),(0UL),(0UL),(0UL));
+	(((my_c)->my_s)->my_bits32)=(0UL);
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"_rdrand"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_emit_preamble)(((my_c)->my_as),(0UL),(0UL));
-	(my_as_modr)(((my_c)->my_as),(my_OP_RDRAND),(my_R_RAX));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_emit_ret)(((my_c)->my_as));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_emit_preamble)(((my_c)->my_s),(0UL),(0UL));
+	(my_as_modr)(((my_c)->my_s),(my_OP_RDRAND),(my_R_RAX));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_emit_ret)(((my_c)->my_s));
 	}
 	(my_d)=((my_find)((my_c),((unsigned char *)"taskswitch"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&((unsigned long)(!(((my_d)->my_func_label)->my_fixed))))) {
-	(my_fixup_label)(((my_c)->my_as),((my_d)->my_func_label));
-	(my_add_symbol)(((my_c)->my_as),((my_d)->my_name),((my_d)->my_func_label));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_op)(((my_c)->my_as),(my_OP_PUSHF));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LEA),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDSR),(my_R_CS),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_RDSR),(my_R_SS),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_IRETQ));
+	(my_fixup_label)(((my_c)->my_s),((my_d)->my_func_label));
+	(my_add_symbol)(((my_c)->my_s),((my_d)->my_name),((my_d)->my_func_label));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RBP));
+	(my_as_op)(((my_c)->my_s),(my_OP_PUSHF));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LEA),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(8UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(40UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_RDSR),(my_R_CS),(my_R_RAX));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_RDSR),(my_R_SS),(my_R_RAX));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(32UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RBP),(my_R_RBP),(0UL),(0UL),(40UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_IRETQ));
 	}
 }
 void( my_emit_call)(struct my_assembler* my_c,unsigned long my_n){
@@ -3535,101 +3544,101 @@ void( my_emit_isr)(struct my_compiler* my_c){
 	struct my_decl* my_d = 0;
 	struct my_label* my_out = 0;
 	unsigned long my_i = 0;
-	(my_out)=((my_mklabel)(((my_c)->my_as)));
+	(my_out)=((my_mklabel)(((my_c)->my_s)));
 	(my_i)=(0UL);
 	while (1) {
 	if ((unsigned long)(((long)(my_i))==((long)(256UL)))) {
 	break;
 	}
-	(my_reserve)(((my_c)->my_as),(16UL));
+	(my_reserve)(((my_c)->my_s),(16UL));
 	if ((unsigned long)(((unsigned long)(((long)(my_i))==((long)(8UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(10UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(11UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(12UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(13UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(14UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(17UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(21UL))))||((unsigned long)(((unsigned long)(((long)(my_i))==((long)(29UL))))||((unsigned long)(((long)(my_i))==((long)(30UL)))))))))))))))))))))) {
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	(my_as_emit)(((my_c)->my_as),(144UL));
+	(my_as_emit)(((my_c)->my_s),(144UL));
+	(my_as_emit)(((my_c)->my_s),(144UL));
 	} else {
-	(my_as_emit)(((my_c)->my_as),(106UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
+	(my_as_emit)(((my_c)->my_s),(106UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
 	}
-	(my_as_emit)(((my_c)->my_as),(104UL));
-	(my_as_emit)(((my_c)->my_as),(my_i));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(233UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_as_emit)(((my_c)->my_as),(0UL));
-	(my_addfixup)(((my_c)->my_as),(my_out));
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	(my_as_emit)(((my_c)->my_as),(144UL));
-	(my_as_emit)(((my_c)->my_as),(144UL));
+	(my_as_emit)(((my_c)->my_s),(104UL));
+	(my_as_emit)(((my_c)->my_s),(my_i));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(233UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_as_emit)(((my_c)->my_s),(0UL));
+	(my_addfixup)(((my_c)->my_s),(my_out));
+	(my_as_emit)(((my_c)->my_s),(144UL));
+	(my_as_emit)(((my_c)->my_s),(144UL));
+	(my_as_emit)(((my_c)->my_s),(144UL));
+	(my_as_emit)(((my_c)->my_s),(144UL));
 	(my_i)=((unsigned long)(((unsigned long)(my_i))+((unsigned long)(1UL))));
 	}
-	(my_fixup_label)(((my_c)->my_as),(my_out));
-	(my_as_modri)(((my_c)->my_as),(my_OP_SUBI),(my_R_RSP),(176UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(40UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_MOVE),(my_R_RBP),(my_R_RSP));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(0UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(160UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(8UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(168UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(16UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(24UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(32UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(40UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(48UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
+	(my_fixup_label)(((my_c)->my_s),(my_out));
+	(my_as_modri)(((my_c)->my_s),(my_OP_SUBI),(my_R_RSP),(176UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(40UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_MOVE),(my_R_RBP),(my_R_RSP));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RBP));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(0UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(160UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(8UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(168UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(16UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(24UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(32UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(40UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(48UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
 	(my_d)=((my_find)((my_c),((unsigned char *)"_isr"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&(((my_d)->my_func_label)->my_fixed))) {
-	(my_as_jmp)(((my_c)->my_as),(my_OP_CALL),((my_d)->my_func_label));
+	(my_as_jmp)(((my_c)->my_s),(my_OP_CALL),((my_d)->my_func_label));
 	}
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(16UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(24UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(32UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(40UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(48UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RBP),(0UL),(0UL),(40UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((unsigned long)(176UL))+((unsigned long)((unsigned long)(((long)(3UL))*((long)(8UL))))))));
-	(my_as_op)(((my_c)->my_as),(my_OP_IRETQ));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(128UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(16UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(144UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(24UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(136UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(32UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(32UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(40UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(152UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RBP),(0UL),(0UL),((unsigned long)(((unsigned long)(176UL))+((unsigned long)(48UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RBP),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RBP),(0UL),(0UL),(8UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RBP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RBX),(my_R_RBP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RSI),(my_R_RBP),(0UL),(0UL),(48UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RBP),(0UL),(0UL),(56UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R8),(my_R_RBP),(0UL),(0UL),(64UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R9),(my_R_RBP),(0UL),(0UL),(72UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R10),(my_R_RBP),(0UL),(0UL),(80UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R11),(my_R_RBP),(0UL),(0UL),(88UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R12),(my_R_RBP),(0UL),(0UL),(96UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R13),(my_R_RBP),(0UL),(0UL),(104UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R14),(my_R_RBP),(0UL),(0UL),(112UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R15),(my_R_RBP),(0UL),(0UL),(120UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RBP),(my_R_RBP),(0UL),(0UL),(40UL));
+	(my_as_modri)(((my_c)->my_s),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((unsigned long)(176UL))+((unsigned long)((unsigned long)(((long)(3UL))*((long)(8UL))))))));
+	(my_as_op)(((my_c)->my_s),(my_OP_IRETQ));
 }
 void( my_emit_jmp)(struct my_assembler* my_c,struct my_label* my_l){
 	(my_as_jmp)((my_c),(my_OP_JMP),(my_l));
@@ -4065,81 +4074,81 @@ void( my_emit_ssr)(struct my_compiler* my_c){
 	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
 	(my_cdie)((my_c),((unsigned char *)"no _save"));
 	}
-	(my_as_emit)(((my_c)->my_as),(my_OP_GS));
-	(my_as_modra)(((my_c)->my_as),(my_OP_STORE),(my_R_RSP),((my_v)->my_member_offset));
+	(my_as_emit)(((my_c)->my_s),(my_OP_GS));
+	(my_as_modra)(((my_c)->my_s),(my_OP_STORE),(my_R_RSP),((my_v)->my_member_offset));
 	(my_v)=((my_find)((my_c),((unsigned char *)"global"),((unsigned char *)"curtask"),(0UL)));
 	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
 	(my_cdie)((my_c),((unsigned char *)"no global.curtask"));
 	}
-	(my_as_emit)(((my_c)->my_as),(my_OP_GS));
-	(my_as_modra)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSP),((my_v)->my_member_offset));
+	(my_as_emit)(((my_c)->my_s),(my_OP_GS));
+	(my_as_modra)(((my_c)->my_s),(my_OP_LOAD),(my_R_RSP),((my_v)->my_member_offset));
 	(my_v)=((my_find)((my_c),((unsigned char *)"task"),((unsigned char *)"stack"),(0UL)));
 	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
 	(my_cdie)((my_c),((unsigned char *)"no task.stack"));
 	}
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSP),(my_R_RSP),(0UL),(0UL),((my_v)->my_member_offset));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((unsigned long)(4096UL))-((unsigned long)(176UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDX),(my_R_RSP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBX),(my_R_RSP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RSI),(my_R_RSP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RDI),(my_R_RSP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R8),(my_R_RSP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R9),(my_R_RSP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R10),(my_R_RSP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R12),(my_R_RSP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R13),(my_R_RSP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R14),(my_R_RSP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R15),(my_R_RSP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RCX),(my_R_RSP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_R11),(my_R_RSP),(0UL),(0UL),(136UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(8UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(88UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(160UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(168UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_MOVI),(my_R_RAX),(43UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(144UL));
-	(my_as_modri)(((my_c)->my_as),(my_OP_MOVI),(my_R_RAX),(35UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(152UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RSP),(my_R_RSP),(0UL),(0UL),((my_v)->my_member_offset));
+	(my_as_modri)(((my_c)->my_s),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((unsigned long)(4096UL))-((unsigned long)(176UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RDX),(my_R_RSP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RBX),(my_R_RSP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(40UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RSI),(my_R_RSP),(0UL),(0UL),(48UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RDI),(my_R_RSP),(0UL),(0UL),(56UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R8),(my_R_RSP),(0UL),(0UL),(64UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R9),(my_R_RSP),(0UL),(0UL),(72UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R10),(my_R_RSP),(0UL),(0UL),(80UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R12),(my_R_RSP),(0UL),(0UL),(96UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R13),(my_R_RSP),(0UL),(0UL),(104UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R14),(my_R_RSP),(0UL),(0UL),(112UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R15),(my_R_RSP),(0UL),(0UL),(120UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RCX),(my_R_RSP),(0UL),(0UL),(128UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_R11),(my_R_RSP),(0UL),(0UL),(136UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_XORRM),(my_R_RAX),(my_R_RAX));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(8UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(88UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(160UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(168UL));
+	(my_as_modri)(((my_c)->my_s),(my_OP_MOVI),(my_R_RAX),(43UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(144UL));
+	(my_as_modri)(((my_c)->my_s),(my_OP_MOVI),(my_R_RAX),(35UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(152UL));
 	(my_v)=((my_find)((my_c),((unsigned char *)"global"),((unsigned char *)"_save"),(0UL)));
 	if ((unsigned long)(((unsigned long)(!(my_v)))||((unsigned long)(!((my_v)->my_member_defined))))) {
 	(my_cdie)((my_c),((unsigned char *)"no _save"));
 	}
-	(my_as_emit)(((my_c)->my_as),(my_OP_GS));
-	(my_as_modra)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),((my_v)->my_member_offset));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(32UL));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_MOVE),(my_R_RAX),(my_R_RSP));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_XORRM),(my_R_RBP),(my_R_RBP));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RBP));
-	(my_as_modrr)(((my_c)->my_as),(my_OP_MOVE),(my_R_RBP),(my_R_RSP));
-	(my_as_opr)(((my_c)->my_as),(my_OP_PUSHR),(my_R_RAX));
+	(my_as_emit)(((my_c)->my_s),(my_OP_GS));
+	(my_as_modra)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),((my_v)->my_member_offset));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_STORE),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(32UL));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_MOVE),(my_R_RAX),(my_R_RSP));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_XORRM),(my_R_RBP),(my_R_RBP));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RBP));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RBP));
+	(my_as_modrr)(((my_c)->my_s),(my_OP_MOVE),(my_R_RBP),(my_R_RSP));
+	(my_as_opr)(((my_c)->my_s),(my_OP_PUSHR),(my_R_RAX));
 	(my_d)=((my_find)((my_c),((unsigned char *)"_ssr"),((unsigned char*)0UL),(1UL)));
 	if ((unsigned long)(((my_d)->my_func_defined)&&(((my_d)->my_func_label)->my_fixed))) {
-	(my_as_jmp)(((my_c)->my_as),(my_OP_CALL),((my_d)->my_func_label));
+	(my_as_jmp)(((my_c)->my_s),(my_OP_CALL),((my_d)->my_func_label));
 	}
-	(my_as_op)(((my_c)->my_as),(my_OP_CLI));
-	(my_as_modri)(((my_c)->my_as),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((long)(3UL))*((long)(8UL)))));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDX),(my_R_RSP),(0UL),(0UL),(16UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBX),(my_R_RSP),(0UL),(0UL),(24UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(40UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSI),(my_R_RSP),(0UL),(0UL),(48UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RDI),(my_R_RSP),(0UL),(0UL),(56UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R8),(my_R_RSP),(0UL),(0UL),(64UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R9),(my_R_RSP),(0UL),(0UL),(72UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R10),(my_R_RSP),(0UL),(0UL),(80UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R12),(my_R_RSP),(0UL),(0UL),(96UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R13),(my_R_RSP),(0UL),(0UL),(104UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R14),(my_R_RSP),(0UL),(0UL),(112UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R15),(my_R_RSP),(0UL),(0UL),(120UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RCX),(my_R_RSP),(0UL),(0UL),(128UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_R11),(my_R_RSP),(0UL),(0UL),(136UL));
-	(my_as_modrm)(((my_c)->my_as),(my_OP_LOAD),(my_R_RSP),(my_R_RSP),(0UL),(0UL),(32UL));
-	(my_as_rex)(((my_c)->my_as),(my_OP_SYSRET),(0UL),(0UL),(0UL));
-	(my_as_op)(((my_c)->my_as),(my_OP_SYSRET));
+	(my_as_op)(((my_c)->my_s),(my_OP_CLI));
+	(my_as_modri)(((my_c)->my_s),(my_OP_ADDI),(my_R_RSP),((unsigned long)(((long)(3UL))*((long)(8UL)))));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RAX),(my_R_RSP),(0UL),(0UL),(0UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDX),(my_R_RSP),(0UL),(0UL),(16UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RBX),(my_R_RSP),(0UL),(0UL),(24UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RBP),(my_R_RSP),(0UL),(0UL),(40UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RSI),(my_R_RSP),(0UL),(0UL),(48UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RDI),(my_R_RSP),(0UL),(0UL),(56UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R8),(my_R_RSP),(0UL),(0UL),(64UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R9),(my_R_RSP),(0UL),(0UL),(72UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R10),(my_R_RSP),(0UL),(0UL),(80UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R12),(my_R_RSP),(0UL),(0UL),(96UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R13),(my_R_RSP),(0UL),(0UL),(104UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R14),(my_R_RSP),(0UL),(0UL),(112UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R15),(my_R_RSP),(0UL),(0UL),(120UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RCX),(my_R_RSP),(0UL),(0UL),(128UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_R11),(my_R_RSP),(0UL),(0UL),(136UL));
+	(my_as_modrm)(((my_c)->my_s),(my_OP_LOAD),(my_R_RSP),(my_R_RSP),(0UL),(0UL),(32UL));
+	(my_as_rex)(((my_c)->my_s),(my_OP_SYSRET),(0UL),(0UL),(0UL));
+	(my_as_op)(((my_c)->my_s),(my_OP_SYSRET));
 }
 void( my_emit_store)(struct my_assembler* my_c,struct my_type* my_t){
 	(my_as_opr)((my_c),(my_OP_POPR),(my_R_RDI));
@@ -4390,7 +4399,7 @@ struct my_decl*( my_find)(struct my_compiler* my_c,unsigned char* my_name,unsign
 	((my_d)->my_used_next)=((struct my_decl*)0UL);
 	((my_d)->my_func_defined)=(0UL);
 	((my_d)->my_func_type)=((struct my_type*)0UL);
-	((my_d)->my_func_label)=((my_mklabel)(((my_c)->my_as)));
+	((my_d)->my_func_label)=((my_mklabel)(((my_c)->my_s)));
 	((my_d)->my_func_def)=((struct my_node*)0UL);
 	((my_d)->my_func_used)=(0UL);
 	((my_d)->my_struct_defined)=(0UL);
@@ -4409,7 +4418,7 @@ struct my_decl*( my_find)(struct my_compiler* my_c,unsigned char* my_name,unsign
 	((my_d)->my_var_offset)=(0UL);
 	((my_d)->my_var_def)=((struct my_node*)0UL);
 	((my_d)->my_goto_defined)=(0UL);
-	((my_d)->my_goto_label)=((my_mklabel)(((my_c)->my_as)));
+	((my_d)->my_goto_label)=((my_mklabel)(((my_c)->my_s)));
 	(*(my_link))=(my_d);
 	return my_d;
 }
@@ -4907,8 +4916,8 @@ void( my_main)(unsigned long my_argc,unsigned char** my_argv,unsigned char** my_
 	return;
 	}
 	(my_emit_builtin)((my_c));
-	(my_open_output)(((my_c)->my_as),(my_filename));
-	(my_writeout)(((my_c)->my_as),((my_c)->my_start),((my_c)->my_kstart));
+	(my_open_output)(((my_c)->my_s),(my_filename));
+	(my_writeout)(((my_c)->my_s),((my_c)->my_start),((my_c)->my_kstart));
 }
 void( my_mark_expr_used)(struct my_compiler* my_c,struct my_decl* my_d,struct my_node* my_n){
 	struct my_decl* my_v = 0;
@@ -5929,6 +5938,28 @@ unsigned long( my_peg_P_arg_decl)(struct my_peg* my_c){
 	}
 	return my_ok;
 }
+unsigned long( my_peg_P_as)(struct my_peg* my_c){
+	unsigned long my_ok = 0;
+	(my_enter)((my_c),(my_P_as));
+	(my_ok)=((my_literal)((my_c),((unsigned char *)"as")));
+	if (my_ok) {
+	(my_choice)((my_c));
+	(my_ok)=((my_charset)((my_c),((unsigned char *)"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz")));
+	if (my_ok) {
+	(my_fail)((my_c));
+	(my_fail)((my_c));
+	(my_ok)=(0UL);
+	} else {
+	(my_ok)=(1UL);
+	}
+	}
+	if (my_ok) {
+	(my_leave)((my_c),(my_P_as));
+	} else {
+	(my_fail)((my_c));
+	}
+	return my_ok;
+}
 unsigned long( my_peg_P_assign_stmt)(struct my_peg* my_c){
 	unsigned long my_ok = 0;
 	(my_enter)((my_c),(my_P_assign_stmt));
@@ -6162,7 +6193,17 @@ unsigned long( my_peg_P_call_expr)(struct my_peg* my_c){
 unsigned long( my_peg_P_cast_expr)(struct my_peg* my_c){
 	unsigned long my_ok = 0;
 	(my_enter)((my_c),(my_P_cast_expr));
+	(my_choice)((my_c));
 	(my_ok)=((my_literal)((my_c),((unsigned char *)":")));
+	if ((unsigned long)(!(my_ok))) {
+	(my_choice)((my_c));
+	(my_ok)=((my_literal)((my_c),((unsigned char *)"as")));
+	}
+	if (my_ok) {
+	(my_commit)((my_c));
+	} else {
+	(my_fail)((my_c));
+	}
 	if (my_ok) {
 	(my_ok)=((my_peg_P_sp)((my_c)));
 	}
@@ -7629,6 +7670,10 @@ unsigned long( my_peg_P_reserved)(struct my_peg* my_c){
 	if ((unsigned long)(!(my_ok))) {
 	(my_choice)((my_c));
 	(my_ok)=((my_peg_P_func)((my_c)));
+	}
+	if ((unsigned long)(!(my_ok))) {
+	(my_choice)((my_c));
+	(my_ok)=((my_peg_P_as)((my_c)));
 	}
 	if (my_ok) {
 	(my_commit)((my_c));
@@ -9773,12 +9818,12 @@ void( my_typecheck_expr)(struct my_compiler* my_c,struct my_decl* my_d,struct my
 	} else if ((unsigned long)(((long)(my_kind))==((long)(my_N_DOT)))) {
 	(my_typecheck_expr)((my_c),(my_d),((my_n)->my_a),(0UL));
 	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))==((long)(my_TY_PTR)))) {
-	if ((unsigned long)(((long)(((((my_n)->my_a)->my_t)->my_val)->my_kind))!=((long)(my_TY_STRUCT)))) {
+	if ((unsigned long)(((unsigned long)(((long)(((((my_n)->my_a)->my_t)->my_val)->my_kind))!=((long)(my_TY_STRUCT))))&&((unsigned long)(((long)(((((my_n)->my_a)->my_t)->my_val)->my_kind))!=((long)(my_TY_UNION)))))) {
 	(my_cdie)((my_c),((unsigned char *)"dot not a struct"));
 	}
 	(my_v)=((my_find)((my_c),((((((my_n)->my_a)->my_t)->my_val)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
 	} else {
-	if ((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_STRUCT)))) {
+	if ((unsigned long)(((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_STRUCT))))&&((unsigned long)(((long)((((my_n)->my_a)->my_t)->my_kind))!=((long)(my_TY_UNION)))))) {
 	(my_cdie)((my_c),((unsigned char *)"dot not a struct"));
 	}
 	(my_v)=((my_find)((my_c),(((((my_n)->my_a)->my_t)->my_st)->my_name),(((my_n)->my_b)->my_s),(0UL)));
