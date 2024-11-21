@@ -147,9 +147,9 @@ func ctranslate_type2(c: *compiler, ty: *type, name: *byte, args: *node) {
 		if arg {
 			loop {
 				if args {
-					ctranslate_type(c, arg.val, args.a.a.s, 0, 0 as *node);
+					ctranslate_type(c, arg.val, args.a.a.s, 0, nil);
 				} else {
-					ctranslate_type(c, arg.val, "", 0, 0 as *node);
+					ctranslate_type(c, arg.val, "", 0, nil);
 				}
 				arg = arg.arg;
 				if arg {
@@ -241,7 +241,7 @@ func ctranslate_struct(c: *compiler, d: *decl) {
 		v = find(c, d.name, n.a.a.s, 0);
 
 		fputs(c.cout, "\t");
-		ctranslate_type(c, v.member_type, n.a.a.s, 0, 0 as *node);
+		ctranslate_type(c, v.member_type, n.a.a.s, 0, nil);
 		fputs(c.cout, ";\n");
 
 		n = n.b;
@@ -278,7 +278,7 @@ func ctranslate_vars(c: *compiler, n: *node) {
 		ctranslate_vars(c, n.a);
 	} else if kind == N_VARDECL {
 		fputs(c.cout, "\t");
-		ctranslate_type(c, n.t, n.a.s, 0, 0 as *node);
+		ctranslate_type(c, n.t, n.a.s, 0, nil);
 		fputs(c.cout, " = ");
 		ctranslate_zero(c, n.t);
 		fputs(c.cout, ";\n");
@@ -433,19 +433,19 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		ctranslate_expr(c, n.a);
 	} else if n.kind == N_NEG {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(-(unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))");
 	} else if n.kind == N_NOT {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(~(unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))");
 	} else if n.kind == N_ADD {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))+((unsigned long)(");
@@ -453,7 +453,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_SUB {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))-((unsigned long)(");
@@ -461,7 +461,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_MUL {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))*((long)(");
@@ -469,7 +469,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_DIV {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))/((long)(");
@@ -477,7 +477,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_MOD {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))%((long)(");
@@ -485,7 +485,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_LSH {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))<<((unsigned long)(");
@@ -493,7 +493,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_RSH {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))>>((unsigned long)(");
@@ -501,7 +501,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_AND {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))&((unsigned long)(");
@@ -509,7 +509,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_OR {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))|((unsigned long)(");
@@ -517,7 +517,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_XOR {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")(((unsigned long)(");
 		ctranslate_expr(c, n.a);
 		fputs(c.cout, "))^((unsigned long)(");
@@ -525,7 +525,7 @@ func ctranslate_expr(c: *compiler, n: *node) {
 		fputs(c.cout, ")))");
 	} else if n.kind == N_CAST {
 		fputs(c.cout, "(");
-		ctranslate_type(c, n.t, "", 0, 0 as *node);
+		ctranslate_type(c, n.t, "", 0, nil);
 		fputs(c.cout, ")");
 		ctranslate_expr(c, n.a);
 	} else {

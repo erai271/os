@@ -536,7 +536,7 @@ func scan_pci(base: *byte, visit: func(dev: *pcidev)) {
 			continue;
 		}
 
-		dev.msi = 0 as *byte;
+		dev.msi = nil;
 
 		if dev.type == 0 {
 			cap = base[i * 4096 + 0x34] as int;
@@ -2107,7 +2107,7 @@ func alloc_tcp(): *tcp_state {
 	loop {
 		if i == global.tcp_count {
 			wrflags(flags);
-			return 0 as *tcp_state;
+			return nil;
 		}
 
 		if !global.tcp[i] {
@@ -2137,7 +2137,7 @@ func tcp_free(tcb: *tcp_state) {
 			break;
 		}
 		if global.tcp[i] == tcb {
-			global.tcp[i] = 0 as *tcp_state;
+			global.tcp[i] = nil;
 			break;
 		}
 		i = i + 1;
@@ -2242,7 +2242,7 @@ func send_rst(pkt: *rxinfo) {
 	tx.tcp_src = pkt.tcp_dest;
 	tx.tcp_dest = pkt.tcp_src;
 	tx.tcp_win = 0;
-	tx.tcp_opt = 0 as *byte;
+	tx.tcp_opt = nil;
 	tx.tcp_opt_len = 0;
 	tx.len = 0;
 
@@ -2273,7 +2273,7 @@ func send_ack(tcb: *tcp_state) {
 	tx.tcp_src = tcb.sock_port;
 	tx.tcp_dest = tcb.peer_port;
 	tx.tcp_win = 4096 - tcb.recv_len;
-	tx.tcp_opt = 0 as *byte;
+	tx.tcp_opt = nil;
 	tx.tcp_opt_len = 0;
 	tx.len = 0;
 
@@ -2300,7 +2300,7 @@ func send_psh(tcb: *tcp_state) {
 	tx.tcp_src = tcb.sock_port;
 	tx.tcp_dest = tcb.peer_port;
 	tx.tcp_win = 4096 - tcb.recv_len;
-	tx.tcp_opt = 0 as *byte;
+	tx.tcp_opt = nil;
 	tx.tcp_opt_len = 0;
 
 	len = tcb.send_len;
@@ -2405,7 +2405,7 @@ func find_tcb(pkt: *rxinfo): *tcp_state {
 		i = i + 1;
 	}
 
-	return 0 as *tcp_state;
+	return nil;
 }
 
 func handle_syn(tcb: *tcp_state, pkt: *rxinfo) {
@@ -2443,7 +2443,7 @@ func handle_syn(tcb: *tcp_state, pkt: *rxinfo) {
 	tx.tcp_src = c.sock_port;
 	tx.tcp_dest = c.peer_port;
 	tx.tcp_win = 4096 - c.recv_len;
-	tx.tcp_opt = 0 as *byte;
+	tx.tcp_opt = nil;
 	tx.tcp_opt_len = 0;
 	tx.len = 0;
 
@@ -2983,7 +2983,7 @@ func init_ahci_port(ahci: *byte, i: int) {
 
 	var ahci_port: *ahci_port;
 	ahci_port = ptov(alloc_page()) as *ahci_port;
-	ahci_port.next = 0 as *ahci_port;
+	ahci_port.next = nil;
 	ahci_port.ahci = ahci;
 	ahci_port.port = port;
 
@@ -3172,7 +3172,7 @@ func free_task(t: *task) {
 		}
 		if t.files[i] {
 			vclose(t.files[i]);
-			t.files[i] = 0 as *vfile;
+			t.files[i] = nil;
 		}
 		i = i + 1;
 	}
@@ -3577,8 +3577,8 @@ func mkvnode(): *vnode {
 	v.nlink = 0;
 	v.ino = global.next_ino;
 	v.size = 0;
-	v.pages = 0 as *vpage;
-	v.ents = 0 as *vent;
+	v.pages = nil;
+	v.ents = nil;
 	return v;
 }
 
@@ -3597,7 +3597,7 @@ func mkfile(v: *vnode, mode: int): *vfile {
 
 func mkroot(): *vfile {
 	var f: *vfile;
-	f = mkfile(0 as *vnode, S_IFDIR);
+	f = mkfile(nil, S_IFDIR);
 	f.node.nlink = 1;
 	vlink(f, ".", 1, f);
 	return f;
@@ -3643,7 +3643,7 @@ func vlookup(d: *vfile, name: *byte, nlen: int, flags: int, mode: int): *vfile {
 	var e: *vent;
 
 	if !d {
-		return 0 as *vfile;
+		return nil;
 	}
 
 	e = efind(d, name, nlen);
@@ -3654,15 +3654,15 @@ func vlookup(d: *vfile, name: *byte, nlen: int, flags: int, mode: int): *vfile {
 			f = mkfile(e.node, S_IFREG);
 		}
 	} else {
-		f = 0 as *vfile;
+		f = nil;
 	}
 
 	if flags & O_CREAT && !f {
 		if flags & O_DIRECTORY {
-			f = mkfile(0 as *vnode, S_IFDIR);
+			f = mkfile(nil, S_IFDIR);
 			vlink(f, ".", 1, f);
 		} else {
-			f = mkfile(0 as *vnode, S_IFREG);
+			f = mkfile(nil, S_IFREG);
 		}
 		vlink(d, name, nlen, f);
 	}
@@ -3674,12 +3674,12 @@ func vlookup(d: *vfile, name: *byte, nlen: int, flags: int, mode: int): *vfile {
 	if flags & O_DIRECTORY {
 		if f.mode != S_IFDIR {
 			vclose(f);
-			return 0 as *vfile;
+			return nil;
 		}
 	} else {
 		if f.mode != S_IFREG {
 			vclose(f);
-			return 0 as *vfile;
+			return nil;
 		}
 	}
 
@@ -3762,13 +3762,13 @@ func vrelease_page(p: *vpage) {
 		q = p.parent;
 		if q {
 			if q.left == p {
-				q.left = 0 as *vpage;
+				q.left = nil;
 			} else {
-				q.right = 0 as *vpage;
+				q.right = nil;
 			}
 		}
 
-		p.parent = 0 as *vpage;
+		p.parent = nil;
 
 		free(p.page);
 		free(p as *byte);
@@ -3854,9 +3854,9 @@ func vwrite_page(v: *vnode, o: int, b: *byte, n: int): int {
 	p = v.pages;
 	if !p {
 		q = alloc() as *vpage;
-		q.parent = 0 as *vpage;
-		q.left = 0 as *vpage;
-		q.right = 0 as *vpage;
+		q.parent = nil;
+		q.left = nil;
+		q.right = nil;
 		q.offset = key;
 		q.page = alloc();
 		bzero(q.page, 4096);
@@ -3869,8 +3869,8 @@ func vwrite_page(v: *vnode, o: int, b: *byte, n: int): int {
 			if !p.left {
 				q = alloc() as *vpage;
 				q.parent = p;
-				q.left = 0 as *vpage;
-				q.right = 0 as *vpage;
+				q.left = nil;
+				q.right = nil;
 				q.offset = key;
 				q.page = alloc();
 				bzero(q.page, 4096);
@@ -3883,8 +3883,8 @@ func vwrite_page(v: *vnode, o: int, b: *byte, n: int): int {
 			if ! p.right {
 				q = alloc() as *vpage;
 				q.parent = p;
-				q.left = 0 as *vpage;
-				q.right = 0 as *vpage;
+				q.left = nil;
+				q.right = nil;
 				q.offset = key;
 				q.page = alloc();
 				bzero(q.page, 4096);
@@ -4285,7 +4285,7 @@ func map_user(vaddr: int): *byte {
 	var i: int;
 
 	if (vaddr >> 47) != 0 || (vaddr & 4095) != 0 {
-		return 0 as *byte;
+		return nil;
 	}
 
 	global = g();
@@ -4321,7 +4321,7 @@ func map_user(vaddr: int): *byte {
 		return ptov(pt[i] & -4096);
 	}
 
-	return 0 as *byte;
+	return nil;
 }
 
 func vload(f: *vfile, offset: int, vaddr: int, filesz: int, memsz: int): int {
@@ -4491,7 +4491,7 @@ func vexec(prog: *byte, argv: **byte, envp: **byte): int {
 	envs = alloc() as **byte;
 	nargs = 0;
 	nenv = 0;
-	f = 0 as *vfile;
+	f = nil;
 
 	// Copy args
 	if argv {
@@ -4560,7 +4560,7 @@ func vexec(prog: *byte, argv: **byte, envp: **byte): int {
 			args[1] = strdup(prog);
 			prog = args[0];
 			vclose(f);
-			f = 0 as *vfile;
+			f = nil;
 			continue;
 		}
 
@@ -4782,7 +4782,7 @@ func task_init(t: *task) {
 	// open("/dev/null") => 0
 	// open("/dev/tty") => 1
 	// dup(1) => 2
-	if vexec("/init", 0 as **byte, 0 as **byte) != 0 {
+	if vexec("/init", nil, nil) != 0 {
 		kdie("failed to exec init");
 	}
 }
@@ -4832,8 +4832,8 @@ func _kstart(mb: int) {
 	vclear(&global.vga);
 	kputs("Starting up\n");
 
-	global.fr = 0 as *free_range;
-	global.fp = 0 as *free_page;
+	global.fr = nil;
+	global.fp = nil;
 	global.kpt = rdcr3();
 
 	mbinfo = ptov(mb);
@@ -5021,7 +5021,7 @@ func _kstart(mb: int) {
 
 	parse_initramfs();
 
-	spawn(task_init, "init", 0 as *void);
+	spawn(task_init, "init", nil);
 
 	// Wait for interrupts
 	kputs("zzz\n");

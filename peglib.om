@@ -92,7 +92,7 @@ func fail(c: *peg) {
 		c.fail_tag = c.tag;
 		c.fail_line = c.line;
 		c.fail_col = c.col;
-		c.fail_literal = 0 as *byte;
+		c.fail_literal = nil;
 	}
 
 	c.sp = c.sp - 1;
@@ -236,7 +236,7 @@ func construct(c: *peg, sp: int): *peg_node {
 	var n: *peg_node;
 	var link: **peg_node;
 
-	c.nstack[0] = 0 as *peg_node;
+	c.nstack[0] = nil;
 
 	i = 0;
 	loop {
@@ -248,8 +248,8 @@ func construct(c: *peg, sp: int): *peg_node {
 			n = alloc(c.a, sizeof(*n)) as *peg_node;
 
 			n.tag = c.out[i].tag;
-			n.next = 0 as *peg_node;
-			n.child = 0 as *peg_node;
+			n.next = nil;
+			n.child = nil;
 			n.str = &c.src[c.out[i].start];
 			n.len = c.out[i].end - c.out[i].start;
 			n.filename = c.filename;
@@ -281,7 +281,7 @@ func construct(c: *peg, sp: int): *peg_node {
 				die("node overflow");
 			}
 		} else {
-			n = 0 as *peg_node;
+			n = nil;
 		}
 
 		c.nstack[c.np] = n;
@@ -315,7 +315,7 @@ func peg_new(filename: *byte, src: *byte, len: int, a: *alloc, grammar: (func(c:
 	c.fail_tag = 0;
 	c.fail_line = 0;
 	c.fail_col = 0;
-	c.fail_literal = 0 as *byte;
+	c.fail_literal = nil;
 
 	c.limit = 1024;
 	c.stack = alloc(a, c.limit * sizeof(*c.stack)) as *peg_frame;
@@ -323,7 +323,7 @@ func peg_new(filename: *byte, src: *byte, len: int, a: *alloc, grammar: (func(c:
 
 	c.depth = 0;
 	c.op = 0;
-	c.out = 0 as *peg_op;
+	c.out = nil;
 	c.cap = 0;
 
 	c.ncap = 1024;
@@ -369,7 +369,7 @@ func peg_reset(c: *peg, filename: *byte, src: *byte, len: int) {
 	c.fail_tag = 0;
 	c.fail_line = 0;
 	c.fail_col = 0;
-	c.fail_literal = 0 as *byte;
+	c.fail_literal = nil;
 	c.depth = 0;
 	c.sp = 0;
 	c.op = 0;

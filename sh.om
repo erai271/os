@@ -286,7 +286,7 @@ func parse_command(s: *shell): *cmd {
 
 	c = parse_and_or(s);
 	if !c {
-		return 0 as *cmd;
+		return nil;
 	}
 
 	if s.tt != T_LF {
@@ -306,12 +306,12 @@ func parse_and_or(s: *shell): *cmd {
 	var p: *cmd;
 	var t: *cmd;
 
-	c = 0 as *cmd;
+	c = nil;
 	link = &c;
 
 	c = parse_pipeline(s);
 	if !c {
-		return 0 as *cmd;
+		return nil;
 	}
 
 	loop {
@@ -355,7 +355,7 @@ func parse_pipeline(s: *shell): *cmd {
 	var p: *cmd;
 	var t: *cmd;
 
-	c = 0 as *cmd;
+	c = nil;
 	link = &c;
 
 	if s.tt == T_NOT {
@@ -374,7 +374,7 @@ func parse_pipeline(s: *shell): *cmd {
 	} else {
 		c = parse_compound(s);
 		if !c {
-			return 0 as *cmd;
+			return nil;
 		}
 	}
 
@@ -416,7 +416,7 @@ func parse_compound(s: *shell): *cmd {
 		return c;
 	}
 
-	return 0 as *cmd;
+	return nil;
 }
 
 // subshell = '(' command_list ')'
@@ -426,11 +426,11 @@ func parse_subshell(s: *shell): *cmd {
 	var link: **cmd;
 	var t: *cmd;
 
-	body = 0 as *cmd;
+	body = nil;
 	link = &body;
 
 	if s.tt != T_LPAR {
-		return 0 as *cmd;
+		return nil;
 	}
 	feed(s);
 
@@ -481,13 +481,13 @@ func parse_for(s: *shell): *cmd {
 	var t: *cmd;
 	var w: *byte;
 
-	arg = 0 as *cmd;
+	arg = nil;
 	arg_link = &arg;
-	body = 0 as *cmd;
+	body = nil;
 	body_link = &body;
 
 	if !parse_keyword(s, "for") {
-		return 0 as *cmd;
+		return nil;
 	}
 
 	w = take(s);
@@ -552,9 +552,9 @@ func parse_simple(s: *shell): *cmd {
 	var t: *cmd;
 	var w: *byte;
 
-	arg = 0 as *cmd;
+	arg = nil;
 	arg_link = &arg;
-	redir = 0 as *cmd;
+	redir = nil;
 	redir_link = &redir;
 
 	w = take(s);
@@ -569,7 +569,7 @@ func parse_simple(s: *shell): *cmd {
 			*redir_link = t;
 			redir_link = &t.next;
 		} else {
-			return 0 as *cmd;
+			return nil;
 		}
 	}
 
@@ -604,7 +604,7 @@ func parse_redir_list(s: *shell): *cmd {
 	var t: *cmd;
 	var link: **cmd;
 
-	c = 0 as *cmd;
+	c = nil;
 	link = &c;
 
 	loop {
@@ -621,7 +621,7 @@ func take(s: *shell): *byte {
 	var w: *byte;
 
 	if s.tt != T_WORD {
-		return 0 as *byte;
+		return nil;
 	}
 
 	w = alloc(s.a, s.len + 1);
@@ -660,7 +660,7 @@ func parse_redir(s: *shell): *cmd {
 		return c;
 	}
 
-	return 0 as *cmd;
+	return nil;
 }
 
 func execute_command(s: *shell, c: *cmd) {
@@ -726,7 +726,7 @@ func main(argc: int, argv: **byte, envp: **byte) {
 		s.script = "";
 		s.prog = "";
 		s.argc = 0;
-		s.argv = 0 as **byte;
+		s.argv = nil;
 	} else if strcmp(argv[1], "--") == 0 {
 		s.scriptfd = 0;
 		s.script = "";

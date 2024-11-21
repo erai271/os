@@ -9,7 +9,7 @@ struct alloc {
 }
 
 func setup_alloc(c: *alloc) {
-	c.page = 0 as *page;
+	c.page = nil;
 }
 
 func alloc(c: *alloc, size: int): *byte {

@@ -79,22 +79,22 @@ func mknode(c: *parser, kind: int, a: *node, b: *node): *node {
 	ret.kind = kind;
 	ret.a = a;
 	ret.b = b;
-	ret.filename = 0 as *byte;
+	ret.filename = nil;
 	ret.lineno = 0;
 	ret.colno = 0;
 	ret.n = 0;
-	ret.s = 0 as *byte;
-	ret.t = 0 as *type;
+	ret.s = nil;
+	ret.t = nil;
 	fillpos(c, ret);
 	return ret;
 }
 
 func mknode0(c: *parser, kind: int): *node {
-	return mknode(c, kind, 0 as *node, 0 as *node);
+	return mknode(c, kind, nil, nil);
 }
 
 func mknode1(c: *parser, kind: int, a: *node): *node {
-	return mknode(c, kind, a, 0 as *node);
+	return mknode(c, kind, a, nil);
 }
 
 func concat_program(a: *node, b: *node): *node {

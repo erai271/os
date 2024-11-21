@@ -1463,7 +1463,7 @@ func ssh_spawn(ctx: *sshd_ctx, argv: **byte) {
 		close(stdout_write);
 		close(stderr_write);
 
-		exec(argv[0], argv, 0 as **byte);
+		exec(argv[0], argv, nil);
 
 		exit(255);
 	}
@@ -1487,7 +1487,7 @@ func dopty(cr: *ssh_cr_pty, ctx: *sshd_ctx): int {
 func doshell(cr: *ssh_cr_shell, ctx: *sshd_ctx): int {
 	var argv: _argv4;
 	argv.arg0 = "/bin/sh";
-	argv.arg1 = 0 as *byte;
+	argv.arg1 = nil;
 	ssh_spawn(ctx, &argv.arg0);
 	return 1;
 }
@@ -1501,7 +1501,7 @@ func doexec(cr: *ssh_cr_exec, ctx: *sshd_ctx): int {
 	argv.arg0 = "/bin/sh";
 	argv.arg1 = "-c";
 	argv.arg2 = cmd;
-	argv.arg3 = 0 as *byte;
+	argv.arg3 = nil;
 	ssh_spawn(ctx, &argv.arg0);
 	free(ctx.a, cmd);
 	return 1;
@@ -1937,7 +1937,7 @@ func signal(sig: int, handler: func()) {
 	act.flags = 1 << 26;
 	act.restorer = _restorer as int;
 	act.mask = 0;
-	sigaction(sig, &act, 0 as *sigaction);
+	sigaction(sig, &act, nil);
 }
 
 func main(argc: int, argv: **byte, envp: **byte) {
@@ -2001,12 +2001,12 @@ func main(argc: int, argv: **byte, envp: **byte) {
 
 	loop {
 		loop {
-			if wait(-1, 0 as *int, WNOHANG) <= 0 {
+			if wait(-1, nil, WNOHANG) <= 0 {
 				break;
 			}
 		}
 
-		ctx.fd = accept(fd, 0 as *byte, 0 as *int);
+		ctx.fd = accept(fd, nil, nil);
 		if ctx.fd == -EINTR {
 			continue;
 		}

@@ -44,7 +44,7 @@ func find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
 	var link: **decl;
 	var dir: int;
 
-	p = 0 as *decl;
+	p = nil;
 	link = &c.decls;
 	loop {
 		d = *link;
@@ -79,7 +79,7 @@ func find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
 
 
 	if (!make) {
-		return 0 as *decl;
+		return nil;
 	}
 
 	d = alloc(c.a, sizeof(*d)) as *decl;
@@ -88,35 +88,35 @@ func find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
 	d.member_name = member_name;
 
 	d.p = p;
-	d.l = 0 as *decl;
-	d.r = 0 as *decl;
+	d.l = nil;
+	d.r = nil;
 
-	d.used_next = 0 as *decl;
+	d.used_next = nil;
 
 	d.func_defined = 0;
-	d.func_type = 0 as *type;
+	d.func_type = nil;
 	d.func_label = mklabel(c.s);
-	d.func_def = 0 as *node;
+	d.func_def = nil;
 	d.func_used = 0;
 
 	d.struct_defined = 0;
 	d.struct_size = 0;
 	d.struct_layout_done = 0;
-	d.struct_def = 0 as *node;
+	d.struct_def = nil;
 
 	d.member_defined = 0;
-	d.member_type = 0 as *type;
+	d.member_type = nil;
 	d.member_offset = 0;
-	d.member_def = 0 as *node;
+	d.member_def = nil;
 
 	d.enum_defined = 0;
 	d.enum_value = 0;
-	d.enum_def = 0 as *node;
+	d.enum_def = nil;
 
 	d.var_defined = 0;
-	d.var_type = 0 as *type;
+	d.var_type = nil;
 	d.var_offset = 0;
-	d.var_def = 0 as *node;
+	d.var_def = nil;
 
 	d.goto_defined = 0;
 	d.goto_label = mklabel(c.s);
@@ -132,7 +132,7 @@ func first_decl(c: *compiler): *decl {
 
 	d = c.decls;
 	if (!d) {
-		return 0 as *decl;
+		return nil;
 	}
 
 	loop {
@@ -146,7 +146,7 @@ func first_decl(c: *compiler): *decl {
 
 func next_decl(c: *compiler, d: *decl): *decl {
 	if (!d) {
-		return 0 as *decl;
+		return nil;
 	}
 
 	if (d.r) {
@@ -163,7 +163,7 @@ func next_decl(c: *compiler, d: *decl): *decl {
 
 	loop {
 		if (!d.p) {
-			return 0 as *decl;
+			return nil;
 		}
 
 		if (d.p.l == d) {

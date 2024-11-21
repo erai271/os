@@ -108,23 +108,23 @@ func mktype(c: *compiler, kind: int, a: *type, b: *type, st: *decl): *type {
 }
 
 func mktype_struct(c: *compiler, st: *decl): *type {
-	return mktype(c, TY_STRUCT, 0 as *type, 0 as *type, st);
+	return mktype(c, TY_STRUCT, nil, nil, st);
 }
 
 func mktype_union(c: *compiler, st: *decl): *type {
-	return mktype(c, TY_UNION, 0 as *type, 0 as *type, st);
+	return mktype(c, TY_UNION, nil, nil, st);
 }
 
 func mktype0(c: *compiler, kind: int): *type {
-	return mktype(c, kind, 0 as *type, 0 as *type, 0 as *decl);
+	return mktype(c, kind, nil, nil, nil);
 }
 
 func mktype1(c: *compiler, kind: int, a: *type): *type {
-	return mktype(c, kind, a, 0 as *type, 0 as *decl);
+	return mktype(c, kind, a, nil, nil);
 }
 
 func mktype2(c: *compiler, kind: int, a: *type, b: *type): *type {
-	return mktype(c, kind, a, b, 0 as *decl);
+	return mktype(c, kind, a, b, nil);
 }
 
 func type_isint(t: *type): int {
@@ -142,7 +142,7 @@ func prototype(c: *compiler, n: *node): *type {
 	var kind: int;
 
 	if (!n) {
-		return 0 as *type;
+		return nil;
 	}
 
 	c.lineno = n.lineno;
@@ -162,7 +162,7 @@ func prototype(c: *compiler, n: *node): *type {
 			return mktype0(c, TY_BYTE);
 		}
 
-		st = find(c, n.s, 0 as *byte, 0);
+		st = find(c, n.s, nil, 0);
 		if (!st || !st.struct_defined) {
 			cdie(c, "unknown struct");
 		}

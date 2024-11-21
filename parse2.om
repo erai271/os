@@ -56,7 +56,7 @@ func reconstruct(c: *parser, pn: *peg_node): *node {
 	var p: *node;
 	assert(pn.tag == P_grammar, "grammar");
 
-	ret = 0 as *node;
+	ret = nil;
 	link = &ret;
 
 	pn = pn.child;
@@ -119,7 +119,7 @@ func reconstruct_enum_item(c: *parser, pn: *peg_node): *node {
 	assert(pn.tag == P_enum_item, "enum_item");
 
 	a = reconstruct_ident(c, pn.child);
-	b = 0 as *node;
+	b = nil;
 
 	if pn.child.next {
 		b = reconstruct_expr(c, pn.child.next);
@@ -138,7 +138,7 @@ func reconstruct_enum(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	assert(pn.tag == P_enum_decl, "enum_decl");
 
-	n = mknode(c, N_ENUM, 0 as *node, 0 as *node);
+	n = mknode(c, N_ENUM, nil, nil);
 	copypos(n, pn);
 
 	pn = pn.child.next;
@@ -181,7 +181,7 @@ func reconstruct_func_type(c: *parser, pn: *peg_node): *node {
 	var link: **node;
 	assert(pn.tag == P_func_type, "func_type");
 
-	n = mknode(c, N_FUNCTYPE, 0 as *node, 0 as *node);
+	n = mknode(c, N_FUNCTYPE, nil, nil);
 	copypos(n, pn);
 
 	pn = pn.child;
@@ -254,7 +254,7 @@ func reconstruct_member_list(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var link: **node;
 
-	ret = 0 as *node;
+	ret = nil;
 	link = &ret;
 	loop {
 		if !pn {
@@ -533,7 +533,7 @@ func reconstruct_args(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var n: *node;
 
-	ret = 0 as *node;
+	ret = nil;
 	link = &ret;
 	loop {
 		if !pn {
@@ -777,7 +777,7 @@ func reconstruct_if(c: *parser, pn: *peg_node): *node {
 			*link = n;
 			link = &n.b;
 		} else if pn.tag == P_else_stmt {
-			a = 0 as *node;
+			a = nil;
 			b = reconstruct_compound(c, pn.child.next);
 			n = mknode1(c, N_CONDLIST, mknode(c, N_COND, a, b));
 			copypos(n, pn);
@@ -825,7 +825,7 @@ func reconstruct_return(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var n: *node;
 	assert(pn.tag == P_return_stmt, "return_stmt");
-	a = 0 as *node;
+	a = nil;
 	if pn.child.next {
 		a = reconstruct_expr(c, pn.child.next);
 	}
@@ -885,7 +885,7 @@ func reconstruct_expr_stmt(c: *parser, pn: *peg_node): *node {
 
 func reconstruct_empty(c: *parser, pn: *peg_node): *node {
 	assert(pn.tag == P_empty_stmt, "empty_stmt");
-	return 0 as *node;
+	return nil;
 }
 
 func reconstruct_compound(c: *parser, pn: *peg_node): *node {
@@ -895,7 +895,7 @@ func reconstruct_compound(c: *parser, pn: *peg_node): *node {
 	var link: **node;
 	assert(pn.tag == P_compound_stmt, "compound_stmt");
 	pn = pn.child;
-	ret = 0 as *node;
+	ret = nil;
 	link = &ret;
 	loop {
 		if ! pn {

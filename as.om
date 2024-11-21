@@ -196,12 +196,12 @@ func setup_assembler(a: *alloc): *assembler {
 	var c: *assembler;
 	c = alloc(a, sizeof(*c)) as *assembler;
 	c.a = a;
-	c.out = 0 as *file;
+	c.out = nil;
 	c.at = 160;  // elf header + program header + multiboot header
-	c.text = 0 as *chunk;
-	c.text_end = 0 as *chunk;
+	c.text = nil;
+	c.text_end = nil;
 	c.bits32 = 0;
-	c.symbols = 0 as *symbol;
+	c.symbols = nil;
 	c.num_sections = 0;
 	add_section(c, "", SHT_NULL);
 	add_section(c, ".text", SHT_PROGBITS);
@@ -219,7 +219,7 @@ func add_section(c: *assembler, name: *byte, type: int) {
 
 	s = alloc(c.a, sizeof(*s)) as *section;
 
-	s.next = 0 as *section;
+	s.next = nil;
 	s.name = name;
 	s.start = c.at;
 	s.end = c.at;
@@ -289,7 +289,7 @@ func mklabel(c: *assembler): *label {
 
 	l = alloc(c.a, sizeof(*l)) as *label;
 
-	l.fix = 0 as *fixup;
+	l.fix = nil;
 	l.at = 0;
 	l.fixed = 0;
 
@@ -315,7 +315,7 @@ func reserve(c: *assembler, n: int) {
 	b.buf = m;
 	b.fill = 0;
 	b.cap = n;
-	b.next = 0 as *chunk;
+	b.next = nil;
 
 	if (c.text_end) {
 		c.text_end.next = b;
@@ -953,7 +953,7 @@ func emit_sections(c: *assembler): int {
 	var y: *symbol;
 	var n: int;
 
-	add_symbol(c, "", 0 as *label);
+	add_symbol(c, "", nil);
 
 	s = find_section(c, "");
 	s.start = 0;
