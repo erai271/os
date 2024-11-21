@@ -6193,17 +6193,7 @@ unsigned long( my_peg_P_call_expr)(struct my_peg* my_c){
 unsigned long( my_peg_P_cast_expr)(struct my_peg* my_c){
 	unsigned long my_ok = 0;
 	(my_enter)((my_c),(my_P_cast_expr));
-	(my_choice)((my_c));
-	(my_ok)=((my_literal)((my_c),((unsigned char *)":")));
-	if ((unsigned long)(!(my_ok))) {
-	(my_choice)((my_c));
 	(my_ok)=((my_literal)((my_c),((unsigned char *)"as")));
-	}
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_fail)((my_c));
-	}
 	if (my_ok) {
 	(my_ok)=((my_peg_P_sp)((my_c)));
 	}
