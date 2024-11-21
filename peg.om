@@ -19,9 +19,9 @@ decode_look(n: *peg_node): int {
 
 	ret = LOOK_NORMAL;
 	if n.child.tag == PEG_lookop {
-		if n.child.str[0] == '!':byte {
+		if n.child.str[0] == '!' as byte {
 			ret = LOOK_NOT;
-		} else if n.child.str[0] == '&':byte {
+		} else if n.child.str[0] == '&' as byte {
 			ret = LOOK_AND;
 		}
 	}
@@ -47,15 +47,15 @@ decode_count(n: *peg_node): int {
 		}
 
 		if n.tag == PEG_countop {
-			if n.str[0] == '?':byte {
+			if n.str[0] == '?' as byte {
 				if ret == EXACTLY_ONE {
 					ret = ZERO_OR_ONE;
 				} else if ret == ONE_OR_MORE {
 					ret = ZERO_OR_MORE;
 				}
-			} else if n.str[0] == '*':byte {
+			} else if n.str[0] == '*' as byte {
 				ret = ZERO_OR_MORE;
-			} else if n.str[0] == '+':byte {
+			} else if n.str[0] == '+' as byte {
 				if ret == ZERO_OR_ONE {
 					ret = ZERO_OR_MORE;
 				} else if ret == EXACTLY_ONE {
@@ -88,13 +88,13 @@ translate_literal(c: *peg_compiler, n: *peg_node) {
 			break;
 		}
 
-		ch = n.str[i]:int;
+		ch = n.str[i] as int;
 
 		if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
 			fputc(c.out, '\\');
 			fputc(c.out, 'x');
-			fputc(c.out, hex[ch >> 4]:int);
-			fputc(c.out, hex[ch & 15]:int);
+			fputc(c.out, hex[ch >> 4] as int);
+			fputc(c.out, hex[ch & 15] as int);
 		} else {
 			fputc(c.out, ch);
 		}
@@ -112,7 +112,7 @@ parse_escape(s: *byte, i: *int, n: int): int {
 		die("invalid escape");
 	}
 
-	nc = s[*i]:int;
+	nc = s[*i] as int;
 	*i = *i + 1;
 
 	if nc == 't' {
@@ -137,11 +137,11 @@ parse_escape(s: *byte, i: *int, n: int): int {
 		if n - *i < 2 {
 			die("invalid escape");
 		}
-		nc = hexdig(s[*i]:int, &ok) * 16;
+		nc = hexdig(s[*i] as int, &ok) * 16;
 		if !ok {
 			die("invalid hex");
 		}
-		nc = nc + hexdig(s[*i + 1]:int, &ok);
+		nc = nc + hexdig(s[*i + 1] as int, &ok);
 		if !ok {
 			die("invalid hex");
 		}
@@ -172,14 +172,14 @@ translate_charset(c: *peg_compiler, n: *peg_node) {
 			break;
 		}
 
-		ch = n.str[i]:int;
+		ch = n.str[i] as int;
 		i = i + 1;
 
 		if ch == '\\' {
 			ch = parse_escape(n.str, &i, len);
 		}
 
-		if i < len && n.str[i] == '-':byte {
+		if i < len && n.str[i] == '-' as byte {
 			i = i + 1;
 
 			if i == len {
@@ -188,7 +188,7 @@ translate_charset(c: *peg_compiler, n: *peg_node) {
 
 			a = ch;
 
-			ch = n.str[i]:int;
+			ch = n.str[i] as int;
 			i = i + 1;
 
 			if ch == '\\' {
@@ -202,12 +202,12 @@ translate_charset(c: *peg_compiler, n: *peg_node) {
 					break;
 				}
 
-				c.scratch[a] = 1:byte;
+				c.scratch[a] = 1 as byte;
 
 				a = a + 1;
 			}
 		} else {
-			c.scratch[ch] = 1:byte;
+			c.scratch[ch] = 1 as byte;
 		}
 	}
 
@@ -217,7 +217,7 @@ translate_charset(c: *peg_compiler, n: *peg_node) {
 		if i == 256 {
 			break;
 		}
-		count = count + c.scratch[i]:int;
+		count = count + c.scratch[i] as int;
 		i = i + 1;
 	}
 
@@ -244,8 +244,8 @@ translate_charset(c: *peg_compiler, n: *peg_node) {
 			if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
 				fputc(c.out, '\\');
 				fputc(c.out, 'x');
-				fputc(c.out, hex[i >> 4]:int);
-				fputc(c.out, hex[i & 15]:int);
+				fputc(c.out, hex[i >> 4] as int);
+				fputc(c.out, hex[i & 15] as int);
 			} else {
 				fputc(c.out, i);
 			}
@@ -448,7 +448,7 @@ translate(c: *peg_compiler, n: *peg_node) {
 
 setup_peg(a: *alloc, prefix: *byte): *peg_compiler {
 	var c: *peg_compiler;
-	c = alloc(a, sizeof(*c)): *peg_compiler;
+	c = alloc(a, sizeof(*c)) as *peg_compiler;
 	c.a = a;
 	c.prefix = prefix;
 	c.scratch = alloc(c.a, 256);

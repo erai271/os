@@ -11,7 +11,7 @@ struct file {
 fopen(fd: int, a: *alloc): *file {
 	var f: *file;
 
-	f = alloc(a, sizeof(*f)): *file;
+	f = alloc(a, sizeof(*f)) as *file;
 
 	f.fd = fd;
 	f.a = a;
@@ -34,7 +34,7 @@ fclose(f: *file): void {
 
 	free(f.a, f.buf);
 
-	free(f.a, f: *byte);
+	free(f.a, f as *byte);
 }
 
 fflush(f: *file): void {
@@ -91,7 +91,7 @@ fputc(f: *file, ch: int): void {
 		fflush(f);
 	}
 
-	f.buf[f.w] = ch: byte;
+	f.buf[f.w] = ch as byte;
 	f.w = f.w + 1;
 
 	if (ch == '\n') {
@@ -110,7 +110,7 @@ fgetc(f: *file): int {
 		return -1;
 	}
 
-	ch = f.buf[f.r]: int;
+	ch = f.buf[f.r] as int;
 
 	f.r = f.r + 1;
 
@@ -122,24 +122,24 @@ fgets(f: *file, buf: *byte, len: int): int {
 	var c: int;
 
 	if len == 1 {
-		buf[0] = 0:byte;
+		buf[0] = 0 as byte;
 		return 0;
 	}
 
 	i = 0;
 	loop {
 		if i + 1 == len {
-			buf[i] = 0:byte;
+			buf[i] = 0 as byte;
 			return i;
 		}
 
 		c = fgetc(f);
 		if c == -1 || c == '\n' {
-			buf[i] = 0:byte;
+			buf[i] = 0 as byte;
 			return i;
 		}
 
-		buf[i] = c:byte;
+		buf[i] = c as byte;
 		i = i + 1;
 	}
 }
@@ -151,7 +151,7 @@ fputs(f: *file, s: *byte) {
 		if !s[i] {
 			break;
 		}
-		fputc(f, s[i]:int);
+		fputc(f, s[i] as int);
 		i = i + 1;
 	}
 }
@@ -163,7 +163,7 @@ fputb(f: *file, s: *byte, n: int) {
 		if i >= n {
 			break;
 		}
-		fputc(f, s[i]:int);
+		fputc(f, s[i] as int);
 		i = i + 1;
 	}
 }
@@ -225,7 +225,7 @@ freadall(f: *file, size: *int): *byte {
 			}
 		}
 
-		ret[i] = ch:byte;
+		ret[i] = ch as byte;
 		i = i + 1;
 	}
 }

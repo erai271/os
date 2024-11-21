@@ -30,7 +30,7 @@ enum {
 
 feedc(s: *shell) {
 	if s.script[0] {
-		s.c = s.script[0]:int;
+		s.c = s.script[0] as int;
 		s.script = &s.script[1];
 		return;
 	}
@@ -50,7 +50,7 @@ feedw(s: *shell) {
 	if s.c == -1 {
 		die("unexpected EOF");
 	}
-	s.buf[s.len] = s.c:byte;
+	s.buf[s.len] = s.c as byte;
 	s.len = s.len + 1;
 	feedc(s);
 }
@@ -267,8 +267,8 @@ struct cmd {
 
 mkcmd(s: *shell, kind: int): *cmd {
 	var c: *cmd;
-	c = alloc(s.a, sizeof(*c)):*cmd;
-	bzero(c:*byte, sizeof(*c));
+	c = alloc(s.a, sizeof(*c)) as *cmd;
+	bzero(c as *byte, sizeof(*c));
 	c.kind = kind;
 	return c;
 }
@@ -286,7 +286,7 @@ parse_command(s: *shell): *cmd {
 
 	c = parse_and_or(s);
 	if !c {
-		return 0:*cmd;
+		return 0 as *cmd;
 	}
 
 	if s.tt != T_LF {
@@ -306,12 +306,12 @@ parse_and_or(s: *shell): *cmd {
 	var p: *cmd;
 	var t: *cmd;
 
-	c = 0:*cmd;
+	c = 0 as *cmd;
 	link = &c;
 
 	c = parse_pipeline(s);
 	if !c {
-		return 0:*cmd;
+		return 0 as *cmd;
 	}
 
 	loop {
@@ -355,7 +355,7 @@ parse_pipeline(s: *shell): *cmd {
 	var p: *cmd;
 	var t: *cmd;
 
-	c = 0:*cmd;
+	c = 0 as *cmd;
 	link = &c;
 
 	if s.tt == T_NOT {
@@ -374,7 +374,7 @@ parse_pipeline(s: *shell): *cmd {
 	} else {
 		c = parse_compound(s);
 		if !c {
-			return 0:*cmd;
+			return 0 as *cmd;
 		}
 	}
 
@@ -416,7 +416,7 @@ parse_compound(s: *shell): *cmd {
 		return c;
 	}
 
-	return 0:*cmd;
+	return 0 as *cmd;
 }
 
 // subshell = '(' command_list ')'
@@ -426,11 +426,11 @@ parse_subshell(s: *shell): *cmd {
 	var link: **cmd;
 	var t: *cmd;
 
-	body = 0:*cmd;
+	body = 0 as *cmd;
 	link = &body;
 
 	if s.tt != T_LPAR {
-		return 0:*cmd;
+		return 0 as *cmd;
 	}
 	feed(s);
 
@@ -481,13 +481,13 @@ parse_for(s: *shell): *cmd {
 	var t: *cmd;
 	var w: *byte;
 
-	arg = 0:*cmd;
+	arg = 0 as *cmd;
 	arg_link = &arg;
-	body = 0:*cmd;
+	body = 0 as *cmd;
 	body_link = &body;
 
 	if !parse_keyword(s, "for") {
-		return 0:*cmd;
+		return 0 as *cmd;
 	}
 
 	w = take(s);
@@ -552,9 +552,9 @@ parse_simple(s: *shell): *cmd {
 	var t: *cmd;
 	var w: *byte;
 
-	arg = 0:*cmd;
+	arg = 0 as *cmd;
 	arg_link = &arg;
-	redir = 0:*cmd;
+	redir = 0 as *cmd;
 	redir_link = &redir;
 
 	w = take(s);
@@ -569,7 +569,7 @@ parse_simple(s: *shell): *cmd {
 			*redir_link = t;
 			redir_link = &t.next;
 		} else {
-			return 0: *cmd;
+			return 0 as *cmd;
 		}
 	}
 
@@ -604,7 +604,7 @@ parse_redir_list(s: *shell): *cmd {
 	var t: *cmd;
 	var link: **cmd;
 
-	c = 0:*cmd;
+	c = 0 as *cmd;
 	link = &c;
 
 	loop {
@@ -621,12 +621,12 @@ take(s: *shell): *byte {
 	var w: *byte;
 
 	if s.tt != T_WORD {
-		return 0: *byte;
+		return 0 as *byte;
 	}
 
 	w = alloc(s.a, s.len + 1);
 	memcpy(w, s.buf, s.len);
-	w[s.len] = 0:byte;
+	w[s.len] = 0 as byte;
 	feed(s);
 
 	return w;
@@ -660,7 +660,7 @@ parse_redir(s: *shell): *cmd {
 		return c;
 	}
 
-	return 0:*cmd;
+	return 0 as *cmd;
 }
 
 execute_command(s: *shell, c: *cmd) {
@@ -718,7 +718,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	var fd: int;
 	setup_alloc(&a);
 
-	bzero((&s):*byte, sizeof(s));
+	bzero((&s) as *byte, sizeof(s));
 	s.a = &a;
 
 	if argc <= 1 {
@@ -726,7 +726,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 		s.script = "";
 		s.prog = "";
 		s.argc = 0;
-		s.argv = 0:**byte;
+		s.argv = 0 as **byte;
 	} else if strcmp(argv[1], "--") == 0 {
 		s.scriptfd = 0;
 		s.script = "";

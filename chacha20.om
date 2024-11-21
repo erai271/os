@@ -48,61 +48,61 @@ chacha20_block(block: *byte, key: *byte, counter: int, nonce: *byte) {
 	var s: *int;
 	var i: int;
 
-	initial = (&_initial):*int;
-	s = (&_s):*int;
+	initial = (&_initial) as *int;
+	s = (&_s) as *int;
 
 	s[0] = 0x61707865;
 	s[1] = 0x3320646e;
 	s[2] = 0x79622d32;
 	s[3] = 0x6b206574;
 
-	s[4] = key[0]:int
-		| (key[1]:int << 8)
-		| (key[2]:int << 16)
-		| (key[3]:int << 24);
-	s[5] = key[4]:int
-		| (key[5]:int << 8)
-		| (key[6]:int << 16)
-		| (key[7]:int << 24);
-	s[6] = key[8]:int
-		| (key[9]:int << 8)
-		| (key[10]:int << 16)
-		| (key[11]:int << 24);
-	s[7] = key[12]:int
-		| (key[13]:int << 8)
-		| (key[14]:int << 16)
-		| (key[15]:int << 24);
-	s[8] = key[16]:int
-		| (key[17]:int << 8)
-		| (key[18]:int << 16)
-		| (key[19]:int << 24);
-	s[9] = key[20]:int
-		| (key[21]:int << 8)
-		| (key[22]:int << 16)
-		| (key[23]:int << 24);
-	s[10] = key[24]:int
-		| (key[25]:int << 8)
-		| (key[26]:int << 16)
-		| (key[27]:int << 24);
-	s[11] = key[28]:int
-		| (key[29]:int << 8)
-		| (key[30]:int << 16)
-		| (key[31]:int << 24);
+	s[4] = key[0] as int
+		| (key[1] as int << 8)
+		| (key[2] as int << 16)
+		| (key[3] as int << 24);
+	s[5] = key[4] as int
+		| (key[5] as int << 8)
+		| (key[6] as int << 16)
+		| (key[7] as int << 24);
+	s[6] = key[8] as int
+		| (key[9] as int << 8)
+		| (key[10] as int << 16)
+		| (key[11] as int << 24);
+	s[7] = key[12] as int
+		| (key[13] as int << 8)
+		| (key[14] as int << 16)
+		| (key[15] as int << 24);
+	s[8] = key[16] as int
+		| (key[17] as int << 8)
+		| (key[18] as int << 16)
+		| (key[19] as int << 24);
+	s[9] = key[20] as int
+		| (key[21] as int << 8)
+		| (key[22] as int << 16)
+		| (key[23] as int << 24);
+	s[10] = key[24] as int
+		| (key[25] as int << 8)
+		| (key[26] as int << 16)
+		| (key[27] as int << 24);
+	s[11] = key[28] as int
+		| (key[29] as int << 8)
+		| (key[30] as int << 16)
+		| (key[31] as int << 24);
 
 	s[12] = counter & (-1 >> 32);
 
-	s[13] = nonce[0]:int
-		| (nonce[1]:int << 8)
-		| (nonce[2]:int << 16)
-		| (nonce[3]:int << 24);
-	s[14] = nonce[4]:int
-		| (nonce[5]:int << 8)
-		| (nonce[6]:int << 16)
-		| (nonce[7]:int << 24);
-	s[15] = nonce[8]:int
-		| (nonce[9]:int << 8)
-		| (nonce[10]:int << 16)
-		| (nonce[11]:int << 24);
+	s[13] = nonce[0] as int
+		| (nonce[1] as int << 8)
+		| (nonce[2] as int << 16)
+		| (nonce[3] as int << 24);
+	s[14] = nonce[4] as int
+		| (nonce[5] as int << 8)
+		| (nonce[6] as int << 16)
+		| (nonce[7] as int << 24);
+	s[15] = nonce[8] as int
+		| (nonce[9] as int << 8)
+		| (nonce[10] as int << 16)
+		| (nonce[11] as int << 24);
 
 	i = 0;
 	loop {
@@ -143,10 +143,10 @@ chacha20_block(block: *byte, key: *byte, counter: int, nonce: *byte) {
 		if i == 16 {
 			break;
 		}
-		block[i * 4] = s[i]:byte;
-		block[i * 4 + 1] = (s[i] >> 8):byte;
-		block[i * 4 + 2] = (s[i] >> 16):byte;
-		block[i * 4 + 3] = (s[i] >> 24):byte;
+		block[i * 4] = s[i] as byte;
+		block[i * 4 + 1] = (s[i] >> 8) as byte;
+		block[i * 4 + 2] = (s[i] >> 16) as byte;
+		block[i * 4 + 3] = (s[i] >> 24) as byte;
 		i = i + 1;
 	}
 }
@@ -157,7 +157,7 @@ chacha20_stream(cipher: *byte, plain: *byte, len: int, index: *int, key: *byte, 
 	var i: int;
 	var j: int;
 
-	block = (&_block):*byte;
+	block = (&_block) as *byte;
 
 	j = 0;
 	loop {

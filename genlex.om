@@ -8,13 +8,13 @@ getchar(): int {
 	if (ret == 0) {
 		return -1;
 	}
-	return b: int;
+	return b as int;
 }
 
 putchar(ch: int): void {
 	var b: byte;
 	var ret: int;
-	b = ch: byte;
+	b = ch as byte;
 	ret = write(1, &b, 1);
 	if (ret != 1) {
 		exit(3);
@@ -44,15 +44,15 @@ setup(c: *compiler): void {
 	c.lineno = 1;
 	c.colno = 1;
 	c.tt = 0;
-	c.n = 0: *nfa;
+	c.n = 0 as *nfa;
 	c.tmax = 256;
 	c.tlen = 0;
 	c.buf = alloc(&c.a, c.tmax);
-	c.tags = 0: *tag;
+	c.tags = 0 as *tag;
 	c.ntags = 0;
 	c.nnfa = 0;
 	c.ndfa = 0;
-	c.d = 0:*dfa;
+	c.d = 0 as *dfa;
 	feed(c);
 }
 
@@ -82,7 +82,7 @@ enum {
 }
 
 feed(c: *compiler): void {
-	c.n = 0:*nfa;
+	c.n = 0 as *nfa;
 	c.tlen = 0;
 
 	loop {
@@ -156,12 +156,12 @@ feed_ident(c: *compiler): void {
 			break;
 		}
 
-		c.buf[c.tlen] = c.nc:byte;
+		c.buf[c.tlen] = c.nc as byte;
 		c.tlen = c.tlen + 1;
 		if (c.tlen == c.tmax) {
 			die("ident too long");
 		}
-		c.buf[c.tlen] = 0:byte;
+		c.buf[c.tlen] = 0 as byte;
 
 		feedc(c);
 	}
@@ -239,7 +239,7 @@ feed_literal(c: *compiler): void {
 			feed_escape(c);
 		}
 
-		a = nfa_literal(c, c.nc: byte);
+		a = nfa_literal(c, c.nc as byte);
 		c.n = nfa_concat(c, c.n, a);
 
 		feedc(c);
@@ -266,7 +266,7 @@ feed_charset(c: *compiler): void {
 		if (i == 256) {
 			break;
 		}
-		c.buf[i] = 0: byte;
+		c.buf[i] = 0 as byte;
 		i = i + 1;
 	}
 
@@ -292,7 +292,7 @@ feed_charset(c: *compiler): void {
 					if (i == 256) {
 						break;
 					}
-					c.buf[i] = 1:byte;
+					c.buf[i] = 1 as byte;
 					i = i + 1;
 				}
 			}
@@ -334,7 +334,7 @@ feed_charset(c: *compiler): void {
 			if (i >= right) {
 				break;
 			}
-			c.buf[i] = mode: byte;
+			c.buf[i] = mode as byte;
 			i = i + 1;
 		}
 	}
@@ -388,7 +388,7 @@ feed_charset(c: *compiler): void {
 parse_ident(c: *compiler): *tag {
 	var t: *tag;
 	if (c.tt != T_IDENT) {
-		return 0: *tag;
+		return 0 as *tag;
 	}
 	t = find_tag(c, c.buf);
 	feed(c);
@@ -413,7 +413,7 @@ intern(c: *compiler): *byte {
 		s[i] = c.buf[i];
 		i = i + 1;
 	}
-	s[c.tlen] = 0:byte;
+	s[c.tlen] = 0 as byte;
 	return s;
 }
 
@@ -431,8 +431,8 @@ find_tag(c: *compiler, s: *byte): *tag {
 		}
 		link = &t.next;
 	}
-	t = alloc(&c.a, sizeof(*t)): *tag;
-	t.next = 0:*tag;
+	t = alloc(&c.a, sizeof(*t)) as *tag;
+	t.next = 0 as *tag;
 	t.s = intern(c);
 	t.id = c.ntags;
 	c.ntags = c.ntags + 1;
@@ -453,13 +453,13 @@ struct nfa {
 
 nfa_empty(c: *compiler): *nfa {
 	var n: *nfa;
-	n = alloc(&c.a, sizeof(*n)):*nfa;
+	n = alloc(&c.a, sizeof(*n)) as *nfa;
 	n.id = c.nnfa;
 	n.left = -1;
 	n.right = -1;
 	n.live = 0;
-	n.a = 0:*nfa;
-	n.b = 0:*nfa;
+	n.a = 0 as *nfa;
+	n.b = 0 as *nfa;
 	n.end = n;
 	c.nnfa = c.nnfa + 1;
 	return n;
@@ -468,7 +468,7 @@ nfa_empty(c: *compiler): *nfa {
 nfa_literal(c: *compiler, a: byte): *nfa {
 	var n: *nfa;
 	n = nfa_empty(c);
-	n.left = a:int;
+	n.left = a as int;
 	n.right = n.left + 1;
 	return n;
 }
@@ -517,7 +517,7 @@ nfa_star(c: *compiler, a: *nfa): *nfa {
 parse_literal(c: *compiler): *nfa {
 	var n: *nfa;
 	if (c.tt != T_LITERAL) {
-		return 0:*nfa;
+		return 0 as *nfa;
 	}
 	n = c.n;
 	feed(c);
@@ -527,7 +527,7 @@ parse_literal(c: *compiler): *nfa {
 parse_charset(c: *compiler): *nfa {
 	var n: *nfa;
 	if (c.tt != T_CHARSET) {
-		return 0:*nfa;
+		return 0 as *nfa;
 	}
 	n = c.n;
 	feed(c);
@@ -537,7 +537,7 @@ parse_charset(c: *compiler): *nfa {
 parse_dot(c: *compiler): *nfa {
 	var n: *nfa;
 	if (c.tt != T_DOT) {
-		return 0:*nfa;
+		return 0 as *nfa;
 	}
 	feed(c);
 	n = nfa_empty(c);
@@ -581,7 +581,7 @@ parse_primary(c: *compiler): *nfa {
 		return n;
 	}
 
-	return 0: *nfa;
+	return 0 as *nfa;
 }
 
 // post := primary
@@ -593,7 +593,7 @@ parse_post(c: *compiler): *nfa {
 
 	n = parse_primary(c);
 	if (!n) {
-		return 0: *nfa;
+		return 0 as *nfa;
 	}
 
 	loop {
@@ -620,7 +620,7 @@ parse_concat(c: *compiler): *nfa {
 
 	n = parse_post(c);
 	if (!n) {
-		return 0:*nfa;
+		return 0 as *nfa;
 	}
 
 	loop {
@@ -668,7 +668,7 @@ parse_decl(c: *compiler): *nfa {
 
 	t = parse_ident(c);
 	if (!t) {
-		return 0: *nfa;
+		return 0 as *nfa;
 	}
 
 	if (c.tt != T_EQUALS) {
@@ -695,7 +695,7 @@ parse_program(c: *compiler): *nfa {
 	var n: *nfa;
 	var p: *nfa;
 
-	p = 0: *nfa;
+	p = 0 as *nfa;
 	loop {
 		n = parse_decl(c);
 		if (!n) {
@@ -731,9 +731,9 @@ struct nlist {
 
 alloc_nlist(c: *compiler, l: *nlist, cap: int): void {
 	l.cap = cap;
-	l.live = alloc(&c.a, sizeof(*l.live) * cap):**nfa;
+	l.live = alloc(&c.a, sizeof(*l.live) * cap) as **nfa;
 	l.fill = 0;
-	l.tag = 0:*tag;
+	l.tag = 0 as *tag;
 }
 
 activate(l: *nlist, n: *nfa): void {
@@ -876,13 +876,13 @@ nlist_sort(l: *nlist): void {
 alloc_link(c: *compiler): **dfa {
 	var link: **dfa;
 	var i: int;
-	link = alloc(&c.a, sizeof(*link) * 256): **dfa;
+	link = alloc(&c.a, sizeof(*link) * 256) as **dfa;
 	i = 0;
 	loop {
 		if (i == 256) {
 			break;
 		}
-		link[i] = 0:*dfa;
+		link[i] = 0 as *dfa;
 		i = i + 1;
 	}
 	return link;
@@ -913,7 +913,7 @@ nlist2dfa(c: *compiler, l: *nlist): *dfa {
 	var j: int;
 
 	if (l.fill == 0 && !l.tag) {
-		return 0:*dfa;
+		return 0 as *dfa;
 	}
 
 	link = &c.d;
@@ -934,12 +934,12 @@ nlist2dfa(c: *compiler, l: *nlist): *dfa {
 		}
 	}
 
-	d = alloc(&c.a, sizeof(*d)): *dfa;
+	d = alloc(&c.a, sizeof(*d)) as *dfa;
 	d.id = c.ndfa;
 	d.link = alloc_link(c);
 	nlist_copy(c, &d.key, l);
-	d.l = 0: *dfa;
-	d.r = 0: *dfa;
+	d.l = 0 as *dfa;
+	d.r = 0 as *dfa;
 	d.seen = 0;
 
 	c.ndfa = c.ndfa + 1;
@@ -986,7 +986,7 @@ deactivate(l: *nlist): void {
 	loop {
 		if (i >= l.fill) {
 			l.fill = 0;
-			l.tag = 0: *tag;
+			l.tag = 0 as *tag;
 			break;
 		}
 		l.live[i].live = 0;

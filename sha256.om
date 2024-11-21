@@ -118,70 +118,70 @@ sha256_rounds(ctx: *sha256_ctx, block: *byte) {
 	r.g = ctx.g;
 	r.h = ctx.h;
 
-	w[0] = (block[0]:int << 24)
-		| (block[1]:int << 16)
-		| (block[2]:int << 8)
-		| block[3]:int;
-	w[1] = (block[4]:int << 24)
-		| (block[5]:int << 16)
-		| (block[6]:int << 8)
-		| block[7]:int;
-	w[2] = (block[8]:int << 24)
-		| (block[9]:int << 16)
-		| (block[10]:int << 8)
-		| block[11]:int;
-	w[3] = (block[12]:int << 24)
-		| (block[13]:int << 16)
-		| (block[14]:int << 8)
-		| block[15]:int;
-	w[4] = (block[16]:int << 24)
-		| (block[17]:int << 16)
-		| (block[18]:int << 8)
-		| block[19]:int;
-	w[5] = (block[20]:int << 24)
-		| (block[21]:int << 16)
-		| (block[22]:int << 8)
-		| block[23]:int;
-	w[6] = (block[24]:int << 24)
-		| (block[25]:int << 16)
-		| (block[26]:int << 8)
-		| block[27]:int;
-	w[7] = (block[28]:int << 24)
-		| (block[29]:int << 16)
-		| (block[30]:int << 8)
-		| block[31]:int;
-	w[8] = (block[32]:int << 24)
-		| (block[33]:int << 16)
-		| (block[34]:int << 8)
-		| block[35]:int;
-	w[9] = (block[36]:int << 24)
-		| (block[37]:int << 16)
-		| (block[38]:int << 8)
-		| block[39]:int;
-	w[10] = (block[40]:int << 24)
-		| (block[41]:int << 16)
-		| (block[42]:int << 8)
-		| block[43]:int;
-	w[11] = (block[44]:int << 24)
-		| (block[45]:int << 16)
-		| (block[46]:int << 8)
-		| block[47]:int;
-	w[12] = (block[48]:int << 24)
-		| (block[49]:int << 16)
-		| (block[50]:int << 8)
-		| block[51]:int;
-	w[13] = (block[52]:int << 24)
-		| (block[53]:int << 16)
-		| (block[54]:int << 8)
-		| block[55]:int;
-	w[14] = (block[56]:int << 24)
-		| (block[57]:int << 16)
-		| (block[58]:int << 8)
-		| block[59]:int;
-	w[15] = (block[60]:int << 24)
-		| (block[61]:int << 16)
-		| (block[62]:int << 8)
-		| block[63]:int;
+	w[0] = (block[0] as int << 24)
+		| (block[1] as int << 16)
+		| (block[2] as int << 8)
+		| block[3] as int;
+	w[1] = (block[4] as int << 24)
+		| (block[5] as int << 16)
+		| (block[6] as int << 8)
+		| block[7] as int;
+	w[2] = (block[8] as int << 24)
+		| (block[9] as int << 16)
+		| (block[10] as int << 8)
+		| block[11] as int;
+	w[3] = (block[12] as int << 24)
+		| (block[13] as int << 16)
+		| (block[14] as int << 8)
+		| block[15] as int;
+	w[4] = (block[16] as int << 24)
+		| (block[17] as int << 16)
+		| (block[18] as int << 8)
+		| block[19] as int;
+	w[5] = (block[20] as int << 24)
+		| (block[21] as int << 16)
+		| (block[22] as int << 8)
+		| block[23] as int;
+	w[6] = (block[24] as int << 24)
+		| (block[25] as int << 16)
+		| (block[26] as int << 8)
+		| block[27] as int;
+	w[7] = (block[28] as int << 24)
+		| (block[29] as int << 16)
+		| (block[30] as int << 8)
+		| block[31] as int;
+	w[8] = (block[32] as int << 24)
+		| (block[33] as int << 16)
+		| (block[34] as int << 8)
+		| block[35] as int;
+	w[9] = (block[36] as int << 24)
+		| (block[37] as int << 16)
+		| (block[38] as int << 8)
+		| block[39] as int;
+	w[10] = (block[40] as int << 24)
+		| (block[41] as int << 16)
+		| (block[42] as int << 8)
+		| block[43] as int;
+	w[11] = (block[44] as int << 24)
+		| (block[45] as int << 16)
+		| (block[46] as int << 8)
+		| block[47] as int;
+	w[12] = (block[48] as int << 24)
+		| (block[49] as int << 16)
+		| (block[50] as int << 8)
+		| block[51] as int;
+	w[13] = (block[52] as int << 24)
+		| (block[53] as int << 16)
+		| (block[54] as int << 8)
+		| block[55] as int;
+	w[14] = (block[56] as int << 24)
+		| (block[57] as int << 16)
+		| (block[58] as int << 8)
+		| block[59] as int;
+	w[15] = (block[60] as int << 24)
+		| (block[61] as int << 16)
+		| (block[62] as int << 8)
+		| block[63] as int;
 
 	sha256_round(&r, w, 0x428a2f98);
 	sha256_round(&r, w, 0x71374491);
@@ -264,7 +264,7 @@ sha256_finish(ctx: *sha256_ctx, nblocks: int, data: *byte, len: int) {
 	var pad: int;
 	var i: int;
 
-	final = (&_final):*byte;
+	final = (&_final) as *byte;
 
 	pad = nblocks * 512;
 
@@ -293,7 +293,7 @@ sha256_finish(ctx: *sha256_ctx, nblocks: int, data: *byte, len: int) {
 		i = i + 1;
 	}
 
-	final[i] = 0x80:byte;
+	final[i] = 0x80 as byte;
 	i = i + 1;
 
 	loop {
@@ -301,7 +301,7 @@ sha256_finish(ctx: *sha256_ctx, nblocks: int, data: *byte, len: int) {
 			break;
 		}
 
-		final[i] = 0:byte;
+		final[i] = 0 as byte;
 
 		i = i + 1;
 	}
@@ -315,57 +315,57 @@ sha256_finish(ctx: *sha256_ctx, nblocks: int, data: *byte, len: int) {
 				break;
 			}
 
-			final[i] = 0:byte;
+			final[i] = 0 as byte;
 
 			i = i + 1;
 		}
 	}
 
-	final[56] = (pad >> 56):byte;
-	final[57] = (pad >> 48):byte;
-	final[58] = (pad >> 40):byte;
-	final[59] = (pad >> 32):byte;
-	final[60] = (pad >> 24):byte;
-	final[61] = (pad >> 16):byte;
-	final[62] = (pad >> 8):byte;
-	final[63] = pad:byte;
+	final[56] = (pad >> 56) as byte;
+	final[57] = (pad >> 48) as byte;
+	final[58] = (pad >> 40) as byte;
+	final[59] = (pad >> 32) as byte;
+	final[60] = (pad >> 24) as byte;
+	final[61] = (pad >> 16) as byte;
+	final[62] = (pad >> 8) as byte;
+	final[63] = pad as byte;
 
 	sha256_rounds(ctx, final);
 }
 
 sha256_digest(digest: *byte, ctx: *sha256_ctx) {
-	digest[0] = (ctx.a >> 24):byte;
-	digest[1] = (ctx.a >> 16):byte;
-	digest[2] = (ctx.a >> 8):byte;
-	digest[3] = ctx.a:byte;
-	digest[4] = (ctx.b >> 24):byte;
-	digest[5] = (ctx.b >> 16):byte;
-	digest[6] = (ctx.b >> 8):byte;
-	digest[7] = ctx.b:byte;
-	digest[8] = (ctx.c >> 24):byte;
-	digest[9] = (ctx.c >> 16):byte;
-	digest[10] = (ctx.c >> 8):byte;
-	digest[11] = ctx.c:byte;
-	digest[12] = (ctx.d >> 24):byte;
-	digest[13] = (ctx.d >> 16):byte;
-	digest[14] = (ctx.d >> 8):byte;
-	digest[15] = ctx.d:byte;
-	digest[16] = (ctx.e >> 24):byte;
-	digest[17] = (ctx.e >> 16):byte;
-	digest[18] = (ctx.e >> 8):byte;
-	digest[19] = ctx.e:byte;
-	digest[20] = (ctx.f >> 24):byte;
-	digest[21] = (ctx.f >> 16):byte;
-	digest[22] = (ctx.f >> 8):byte;
-	digest[23] = ctx.f:byte;
-	digest[24] = (ctx.g >> 24):byte;
-	digest[25] = (ctx.g >> 16):byte;
-	digest[26] = (ctx.g >> 8):byte;
-	digest[27] = ctx.g:byte;
-	digest[28] = (ctx.h >> 24):byte;
-	digest[29] = (ctx.h >> 16):byte;
-	digest[30] = (ctx.h >> 8):byte;
-	digest[31] = ctx.h:byte;
+	digest[0] = (ctx.a >> 24) as byte;
+	digest[1] = (ctx.a >> 16) as byte;
+	digest[2] = (ctx.a >> 8) as byte;
+	digest[3] = ctx.a as byte;
+	digest[4] = (ctx.b >> 24) as byte;
+	digest[5] = (ctx.b >> 16) as byte;
+	digest[6] = (ctx.b >> 8) as byte;
+	digest[7] = ctx.b as byte;
+	digest[8] = (ctx.c >> 24) as byte;
+	digest[9] = (ctx.c >> 16) as byte;
+	digest[10] = (ctx.c >> 8) as byte;
+	digest[11] = ctx.c as byte;
+	digest[12] = (ctx.d >> 24) as byte;
+	digest[13] = (ctx.d >> 16) as byte;
+	digest[14] = (ctx.d >> 8) as byte;
+	digest[15] = ctx.d as byte;
+	digest[16] = (ctx.e >> 24) as byte;
+	digest[17] = (ctx.e >> 16) as byte;
+	digest[18] = (ctx.e >> 8) as byte;
+	digest[19] = ctx.e as byte;
+	digest[20] = (ctx.f >> 24) as byte;
+	digest[21] = (ctx.f >> 16) as byte;
+	digest[22] = (ctx.f >> 8) as byte;
+	digest[23] = ctx.f as byte;
+	digest[24] = (ctx.g >> 24) as byte;
+	digest[25] = (ctx.g >> 16) as byte;
+	digest[26] = (ctx.g >> 8) as byte;
+	digest[27] = ctx.g as byte;
+	digest[28] = (ctx.h >> 24) as byte;
+	digest[29] = (ctx.h >> 16) as byte;
+	digest[30] = (ctx.h >> 8) as byte;
+	digest[31] = ctx.h as byte;
 }
 
 sha256(digest: *byte, data: *byte, dlen: int) {
@@ -385,9 +385,9 @@ sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	var ctx: sha256_ctx;
 	var i: int;
 
-	digest = (&_digest):*byte;
-	ipad = (&_ipad):*byte;
-	opad = (&_opad):*byte;
+	digest = (&_digest) as *byte;
+	ipad = (&_ipad) as *byte;
+	opad = (&_opad) as *byte;
 
 	i = 0;
 	loop {
@@ -395,7 +395,7 @@ sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 			break;
 		}
 
-		digest[i] = 0: byte;
+		digest[i] = 0 as byte;
 
 		i = i + 1;
 	}
@@ -421,8 +421,8 @@ sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 			break;
 		}
 
-		ipad[i] = digest[i] ^ (0x36:byte);
-		opad[i] = digest[i] ^ (0x5c:byte);
+		ipad[i] = digest[i] ^ (0x36 as byte);
+		opad[i] = digest[i] ^ (0x5c as byte);
 
 		i = i + 1;
 	}
@@ -446,12 +446,12 @@ sha256_update(ctx: *sha256_ctx, msg: *byte, len: int) {
 	if o != 0 {
 		r = 64 - o;
 		if len < r {
-			memcpy(&(&ctx.block):*byte[o], msg, len);
+			memcpy(&(&ctx.block) as *byte[o], msg, len);
 			ctx.len = ctx.len + len;
 			return;
 		} else {
-			memcpy(&(&ctx.block):*byte[o], msg, r);
-			sha256_rounds(ctx, (&ctx.block):*byte);
+			memcpy(&(&ctx.block) as *byte[o], msg, r);
+			sha256_rounds(ctx, (&ctx.block) as *byte);
 			ctx.len = ctx.len + r;
 			len = len - r;
 			msg = &msg[r];
@@ -460,7 +460,7 @@ sha256_update(ctx: *sha256_ctx, msg: *byte, len: int) {
 
 	loop {
 		if len < 64 {
-			memcpy((&ctx.block):*byte, msg, len);
+			memcpy((&ctx.block) as *byte, msg, len);
 			ctx.len = ctx.len + len;
 			return;
 		}
@@ -474,6 +474,6 @@ sha256_update(ctx: *sha256_ctx, msg: *byte, len: int) {
 }
 
 sha256_final(digest: *byte, ctx: *sha256_ctx) {
-	sha256_finish(ctx, ctx.len >> 6, (&ctx.block):*byte, ctx.len & 63);
+	sha256_finish(ctx, ctx.len >> 6, (&ctx.block) as *byte, ctx.len & 63);
 	sha256_digest(digest, ctx);
 }

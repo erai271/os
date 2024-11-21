@@ -39,31 +39,31 @@ poly1305_load(dest: *int, src: *byte, n: int) {
 		if i == n {
 			break;
 		}
-		dest[i] = src[i * 4]:int
-			| (src[i * 4 + 1]:int << 8)
-			| (src[i * 4 + 2]:int << 16)
-			| (src[i * 4 + 3]:int << 24);
+		dest[i] = src[i * 4] as int
+			| (src[i * 4 + 1] as int << 8)
+			| (src[i * 4 + 2] as int << 16)
+			| (src[i * 4 + 3] as int << 24);
 		i = i + 1;
 	}
 }
 
 poly1305_digest(dest: *byte, src: *int) {
-	dest[0] = src[0]:byte;
-	dest[1] = (src[0] >> 8):byte;
-	dest[2] = (src[0] >> 16):byte;
-	dest[3] = (src[0] >> 24):byte;
-	dest[4] = src[1]:byte;
-	dest[5] = (src[1] >> 8):byte;
-	dest[6] = (src[1] >> 16):byte;
-	dest[7] = (src[1] >> 24):byte;
-	dest[8] = src[2]:byte;
-	dest[9] = (src[2] >> 8):byte;
-	dest[10] = (src[2] >> 16):byte;
-	dest[11] = (src[2] >> 24):byte;
-	dest[12] = src[3]:byte;
-	dest[13] = (src[3] >> 8):byte;
-	dest[14] = (src[3] >> 16):byte;
-	dest[15] = (src[3] >> 24):byte;
+	dest[0] = src[0] as byte;
+	dest[1] = (src[0] >> 8) as byte;
+	dest[2] = (src[0] >> 16) as byte;
+	dest[3] = (src[0] >> 24) as byte;
+	dest[4] = src[1] as byte;
+	dest[5] = (src[1] >> 8) as byte;
+	dest[6] = (src[1] >> 16) as byte;
+	dest[7] = (src[1] >> 24) as byte;
+	dest[8] = src[2] as byte;
+	dest[9] = (src[2] >> 8) as byte;
+	dest[10] = (src[2] >> 16) as byte;
+	dest[11] = (src[2] >> 24) as byte;
+	dest[12] = src[3] as byte;
+	dest[13] = (src[3] >> 8) as byte;
+	dest[14] = (src[3] >> 16) as byte;
+	dest[15] = (src[3] >> 24) as byte;
 }
 
 poly1305_add(a: *int, x: *int) {
@@ -81,7 +81,7 @@ poly1305_mul(a: *int, r: *int) {
 	var i: int;
 	var c: int;
 
-	x = (&_x):*int;
+	x = (&_x) as *int;
 
 	x[0] = 0;
 	x[1] = 0;
@@ -159,7 +159,7 @@ poly1305_pad(dest: *int, msg: *byte, n: int) {
 	var pad: *byte;
 	var i: int;
 
-	pad = (&_pad):*byte;
+	pad = (&_pad) as *byte;
 
 	i = 0;
 	loop {
@@ -172,7 +172,7 @@ poly1305_pad(dest: *int, msg: *byte, n: int) {
 		i = i + 1;
 	}
 
-	pad[i] = 1:byte;
+	pad[i] = 1 as byte;
 	i = i + 1;
 
 	loop {
@@ -180,7 +180,7 @@ poly1305_pad(dest: *int, msg: *byte, n: int) {
 			break;
 		}
 
-		pad[i] = 0:byte;
+		pad[i] = 0 as byte;
 
 		i = i + 1;
 	}
@@ -197,9 +197,9 @@ poly1305(mac: *byte, key: *byte, msg: *byte, len: int) {
 	var s: *int;
 	var i: int;
 
-	a = (&_a):*int;
-	r = (&_r):*int;
-	s = (&_s):*int;
+	a = (&_a) as *int;
+	r = (&_r) as *int;
+	s = (&_s) as *int;
 
 	a[0] = 0;
 	a[1] = 0;

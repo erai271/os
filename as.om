@@ -194,14 +194,14 @@ struct symbol {
 
 setup_assembler(a: *alloc): *assembler {
 	var c: *assembler;
-	c = alloc(a, sizeof(*c)): *assembler;
+	c = alloc(a, sizeof(*c)) as *assembler;
 	c.a = a;
-	c.out = 0: *file;
+	c.out = 0 as *file;
 	c.at = 160;  // elf header + program header + multiboot header
-	c.text = 0:*chunk;
-	c.text_end = 0:*chunk;
+	c.text = 0 as *chunk;
+	c.text_end = 0 as *chunk;
 	c.bits32 = 0;
-	c.symbols = 0:*symbol;
+	c.symbols = 0 as *symbol;
 	c.num_sections = 0;
 	add_section(c, "", SHT_NULL);
 	add_section(c, ".text", SHT_PROGBITS);
@@ -217,9 +217,9 @@ add_section(c: *assembler, name: *byte, type: int) {
 
 	emit_align(c, 16, OP_NOP);
 
-	s = alloc(c.a, sizeof(*s)):*section;
+	s = alloc(c.a, sizeof(*s)) as *section;
 
-	s.next = 0:*section;
+	s.next = 0 as *section;
 	s.name = name;
 	s.start = c.at;
 	s.end = c.at;
@@ -287,9 +287,9 @@ open_output(c: *assembler, filename: *byte) {
 mklabel(c: *assembler): *label {
 	var l: *label;
 
-	l = alloc(c.a, sizeof(*l)):*label;
+	l = alloc(c.a, sizeof(*l)) as *label;
 
-	l.fix = 0:*fixup;
+	l.fix = 0 as *fixup;
 	l.at = 0;
 	l.fixed = 0;
 
@@ -310,12 +310,12 @@ reserve(c: *assembler, n: int) {
 	}
 
 	m = alloc(c.a, n);
-	b = alloc(c.a, sizeof(*b)):*chunk;
+	b = alloc(c.a, sizeof(*b)) as *chunk;
 
 	b.buf = m;
 	b.fill = 0;
 	b.cap = n;
-	b.next = 0:*chunk;
+	b.next = 0 as *chunk;
 
 	if (c.text_end) {
 		c.text_end.next = b;
@@ -329,17 +329,17 @@ reserve(c: *assembler, n: int) {
 // Add a single byte to the output
 emit(c: *assembler, x: int) {
 	reserve(c, 1);
-	c.text_end.buf[c.text_end.fill] = x:byte;
+	c.text_end.buf[c.text_end.fill] = x as byte;
 	c.text_end.fill = c.text_end.fill + 1;
 	c.at = c.at + 1;
 }
 
 // Fix a single reference
 fixup(c: *assembler, here: *byte, delta: int) {
-	here[0] = delta: byte;
-	here[1] = (delta >> 8): byte;
-	here[2] = (delta >> 16): byte;
-	here[3] = (delta >> 24): byte;
+	here[0] = delta as byte;
+	here[1] = (delta >> 8) as byte;
+	here[2] = (delta >> 16) as byte;
+	here[3] = (delta >> 24) as byte;
 }
 
 // Add an new fixup for the current position
@@ -356,7 +356,7 @@ addfixup(c: *assembler, l: *label) {
 	if (l.fixed) {
 		fixup(c, here, l.at - c.at);
 	} else {
-		f = alloc(c.a, sizeof(*f)): *fixup;
+		f = alloc(c.a, sizeof(*f)) as *fixup;
 
 		f.next = l.fix;
 		f.ptr = here;
@@ -390,7 +390,7 @@ fixup_label(c: *assembler, l: *label) {
 add_symbol(c: *assembler, name: *byte, l: *label) {
 	var s: *symbol;
 
-	s = alloc(c.a, sizeof(*s)):*symbol;
+	s = alloc(c.a, sizeof(*s)) as *symbol;
 
 	s.next = c.symbols;
 	s.name = name;
@@ -437,7 +437,7 @@ emit_blob(c: *assembler, s: *byte, n: int) {
 		if i == n {
 			break;
 		}
-		as_emit(c, s[i]:int);
+		as_emit(c, s[i] as int);
 		i = i + 1;
 	}
 	as_emit(c, 0);
@@ -472,7 +472,7 @@ emit_str(c: *assembler, s: *byte) {
 		if (!s[i]) {
 			break;
 		}
-		as_emit(c, s[i]:int);
+		as_emit(c, s[i] as int);
 		i = i + 1;
 	}
 	as_emit(c, 0);
@@ -928,7 +928,7 @@ emit_strtab_str(c: *assembler, s: *byte): int {
 
 	i = 0;
 	loop {
-		as_emit(c, s[i]:int);
+		as_emit(c, s[i] as int);
 
 		if !s[i] {
 			break;
@@ -953,7 +953,7 @@ emit_sections(c: *assembler): int {
 	var y: *symbol;
 	var n: int;
 
-	add_symbol(c, "", 0:*label);
+	add_symbol(c, "", 0 as *label);
 
 	s = find_section(c, "");
 	s.start = 0;
@@ -1222,7 +1222,7 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 		kentry = 0;
 	}
 
-	shoff = emit_sections(c: *assembler);
+	shoff = emit_sections(c as *assembler);
 
 	// magic
 	putchar(c, 0x7f);
@@ -1470,7 +1470,7 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 			if (i >= b.fill) {
 				break;
 			}
-			putchar(c, b.buf[i]: int);
+			putchar(c, b.buf[i] as int);
 			i = i + 1;
 		}
 		b = b.next;

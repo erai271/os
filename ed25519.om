@@ -181,7 +181,7 @@ ed25519_mul(r: *int, a: *int, b: *int) {
 	var c: int;
 	var i: int;
 
-	x = (&_x):*int;
+	x = (&_x) as *int;
 
 	x[0] = 0;
 	x[1] = 0;
@@ -256,7 +256,7 @@ ed25519_inv(r: *int, a: *int)  {
 	var x: *int;
 	var i: int;
 
-	x = (&_x):*int;
+	x = (&_x) as *int;
 
 	i = 0;
 	loop {
@@ -544,14 +544,14 @@ ed25519_decode(p: *int, y: *byte): int {
 	a = &_a.x0;
 	b = &_b.x0;
 
-	xy[8] = y[0]:int | (y[1]:int << 8) | (y[2]:int << 16) | (y[3]:int << 24);
-	xy[9] = y[4]:int | (y[5]:int << 8) | (y[6]:int << 16) | (y[7]:int << 24);
-	xy[10] = y[8]:int | (y[9]:int << 8) | (y[10]:int << 16) | (y[11]:int << 24);
-	xy[11] = y[12]:int | (y[13]:int << 8) | (y[14]:int << 16) | (y[15]:int << 24);
-	xy[12] = y[16]:int | (y[17]:int << 8) | (y[18]:int << 16) | (y[19]:int << 24);
-	xy[13] = y[20]:int | (y[21]:int << 8) | (y[22]:int << 16) | (y[23]:int << 24);
-	xy[14] = y[24]:int | (y[25]:int << 8) | (y[26]:int << 16) | (y[27]:int << 24);
-	xy[15] = (y[28]:int | (y[29]:int << 8) | (y[30]:int << 16) | (y[31]:int << 24)) & (-1 >> 33);
+	xy[8] = y[0] as int | (y[1] as int << 8) | (y[2] as int << 16) | (y[3] as int << 24);
+	xy[9] = y[4] as int | (y[5] as int << 8) | (y[6] as int << 16) | (y[7] as int << 24);
+	xy[10] = y[8] as int | (y[9] as int << 8) | (y[10] as int << 16) | (y[11] as int << 24);
+	xy[11] = y[12] as int | (y[13] as int << 8) | (y[14] as int << 16) | (y[15] as int << 24);
+	xy[12] = y[16] as int | (y[17] as int << 8) | (y[18] as int << 16) | (y[19] as int << 24);
+	xy[13] = y[20] as int | (y[21] as int << 8) | (y[22] as int << 16) | (y[23] as int << 24);
+	xy[14] = y[24] as int | (y[25] as int << 8) | (y[26] as int << 16) | (y[27] as int << 24);
+	xy[15] = (y[28] as int | (y[29] as int << 8) | (y[30] as int << 16) | (y[31] as int << 24)) & (-1 >> 33);
 
 	ed25519_mul(a, &xy[8], &xy[8]);
 	ed25519_d(b);
@@ -566,7 +566,7 @@ ed25519_decode(p: *int, y: *byte): int {
 		return 0;
 	}
 
-	ed25519_set_lsb(xy, y[31]:int >> 7);
+	ed25519_set_lsb(xy, y[31] as int >> 7);
 
 	p[0] = xy[0];
 	p[1] = xy[1];
@@ -589,38 +589,38 @@ ed25519_decode(p: *int, y: *byte): int {
 }
 
 ed25519_encode(dest: *byte, p: *int) {
-	dest[0] = p[8]:byte;
-	dest[1] = (p[8] >> 8):byte;
-	dest[2] = (p[8] >> 16):byte;
-	dest[3] = (p[8] >> 24):byte;
-	dest[4] = p[9]:byte;
-	dest[5] = (p[9] >> 8):byte;
-	dest[6] = (p[9] >> 16):byte;
-	dest[7] = (p[9] >> 24):byte;
-	dest[8] = p[10]:byte;
-	dest[9] = (p[10] >> 8):byte;
-	dest[10] = (p[10] >> 16):byte;
-	dest[11] = (p[10] >> 24):byte;
-	dest[12] = p[11]:byte;
-	dest[13] = (p[11] >> 8):byte;
-	dest[14] = (p[11] >> 16):byte;
-	dest[15] = (p[11] >> 24):byte;
-	dest[16] = p[12]:byte;
-	dest[17] = (p[12] >> 8):byte;
-	dest[18] = (p[12] >> 16):byte;
-	dest[19] = (p[12] >> 24):byte;
-	dest[20] = p[13]:byte;
-	dest[21] = (p[13] >> 8):byte;
-	dest[22] = (p[13] >> 16):byte;
-	dest[23] = (p[13] >> 24):byte;
-	dest[24] = p[14]:byte;
-	dest[25] = (p[14] >> 8):byte;
-	dest[26] = (p[14] >> 16):byte;
-	dest[27] = (p[14] >> 24):byte;
-	dest[28] = p[15]:byte;
-	dest[29] = (p[15] >> 8):byte;
-	dest[30] = (p[15] >> 16):byte;
-	dest[31] = (p[15] >> 24):byte | ((p[0] & 1) << 7):byte;
+	dest[0] = p[8] as byte;
+	dest[1] = (p[8] >> 8) as byte;
+	dest[2] = (p[8] >> 16) as byte;
+	dest[3] = (p[8] >> 24) as byte;
+	dest[4] = p[9] as byte;
+	dest[5] = (p[9] >> 8) as byte;
+	dest[6] = (p[9] >> 16) as byte;
+	dest[7] = (p[9] >> 24) as byte;
+	dest[8] = p[10] as byte;
+	dest[9] = (p[10] >> 8) as byte;
+	dest[10] = (p[10] >> 16) as byte;
+	dest[11] = (p[10] >> 24) as byte;
+	dest[12] = p[11] as byte;
+	dest[13] = (p[11] >> 8) as byte;
+	dest[14] = (p[11] >> 16) as byte;
+	dest[15] = (p[11] >> 24) as byte;
+	dest[16] = p[12] as byte;
+	dest[17] = (p[12] >> 8) as byte;
+	dest[18] = (p[12] >> 16) as byte;
+	dest[19] = (p[12] >> 24) as byte;
+	dest[20] = p[13] as byte;
+	dest[21] = (p[13] >> 8) as byte;
+	dest[22] = (p[13] >> 16) as byte;
+	dest[23] = (p[13] >> 24) as byte;
+	dest[24] = p[14] as byte;
+	dest[25] = (p[14] >> 8) as byte;
+	dest[26] = (p[14] >> 16) as byte;
+	dest[27] = (p[14] >> 24) as byte;
+	dest[28] = p[15] as byte;
+	dest[29] = (p[15] >> 8) as byte;
+	dest[30] = (p[15] >> 16) as byte;
+	dest[31] = (p[15] >> 24) as byte | ((p[0] & 1) << 7) as byte;
 }
 
 ed25519_pub(pub: *byte, b: *byte) {
@@ -631,7 +631,7 @@ ed25519_pub(pub: *byte, b: *byte) {
 	var _s: _ed25519_limb;
 	var s: *int;
 
-	h = (&_h):*byte;
+	h = (&_h) as *byte;
 	a = &_a.x0;
 	s = &_s.x0;
 
@@ -670,11 +670,11 @@ ed25519_sign(sig: *byte, b: *byte, msg: *byte, len: int) {
 	var _k: _ed25519_limb;
 	var k: *int;
 
-	h = (&_h):*byte;
-	hr = (&_hr):*byte;
-	hk = (&_hk):*byte;
+	h = (&_h) as *byte;
+	hr = (&_hr) as *byte;
+	hk = (&_hk) as *byte;
 	a = &_a.x0;
-	pub = (&_pub):*byte;
+	pub = (&_pub) as *byte;
 	rb = &_rb.x0;
 	s = &_s.x0;
 	r = &_r.x0;
@@ -811,7 +811,7 @@ ed25519_ma_l(x: *int, a: *int, b: *int, y: *int) {
 	var c: int;
 	var i: int;
 
-	z = (&_z):*int;
+	z = (&_z) as *int;
 
 	z[0] = 0;
 	z[1] = 0;
@@ -876,61 +876,61 @@ ed25519_reduce_l(x: *int, a: *byte) {
 	var _z: _ed25519_point;
 	var z: *int;
 
-	z = (&_z):*int;
+	z = (&_z) as *int;
 
-	z[0] = a[0]:int | (a[1]:int << 8) | (a[2]:int << 16) | (a[3]:int << 24);
-	z[1] = a[4]:int | (a[5]:int << 8) | (a[6]:int << 16) | (a[7]:int << 24);
-	z[2] = a[8]:int | (a[9]:int << 8) | (a[10]:int << 16) | (a[11]:int << 24);
-	z[3] = a[12]:int | (a[13]:int << 8) | (a[14]:int << 16) | (a[15]:int << 24);
-	z[4] = a[16]:int | (a[17]:int << 8) | (a[18]:int << 16) | (a[19]:int << 24);
-	z[5] = a[20]:int | (a[21]:int << 8) | (a[22]:int << 16) | (a[23]:int << 24);
-	z[6] = a[24]:int | (a[25]:int << 8) | (a[26]:int << 16) | (a[27]:int << 24);
-	z[7] = a[28]:int | (a[29]:int << 8) | (a[30]:int << 16) | (a[31]:int << 24);
-	z[8] = a[32]:int | (a[33]:int << 8) | (a[34]:int << 16) | (a[35]:int << 24);
-	z[9] = a[36]:int | (a[37]:int << 8) | (a[38]:int << 16) | (a[39]:int << 24);
-	z[10] = a[40]:int | (a[41]:int << 8) | (a[42]:int << 16) | (a[43]:int << 24);
-	z[11] = a[44]:int | (a[45]:int << 8) | (a[46]:int << 16) | (a[47]:int << 24);
-	z[12] = a[48]:int | (a[49]:int << 8) | (a[50]:int << 16) | (a[51]:int << 24);
-	z[13] = a[52]:int | (a[53]:int << 8) | (a[54]:int << 16) | (a[55]:int << 24);
-	z[14] = a[56]:int | (a[57]:int << 8) | (a[58]:int << 16) | (a[59]:int << 24);
-	z[15] = a[60]:int | (a[61]:int << 8) | (a[62]:int << 16) | (a[63]:int << 24);
+	z[0] = a[0] as int | (a[1] as int << 8) | (a[2] as int << 16) | (a[3] as int << 24);
+	z[1] = a[4] as int | (a[5] as int << 8) | (a[6] as int << 16) | (a[7] as int << 24);
+	z[2] = a[8] as int | (a[9] as int << 8) | (a[10] as int << 16) | (a[11] as int << 24);
+	z[3] = a[12] as int | (a[13] as int << 8) | (a[14] as int << 16) | (a[15] as int << 24);
+	z[4] = a[16] as int | (a[17] as int << 8) | (a[18] as int << 16) | (a[19] as int << 24);
+	z[5] = a[20] as int | (a[21] as int << 8) | (a[22] as int << 16) | (a[23] as int << 24);
+	z[6] = a[24] as int | (a[25] as int << 8) | (a[26] as int << 16) | (a[27] as int << 24);
+	z[7] = a[28] as int | (a[29] as int << 8) | (a[30] as int << 16) | (a[31] as int << 24);
+	z[8] = a[32] as int | (a[33] as int << 8) | (a[34] as int << 16) | (a[35] as int << 24);
+	z[9] = a[36] as int | (a[37] as int << 8) | (a[38] as int << 16) | (a[39] as int << 24);
+	z[10] = a[40] as int | (a[41] as int << 8) | (a[42] as int << 16) | (a[43] as int << 24);
+	z[11] = a[44] as int | (a[45] as int << 8) | (a[46] as int << 16) | (a[47] as int << 24);
+	z[12] = a[48] as int | (a[49] as int << 8) | (a[50] as int << 16) | (a[51] as int << 24);
+	z[13] = a[52] as int | (a[53] as int << 8) | (a[54] as int << 16) | (a[55] as int << 24);
+	z[14] = a[56] as int | (a[57] as int << 8) | (a[58] as int << 16) | (a[59] as int << 24);
+	z[15] = a[60] as int | (a[61] as int << 8) | (a[62] as int << 16) | (a[63] as int << 24);
 
 	ed25519_mod_l(x, z);
 }
 
 ed25519_encode_l(dest: *byte, p: *int) {
-	dest[0] = p[0]:byte;
-	dest[1] = (p[0] >> 8):byte;
-	dest[2] = (p[0] >> 16):byte;
-	dest[3] = (p[0] >> 24):byte;
-	dest[4] = p[1]:byte;
-	dest[5] = (p[1] >> 8):byte;
-	dest[6] = (p[1] >> 16):byte;
-	dest[7] = (p[1] >> 24):byte;
-	dest[8] = p[2]:byte;
-	dest[9] = (p[2] >> 8):byte;
-	dest[10] = (p[2] >> 16):byte;
-	dest[11] = (p[2] >> 24):byte;
-	dest[12] = p[3]:byte;
-	dest[13] = (p[3] >> 8):byte;
-	dest[14] = (p[3] >> 16):byte;
-	dest[15] = (p[3] >> 24):byte;
-	dest[16] = p[4]:byte;
-	dest[17] = (p[4] >> 8):byte;
-	dest[18] = (p[4] >> 16):byte;
-	dest[19] = (p[4] >> 24):byte;
-	dest[20] = p[5]:byte;
-	dest[21] = (p[5] >> 8):byte;
-	dest[22] = (p[5] >> 16):byte;
-	dest[23] = (p[5] >> 24):byte;
-	dest[24] = p[6]:byte;
-	dest[25] = (p[6] >> 8):byte;
-	dest[26] = (p[6] >> 16):byte;
-	dest[27] = (p[6] >> 24):byte;
-	dest[28] = p[7]:byte;
-	dest[29] = (p[7] >> 8):byte;
-	dest[30] = (p[7] >> 16):byte;
-	dest[31] = (p[7] >> 24):byte;
+	dest[0] = p[0] as byte;
+	dest[1] = (p[0] >> 8) as byte;
+	dest[2] = (p[0] >> 16) as byte;
+	dest[3] = (p[0] >> 24) as byte;
+	dest[4] = p[1] as byte;
+	dest[5] = (p[1] >> 8) as byte;
+	dest[6] = (p[1] >> 16) as byte;
+	dest[7] = (p[1] >> 24) as byte;
+	dest[8] = p[2] as byte;
+	dest[9] = (p[2] >> 8) as byte;
+	dest[10] = (p[2] >> 16) as byte;
+	dest[11] = (p[2] >> 24) as byte;
+	dest[12] = p[3] as byte;
+	dest[13] = (p[3] >> 8) as byte;
+	dest[14] = (p[3] >> 16) as byte;
+	dest[15] = (p[3] >> 24) as byte;
+	dest[16] = p[4] as byte;
+	dest[17] = (p[4] >> 8) as byte;
+	dest[18] = (p[4] >> 16) as byte;
+	dest[19] = (p[4] >> 24) as byte;
+	dest[20] = p[5] as byte;
+	dest[21] = (p[5] >> 8) as byte;
+	dest[22] = (p[5] >> 16) as byte;
+	dest[23] = (p[5] >> 24) as byte;
+	dest[24] = p[6] as byte;
+	dest[25] = (p[6] >> 8) as byte;
+	dest[26] = (p[6] >> 16) as byte;
+	dest[27] = (p[6] >> 24) as byte;
+	dest[28] = p[7] as byte;
+	dest[29] = (p[7] >> 8) as byte;
+	dest[30] = (p[7] >> 16) as byte;
+	dest[31] = (p[7] >> 24) as byte;
 }
 
 ed25519_eq(a: *int, b: *int): int {
@@ -977,13 +977,13 @@ ed25519_verify(sig: *byte, pub: *byte, msg: *byte, len: int): int {
 	var _sk: _sha512_digest;
 	var sk: *byte;
 
-	a = (&_a):*int;
-	b = (&_b):*int;
-	r = (&_r):*int;
-	s = (&_s):*int;
-	k = (&_k):*int;
-	hk = (&_hk):*byte;
-	sk = (&_sk):*byte;
+	a = (&_a) as *int;
+	b = (&_b) as *int;
+	r = (&_r) as *int;
+	s = (&_s) as *int;
+	k = (&_k) as *int;
+	hk = (&_hk) as *byte;
+	sk = (&_sk) as *byte;
 
 	// A = public key
 	if !ed25519_decode(a, pub){
@@ -1099,14 +1099,14 @@ x25519_decode(uv: *int, u: *byte): int {
 
 	v = &_v.x0;
 
-	uv[0] = u[0]:int | (u[1]:int << 8) | (u[2]:int << 16) | (u[3]:int << 24);
-	uv[1] = u[4]:int | (u[5]:int << 8) | (u[6]:int << 16) | (u[7]:int << 24);
-	uv[2] = u[8]:int | (u[9]:int << 8) | (u[10]:int << 16) | (u[11]:int << 24);
-	uv[3] = u[12]:int | (u[13]:int << 8) | (u[14]:int << 16) | (u[15]:int << 24);
-	uv[4] = u[16]:int | (u[17]:int << 8) | (u[18]:int << 16) | (u[19]:int << 24);
-	uv[5] = u[20]:int | (u[21]:int << 8) | (u[22]:int << 16) | (u[23]:int << 24);
-	uv[6] = u[24]:int | (u[25]:int << 8) | (u[26]:int << 16) | (u[27]:int << 24);
-	uv[7] = (u[28]:int | (u[29]:int << 8) | (u[30]:int << 16) | (u[31]:int << 24)) & (-1 >> 33);
+	uv[0] = u[0] as int | (u[1] as int << 8) | (u[2] as int << 16) | (u[3] as int << 24);
+	uv[1] = u[4] as int | (u[5] as int << 8) | (u[6] as int << 16) | (u[7] as int << 24);
+	uv[2] = u[8] as int | (u[9] as int << 8) | (u[10] as int << 16) | (u[11] as int << 24);
+	uv[3] = u[12] as int | (u[13] as int << 8) | (u[14] as int << 16) | (u[15] as int << 24);
+	uv[4] = u[16] as int | (u[17] as int << 8) | (u[18] as int << 16) | (u[19] as int << 24);
+	uv[5] = u[20] as int | (u[21] as int << 8) | (u[22] as int << 16) | (u[23] as int << 24);
+	uv[6] = u[24] as int | (u[25] as int << 8) | (u[26] as int << 16) | (u[27] as int << 24);
+	uv[7] = (u[28] as int | (u[29] as int << 8) | (u[30] as int << 16) | (u[31] as int << 24)) & (-1 >> 33);
 
 	ed25519_reduce(uv);
 
@@ -1124,43 +1124,43 @@ x25519_decode(uv: *int, u: *byte): int {
 }
 
 x25519_encode(u: *byte, uv: *int) {
-	u[0] = uv[0]:byte;
-	u[1] = (uv[0] >> 8):byte;
-	u[2] = (uv[0] >> 16):byte;
-	u[3] = (uv[0] >> 24):byte;
-	u[4] = uv[1]:byte;
-	u[5] = (uv[1] >> 8):byte;
-	u[6] = (uv[1] >> 16):byte;
-	u[7] = (uv[1] >> 24):byte;
-	u[8] = uv[2]:byte;
-	u[9] = (uv[2] >> 8):byte;
-	u[10] = (uv[2] >> 16):byte;
-	u[11] = (uv[2] >> 24):byte;
-	u[12] = uv[3]:byte;
-	u[13] = (uv[3] >> 8):byte;
-	u[14] = (uv[3] >> 16):byte;
-	u[15] = (uv[3] >> 24):byte;
-	u[16] = uv[4]:byte;
-	u[17] = (uv[4] >> 8):byte;
-	u[18] = (uv[4] >> 16):byte;
-	u[19] = (uv[4] >> 24):byte;
-	u[20] = uv[5]:byte;
-	u[21] = (uv[5] >> 8):byte;
-	u[22] = (uv[5] >> 16):byte;
-	u[23] = (uv[5] >> 24):byte;
-	u[24] = uv[6]:byte;
-	u[25] = (uv[6] >> 8):byte;
-	u[26] = (uv[6] >> 16):byte;
-	u[27] = (uv[6] >> 24):byte;
-	u[28] = uv[7]:byte;
-	u[29] = (uv[7] >> 8):byte;
-	u[30] = (uv[7] >> 16):byte;
-	u[31] = (uv[7] >> 24):byte;
+	u[0] = uv[0] as byte;
+	u[1] = (uv[0] >> 8) as byte;
+	u[2] = (uv[0] >> 16) as byte;
+	u[3] = (uv[0] >> 24) as byte;
+	u[4] = uv[1] as byte;
+	u[5] = (uv[1] >> 8) as byte;
+	u[6] = (uv[1] >> 16) as byte;
+	u[7] = (uv[1] >> 24) as byte;
+	u[8] = uv[2] as byte;
+	u[9] = (uv[2] >> 8) as byte;
+	u[10] = (uv[2] >> 16) as byte;
+	u[11] = (uv[2] >> 24) as byte;
+	u[12] = uv[3] as byte;
+	u[13] = (uv[3] >> 8) as byte;
+	u[14] = (uv[3] >> 16) as byte;
+	u[15] = (uv[3] >> 24) as byte;
+	u[16] = uv[4] as byte;
+	u[17] = (uv[4] >> 8) as byte;
+	u[18] = (uv[4] >> 16) as byte;
+	u[19] = (uv[4] >> 24) as byte;
+	u[20] = uv[5] as byte;
+	u[21] = (uv[5] >> 8) as byte;
+	u[22] = (uv[5] >> 16) as byte;
+	u[23] = (uv[5] >> 24) as byte;
+	u[24] = uv[6] as byte;
+	u[25] = (uv[6] >> 8) as byte;
+	u[26] = (uv[6] >> 16) as byte;
+	u[27] = (uv[6] >> 24) as byte;
+	u[28] = uv[7] as byte;
+	u[29] = (uv[7] >> 8) as byte;
+	u[30] = (uv[7] >> 16) as byte;
+	u[31] = (uv[7] >> 24) as byte;
 }
 
 x25519_base(u: *byte) {
 	bzero(u, 32);
-	u[0] = 9:byte;
+	u[0] = 9 as byte;
 }
 
 x25519(uk: *byte, u: *byte, k: *byte): int {
@@ -1264,12 +1264,12 @@ ed25519_set_lsb(xy: *int, lsb: int) {
 }
 
 ed25519_clamp(k: *int, b: *byte) {
-	k[0] = (b[0]:int | (b[1]:int << 8) | (b[2]:int << 16) | (b[3]:int << 24)) & -8;
-	k[1] = b[4]:int | (b[5]:int << 8) | (b[6]:int << 16) | (b[7]:int << 24);
-	k[2] = b[8]:int | (b[9]:int << 8) | (b[10]:int << 16) | (b[11]:int << 24);
-	k[3] = b[12]:int | (b[13]:int << 8) | (b[14]:int << 16) | (b[15]:int << 24);
-	k[4] = b[16]:int | (b[17]:int << 8) | (b[18]:int << 16) | (b[19]:int << 24);
-	k[5] = b[20]:int | (b[21]:int << 8) | (b[22]:int << 16) | (b[23]:int << 24);
-	k[6] = b[24]:int | (b[25]:int << 8) | (b[26]:int << 16) | (b[27]:int << 24);
-	k[7] = ((b[28]:int | (b[29]:int << 8) | (b[30]:int << 16) | (b[31]:int << 24)) & (-1 >> 33)) | (1 << 30);
+	k[0] = (b[0] as int | (b[1] as int << 8) | (b[2] as int << 16) | (b[3] as int << 24)) & -8;
+	k[1] = b[4] as int | (b[5] as int << 8) | (b[6] as int << 16) | (b[7] as int << 24);
+	k[2] = b[8] as int | (b[9] as int << 8) | (b[10] as int << 16) | (b[11] as int << 24);
+	k[3] = b[12] as int | (b[13] as int << 8) | (b[14] as int << 16) | (b[15] as int << 24);
+	k[4] = b[16] as int | (b[17] as int << 8) | (b[18] as int << 16) | (b[19] as int << 24);
+	k[5] = b[20] as int | (b[21] as int << 8) | (b[22] as int << 16) | (b[23] as int << 24);
+	k[6] = b[24] as int | (b[25] as int << 8) | (b[26] as int << 16) | (b[27] as int << 24);
+	k[7] = ((b[28] as int | (b[29] as int << 8) | (b[30] as int << 16) | (b[31] as int << 24)) & (-1 >> 33)) | (1 << 30);
 }

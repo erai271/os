@@ -51,27 +51,27 @@ cdie(c: *compiler, msg: *byte) {
 comp_setup(a: *alloc): *compiler {
 	var c: *compiler;
 
-	c = alloc(a, sizeof(*c)): *compiler;
+	c = alloc(a, sizeof(*c)) as *compiler;
 
 	c.a = a;
 
 	c.p = setup_parser(a);
 
-	c.filename = 0:*byte;
+	c.filename = 0 as *byte;
 	c.lineno = 0;
 	c.colno = 0;
 
 	c.s = setup_assembler(a);
 
-	c.decls = 0:*decl;
+	c.decls = 0 as *decl;
 
 	c.do_cout = 0;
-	c.cout = 0:*file;
+	c.cout = 0 as *file;
 
-	c.start = 0:*label;
-	c.kstart = 0:*label;
+	c.start = 0 as *label;
+	c.kstart = 0 as *label;
 
-	c.used_top = 0:*decl;
+	c.used_top = 0 as *decl;
 
 	return c;
 }
@@ -169,13 +169,13 @@ compile(c: *compiler, p: *node) {
 	}
 
 	// Check usage
-	d = find(c, "_start", 0:*byte, 0);
+	d = find(c, "_start", 0 as *byte, 0);
 	if (d && d.func_defined) {
 		c.start = d.func_label;
 		mark_func_used(c, d);
 	}
 
-	d = find(c, "_kstart", 0:*byte, 0);
+	d = find(c, "_kstart", 0 as *byte, 0);
 	if (d && d.func_defined) {
 		c.kstart = d.func_label;
 		mark_func_used(c, d);
@@ -233,7 +233,7 @@ mark_expr_used(c: *compiler, d: *decl, n: *node) {
 		}
 		return;
 	} else if kind == N_IDENT {
-		v = find(c, n.s, 0:*byte, 0);
+		v = find(c, n.s, 0 as *byte, 0);
 		if v && v.enum_defined {
 			return;
 		}
@@ -243,7 +243,7 @@ mark_expr_used(c: *compiler, d: *decl, n: *node) {
 			return;
 		}
 
-		v = find(c, n.s, 0:*byte, 0);
+		v = find(c, n.s, 0 as *byte, 0);
 		if v && v.func_defined {
 			mark_func_used(c, v);
 			return;
@@ -352,7 +352,7 @@ defextern(c: *compiler, n: *node): *decl {
 
 	t = prototype(c, n.b);
 
-	d = find(c, name, 0:*byte, 1);
+	d = find(c, name, 0 as *byte, 1);
 
 	if (d.func_defined) {
 		cdie(c, "duplicate function");
@@ -425,7 +425,7 @@ defstruct(c: *compiler, n: *node) {
 		cdie(c, "reserved word");
 	}
 
-	d = find(c, name, 0:*byte, 1);
+	d = find(c, name, 0 as *byte, 1);
 
 	if (d.struct_defined) {
 		cdie(c, "duplicate struct");
@@ -449,7 +449,7 @@ defunion(c: *compiler, n: *node) {
 		cdie(c, "reserved word");
 	}
 
-	d = find(c, name, 0:*byte, 1);
+	d = find(c, name, 0 as *byte, 1);
 
 	if (d.struct_defined) {
 		cdie(c, "duplicate struct");
@@ -476,7 +476,7 @@ defenum(c: *compiler, n: *node) {
 		c.colno = n.a.colno;
 
 		name = n.a.a.s;
-		d = find(c, name, 0:*byte, 1);
+		d = find(c, name, 0 as *byte, 1);
 
 		if (d.enum_defined) {
 			cdie(c, "duplicate enum");
@@ -622,7 +622,7 @@ compile_func(c: *compiler, d: *decl) {
 	fixup_label(c.s, d.func_label);
 	add_symbol(c.s, d.name, d.func_label);
 	emit_preamble(c.s, d.func_preamble, pragma);
-	compile_stmt(c, d, d.func_def.b, 0:*label, 0:*label);
+	compile_stmt(c, d, d.func_def.b, 0 as *label, 0 as *label);
 	emit_num(c.s, 0);
 
 	if (pragma) {
@@ -685,7 +685,7 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		}
 
 		if (n.a.kind == N_IDENT) {
-			v = find(c, n.a.s, 0:*byte, 0);
+			v = find(c, n.a.s, 0 as *byte, 0);
 			if (v && v.enum_defined) {
 				cdie(c, "type error");
 			}
@@ -694,13 +694,13 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 			if (v && v.var_defined) {
 				n.a.t = v.var_type;
 			} else if !strcmp(n.a.s, "_include") {
-				v = find(c, n.a.s, 0:*byte, 0);
+				v = find(c, n.a.s, 0 as *byte, 0);
 				if (!v || !v.func_defined) {
 					cdie(c, "no such function");
 				}
 				n.a.t = v.func_type;
 			} else {
-				v = find(c, n.a.s, 0:*byte, 0);
+				v = find(c, n.a.s, 0 as *byte, 0);
 				if (!v || !v.func_defined) {
 					cdie(c, "no such function");
 				}
@@ -717,7 +717,7 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		if (n.b) {
 			unify(c, n.a.t.arg, n.b.t);
 		} else {
-			unify(c, n.a.t.arg, 0: *type);
+			unify(c, n.a.t.arg, 0 as *type);
 		}
 
 		n.t = n.a.t.val;
@@ -744,7 +744,7 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 
 		n.t = v.member_type;
 	} else if (kind == N_IDENT) {
-		v = find(c, n.s, 0:*byte, 0);
+		v = find(c, n.s, 0 as *byte, 0);
 		if (v && v.enum_defined) {
 			n.t = mktype0(c, TY_INT);
 			return;
@@ -756,7 +756,7 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 			return;
 		}
 
-		v = find(c, n.s, 0:*byte, 0);
+		v = find(c, n.s, 0 as *byte, 0);
 		if (v && v.func_defined) {
 			n.t = v.func_type;
 			return;
@@ -1350,7 +1350,7 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		}
 
 		if (n.a.kind == N_IDENT) {
-			v = find(c, n.a.s, 0:*byte, 0);
+			v = find(c, n.a.s, 0 as *byte, 0);
 			if (v && v.enum_defined) {
 				cdie(c, "type error");
 			}
@@ -1361,10 +1361,10 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 				emit_load(c.s, n.a.t);
 				emit_call(c.s, count_args(c, n.a.t.arg));
 			} else if !strcmp(n.a.s, "_include") {
-				v = find(c, n.a.s, 0:*byte, 0);
+				v = find(c, n.a.s, 0 as *byte, 0);
 				compile_include(c, n);
 			} else {
-				v = find(c, n.a.s, 0:*byte, 0);
+				v = find(c, n.a.s, 0 as *byte, 0);
 				emit_lcall(c.s, v.func_label, count_args(c, n.a.t.arg));
 			}
 		} else {
@@ -1375,7 +1375,7 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		if (n.b) {
 			unify(c, n.a.t.arg, n.b.t);
 		} else {
-			unify(c, n.a.t.arg, 0: *type);
+			unify(c, n.a.t.arg, 0 as *type);
 		}
 	} else if (kind == N_DOT) {
 		compile_expr(c, d, n.a, 0);
@@ -1394,7 +1394,7 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 			emit_load(c.s, n.t);
 		}
 	} else if (kind == N_IDENT) {
-		v = find(c, n.s, 0:*byte, 0);
+		v = find(c, n.s, 0 as *byte, 0);
 		if (v && v.enum_defined) {
 			emit_num(c.s, v.enum_value);
 			return;
@@ -1409,7 +1409,7 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 			return;
 		}
 
-		v = find(c, n.s, 0:*byte, 0);
+		v = find(c, n.s, 0 as *byte, 0);
 		if (v && v.func_defined) {
 			emit_ptr(c.s, v.func_label);
 			return;
@@ -1663,7 +1663,7 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 	kind = n.kind;
 	if (kind == N_CONDLIST) {
 		ifout = mklabel(c.s);
-		no = 0: *label;
+		no = 0 as *label;
 		loop {
 			if (no) {
 				fixup_label(c.s, no);
@@ -1811,7 +1811,7 @@ emit_ssr(c: *compiler) {
 
 	as_opr(c.s, OP_PUSHR, R_RAX);
 
-	d = find(c, "_ssr", 0:*byte, 1);
+	d = find(c, "_ssr", 0 as *byte, 1);
 	if (d.func_defined && d.func_label.fixed) {
 		as_jmp(c.s, OP_CALL, d.func_label);
 	}
@@ -1928,7 +1928,7 @@ emit_isr(c: *compiler) {
 	as_modrm(c.s, OP_LOAD, R_RAX, R_RBP, 0, 0, 176 + 48);
 	as_modrm(c.s, OP_STORE, R_RAX, R_RBP, 0, 0, 152);
 
-	d = find(c, "_isr", 0:*byte, 1);
+	d = find(c, "_isr", 0 as *byte, 1);
 	if (d.func_defined && d.func_label.fixed) {
 		as_jmp(c.s, OP_CALL, d.func_label);
 	}
@@ -1975,7 +1975,7 @@ emit_isr(c: *compiler) {
 emit_builtin(c: *compiler) {
 	var d: *decl;
 
-	d = find(c, "syscall", 0:*byte, 1);
+	d = find(c, "syscall", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -1984,14 +1984,14 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "_restorer", 0:*byte, 1);
+	d = find(c, "_restorer", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
 		emit_restorer(c.s);
 	}
 
-	d = find(c, "_include", 0:*byte, 1);
+	d = find(c, "_include", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2001,7 +2001,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "ud2", 0:*byte, 1);
+	d = find(c, "ud2", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2011,7 +2011,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "cpuid", 0:*byte, 1);
+	d = find(c, "cpuid", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2037,7 +2037,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "inb", 0:*byte, 1);
+	d = find(c, "inb", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2048,7 +2048,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "outb", 0:*byte, 1);
+	d = find(c, "outb", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2060,7 +2060,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "inw", 0:*byte, 1);
+	d = find(c, "inw", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2072,7 +2072,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "outw", 0:*byte, 1);
+	d = find(c, "outw", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2085,7 +2085,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "ind", 0:*byte, 1);
+	d = find(c, "ind", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2096,7 +2096,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "outd", 0:*byte, 1);
+	d = find(c, "outd", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2108,7 +2108,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "rdmsr", 0:*byte, 1);
+	d = find(c, "rdmsr", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2122,7 +2122,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "wrmsr", 0:*byte, 1);
+	d = find(c, "wrmsr", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2137,7 +2137,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "rdcr0", 0:*byte, 1);
+	d = find(c, "rdcr0", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2147,7 +2147,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "wrcr0", 0:*byte, 1);
+	d = find(c, "wrcr0", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2158,7 +2158,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "rdcr2", 0:*byte, 1);
+	d = find(c, "rdcr2", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2168,7 +2168,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "wrcr2", 0:*byte, 1);
+	d = find(c, "wrcr2", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2179,7 +2179,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "rdcr3", 0:*byte, 1);
+	d = find(c, "rdcr3", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2189,7 +2189,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "wrcr3", 0:*byte, 1);
+	d = find(c, "wrcr3", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2200,7 +2200,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "rdcr4", 0:*byte, 1);
+	d = find(c, "rdcr4", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2210,7 +2210,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "wrcr4", 0:*byte, 1);
+	d = find(c, "wrcr4", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2221,7 +2221,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "lgdt", 0:*byte, 1);
+	d = find(c, "lgdt", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2238,7 +2238,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "lidt", 0:*byte, 1);
+	d = find(c, "lidt", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2255,7 +2255,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "lldt", 0:*byte, 1);
+	d = find(c, "lldt", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2266,7 +2266,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "ltr", 0:*byte, 1);
+	d = find(c, "ltr", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2277,7 +2277,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "lseg", 0:*byte, 1);
+	d = find(c, "lseg", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2313,7 +2313,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "hlt", 0:*byte, 1);
+	d = find(c, "hlt", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2323,7 +2323,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "cli", 0:*byte, 1);
+	d = find(c, "cli", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2333,7 +2333,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "sti", 0:*byte, 1);
+	d = find(c, "sti", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2343,7 +2343,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "rdflags", 0:*byte, 1);
+	d = find(c, "rdflags", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2352,7 +2352,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "wrflags", 0:*byte, 1);
+	d = find(c, "wrflags", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2364,7 +2364,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "wbinvld", 0:*byte, 1);
+	d = find(c, "wbinvld", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2375,7 +2375,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "invlpg", 0:*byte, 1);
+	d = find(c, "invlpg", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2386,21 +2386,21 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "_ssr0", 0:*byte, 1);
+	d = find(c, "_ssr0", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
 		emit_ssr(c);
 	}
 
-	d = find(c, "_isr0", 0:*byte, 1);
+	d = find(c, "_isr0", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
                 emit_isr(c);
 	}
 
-	d = find(c, "_rgs", 0:*byte, 1);
+	d = find(c, "_rgs", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2412,7 +2412,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "_r32", 0:*byte, 1);
+	d = find(c, "_r32", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2425,7 +2425,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "_w32", 0:*byte, 1);
+	d = find(c, "_w32", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2439,7 +2439,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "_r16", 0:*byte, 1);
+	d = find(c, "_r16", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2453,7 +2453,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "_w16", 0:*byte, 1);
+	d = find(c, "_w16", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2467,7 +2467,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "_rdrand", 0:*byte, 1);
+	d = find(c, "_rdrand", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2477,7 +2477,7 @@ emit_builtin(c: *compiler) {
 		emit_ret(c.s);
 	}
 
-	d = find(c, "taskswitch", 0:*byte, 1);
+	d = find(c, "taskswitch", 0 as *byte, 1);
 	if (d.func_defined && !d.func_label.fixed) {
 		fixup_label(c.s, d.func_label);
 		add_symbol(c.s, d.name, d.func_label);
@@ -2636,12 +2636,12 @@ main(argc: int, argv: **byte, envp: **byte) {
 			continue;
 		}
 
-		if (argv[i][0] == '-':byte) {
+		if (argv[i][0] == '-' as byte) {
 			die("invalid argument");
 		}
 
-		tmp = alloc(&a, sizeof(*tmp)):*name_node;
-		tmp.next = 0:*name_node;
+		tmp = alloc(&a, sizeof(*tmp)) as *name_node;
+		tmp.next = 0 as *name_node;
 		tmp.name = argv[i];
 		*link = tmp;
 		link = &tmp.next;

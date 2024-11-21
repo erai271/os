@@ -85,7 +85,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 			exit(1);
 		}
 
-		if fstat(fd, (&stat):*byte) < 0 {
+		if fstat(fd, (&stat) as *byte) < 0 {
 			fflush(stdout);
 			fdputs(2, "stat failed: ");
 			fdputs(2, name);
@@ -194,7 +194,7 @@ fputh(f: *file, x: int) {
 
 		i = i - 4;
 
-		fputc(f, "0123456789abcdef"[(x >> i) & 15]:int);
+		fputc(f, "0123456789abcdef"[(x >> i) & 15] as int);
 	}
 }
 

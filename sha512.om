@@ -101,7 +101,7 @@ sha512_rounds(ctx: *sha512_ctx, block: *byte) {
 	var _w: _sha512_block;
 	var w: *int;
 	var i: int;
-	w = (&_w):*int;
+	w = (&_w) as *int;
 
 	r.a = ctx.a;
 	r.b = ctx.b;
@@ -118,14 +118,14 @@ sha512_rounds(ctx: *sha512_ctx, block: *byte) {
 			break;
 		}
 
-		w[i] = (block[0]:int << 56)
-			| (block[1]:int << 48)
-			| (block[2]:int << 40)
-			| (block[3]:int << 32)
-			| (block[4]:int << 24)
-			| (block[5]:int << 16)
-			| (block[6]:int << 8)
-			| block[7]:int;
+		w[i] = (block[0] as int << 56)
+			| (block[1] as int << 48)
+			| (block[2] as int << 40)
+			| (block[3] as int << 32)
+			| (block[4] as int << 24)
+			| (block[5] as int << 16)
+			| (block[6] as int << 8)
+			| block[7] as int;
 
 		block = &block[8];
 		i = i + 1;
@@ -226,7 +226,7 @@ sha512_finish(ctx: *sha512_ctx, nblocks: int, data: *byte, len: int) {
 	var _final: _sha512_block;
 	var final: *byte;
 	var pad: int;
-	final = (&_final):*byte;
+	final = (&_final) as *byte;
 
 	pad = nblocks * 1024;
 	loop {
@@ -244,21 +244,21 @@ sha512_finish(ctx: *sha512_ctx, nblocks: int, data: *byte, len: int) {
 
 	bzero(final, 128);
 	memcpy(final, data, len);
-	final[len] = 0x80:byte;
+	final[len] = 0x80 as byte;
 
 	if len + 17 > 128 {
 		sha512_rounds(ctx, final);
 		bzero(final, 128);
 	}
 
-	final[120] = (pad >> 56):byte;
-	final[121] = (pad >> 48):byte;
-	final[122] = (pad >> 40):byte;
-	final[123] = (pad >> 32):byte;
-	final[124] = (pad >> 24):byte;
-	final[125] = (pad >> 16):byte;
-	final[126] = (pad >> 8):byte;
-	final[127] = pad:byte;
+	final[120] = (pad >> 56) as byte;
+	final[121] = (pad >> 48) as byte;
+	final[122] = (pad >> 40) as byte;
+	final[123] = (pad >> 32) as byte;
+	final[124] = (pad >> 24) as byte;
+	final[125] = (pad >> 16) as byte;
+	final[126] = (pad >> 8) as byte;
+	final[127] = pad as byte;
 
 	sha512_rounds(ctx, final);
 }
@@ -272,14 +272,14 @@ sha512_digest(digest: *byte, ctx: *sha512_ctx) {
 		if i == 8 {
 			break;
 		}
-		digest[0] = (r[i] >> 56):byte; digest = &digest[1];
-		digest[0] = (r[i] >> 48):byte; digest = &digest[1];
-		digest[0] = (r[i] >> 40):byte; digest = &digest[1];
-		digest[0] = (r[i] >> 32):byte; digest = &digest[1];
-		digest[0] = (r[i] >> 24):byte; digest = &digest[1];
-		digest[0] = (r[i] >> 16):byte; digest = &digest[1];
-		digest[0] = (r[i] >> 8):byte; digest = &digest[1];
-		digest[0] = r[i]:byte; digest = &digest[1];
+		digest[0] = (r[i] >> 56) as byte; digest = &digest[1];
+		digest[0] = (r[i] >> 48) as byte; digest = &digest[1];
+		digest[0] = (r[i] >> 40) as byte; digest = &digest[1];
+		digest[0] = (r[i] >> 32) as byte; digest = &digest[1];
+		digest[0] = (r[i] >> 24) as byte; digest = &digest[1];
+		digest[0] = (r[i] >> 16) as byte; digest = &digest[1];
+		digest[0] = (r[i] >> 8) as byte; digest = &digest[1];
+		digest[0] = r[i] as byte; digest = &digest[1];
 		i = i + 1;
 	}
 }
@@ -301,9 +301,9 @@ sha512_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	var ctx: sha512_ctx;
 	var i: int;
 
-	digest = (&_digest):*byte;
-	ipad = (&_ipad):*byte;
-	opad = (&_opad):*byte;
+	digest = (&_digest) as *byte;
+	ipad = (&_ipad) as *byte;
+	opad = (&_opad) as *byte;
 
 	if (klen <= 128) {
 		bzero(digest, 128);
@@ -318,8 +318,8 @@ sha512_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 			break;
 		}
 
-		ipad[i] = digest[i] ^ (0x36:byte);
-		opad[i] = digest[i] ^ (0x5c:byte);
+		ipad[i] = digest[i] ^ (0x36 as byte);
+		opad[i] = digest[i] ^ (0x5c as byte);
 
 		i = i + 1;
 	}
@@ -343,12 +343,12 @@ sha512_update(ctx: *sha512_ctx, msg: *byte, len: int) {
 	if o != 0 {
 		r = 128 - o;
 		if len < r {
-			memcpy(&(&ctx.block):*byte[o], msg, len);
+			memcpy(&(&ctx.block) as *byte[o], msg, len);
 			ctx.len = ctx.len + len;
 			return;
 		} else {
-			memcpy(&(&ctx.block):*byte[o], msg, r);
-			sha512_rounds(ctx, (&ctx.block):*byte);
+			memcpy(&(&ctx.block) as *byte[o], msg, r);
+			sha512_rounds(ctx, (&ctx.block) as *byte);
 			ctx.len = ctx.len + r;
 			len = len - r;
 			msg = &msg[r];
@@ -357,7 +357,7 @@ sha512_update(ctx: *sha512_ctx, msg: *byte, len: int) {
 
 	loop {
 		if len < 128 {
-			memcpy((&ctx.block):*byte, msg, len);
+			memcpy((&ctx.block) as *byte, msg, len);
 			ctx.len = ctx.len + len;
 			return;
 		}
@@ -371,6 +371,6 @@ sha512_update(ctx: *sha512_ctx, msg: *byte, len: int) {
 }
 
 sha512_final(digest: *byte, ctx: *sha512_ctx) {
-	sha512_finish(ctx, ctx.len >> 7, (&ctx.block):*byte, ctx.len & 127);
+	sha512_finish(ctx, ctx.len >> 7, (&ctx.block) as *byte, ctx.len & 127);
 	sha512_digest(digest, ctx);
 }

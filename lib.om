@@ -8,7 +8,7 @@ strlen(s: *byte): int {
 	var ret: int;
 	ret = 0;
 	loop {
-		if (s[ret] == 0:byte) {
+		if (s[ret] == 0 as byte) {
 			return ret;
 		}
 		ret = ret + 1;
@@ -51,7 +51,7 @@ strcmp(a: *byte, b: *byte): int {
 			return -1;
 		}
 
-		if (a[i] == 0:byte) {
+		if (a[i] == 0 as byte) {
 			return 0;
 		}
 
@@ -64,7 +64,7 @@ fdgetc(fd: int): int {
 	var ret: int;
 	ret = read(fd, &b, 1);
 	if (ret == 1) {
-		return b:int;
+		return b as int;
 	} else if (ret == 0) {
 		return -1;
 	} else {
@@ -75,7 +75,7 @@ fdgetc(fd: int): int {
 fdputc(fd: int, ch: int) {
 	var b: byte;
 	var ret: int;
-	b = ch: byte;
+	b = ch as byte;
 	ret = write(fd, &b, 1);
 	if (ret != 1) {
 		exit(3);
@@ -111,7 +111,7 @@ fdputh(fd: int, n: int) {
 		fdputh(fd, n);
 	}
 
-	fdputc(fd, "0123456789abcdef"[d]:int);
+	fdputc(fd, "0123456789abcdef"[d] as int);
 }
 
 fdputhn(fd: int, x: int, d: int) {
@@ -120,7 +120,7 @@ fdputhn(fd: int, x: int, d: int) {
 			break;
 		}
 		d = d - 4;
-		fdputc(fd, "0123456789abcdef"[(x >> d) & 15]:int);
+		fdputc(fd, "0123456789abcdef"[(x >> d) & 15] as int);
 	}
 }
 
@@ -175,8 +175,8 @@ xxd_line(line: *byte, offset: int, data: *byte, len: int) {
 	line[i + 5] = d[(offset >> 8) & 15];
 	line[i + 6] = d[(offset >> 4) & 15];
 	line[i + 7] = d[offset & 15];
-	line[i + 8] = ':':byte;
-	line[i + 9] = ' ':byte;
+	line[i + 8] = ':' as byte;
+	line[i + 9] = ' ' as byte;
 
 	i = i + 10;
 
@@ -187,28 +187,28 @@ xxd_line(line: *byte, offset: int, data: *byte, len: int) {
 		}
 
 		if j < len {
-			line[i] = d[(data[j]:int >> 4) & 15];
-			line[i + 1] = d[data[j]:int & 15];
+			line[i] = d[(data[j] as int >> 4) & 15];
+			line[i + 1] = d[data[j] as int & 15];
 		} else {
-			line[i] = ' ':byte;
-			line[i + 1] = ' ':byte;
+			line[i] = ' ' as byte;
+			line[i + 1] = ' ' as byte;
 		}
 
 		if j + 1 < len {
-			line[i + 2] = d[(data[j + 1]:int >> 4) & 15];
-			line[i + 3] = d[data[j + 1]:int & 15];
+			line[i + 2] = d[(data[j + 1] as int >> 4) & 15];
+			line[i + 3] = d[data[j + 1] as int & 15];
 		} else {
-			line[i + 2] = ' ':byte;
-			line[i + 3] = ' ':byte;
+			line[i + 2] = ' ' as byte;
+			line[i + 3] = ' ' as byte;
 		}
 
-		line[i + 4] = ' ':byte;
+		line[i + 4] = ' ' as byte;
 
 		j = j + 2;
 		i = i + 5;
 	}
 
-	line[i] = ' ':byte;
+	line[i] = ' ' as byte;
 	i = i + 1;
 
 	j = 0;
@@ -217,20 +217,20 @@ xxd_line(line: *byte, offset: int, data: *byte, len: int) {
 			break;
 		}
 
-		if data[j]:int >= 0x20 && data[j]:int < 0x80 {
+		if data[j] as int >= 0x20 && data[j] as int < 0x80 {
 			line[i] = data[j];
 		} else {
-			line[i] = '.':byte;
+			line[i] = '.' as byte;
 		}
 
 		j = j + 1;
 		i = i + 1;
 	}
 
-	line[i] = '\n':byte;
+	line[i] = '\n' as byte;
 	i = i + 1;
 
-	line[i] = 0:byte;
+	line[i] = 0 as byte;
 }
 
 fdxxd(fd: int, data: *byte, len: int) {
@@ -254,14 +254,14 @@ fdxxd(fd: int, data: *byte, len: int) {
 			}
 
 			if i + j < len {
-				fdputh8(fd, data[i + j]: int);
+				fdputh8(fd, data[i + j] as int);
 			} else {
 				fdputc(fd, ' ');
 				fdputc(fd, ' ');
 			}
 
 			if i + j + 1 < len {
-				fdputh8(fd, data[i + j + 1]: int);
+				fdputh8(fd, data[i + j + 1] as int);
 			} else {
 				fdputc(fd, ' ');
 				fdputc(fd, ' ');
@@ -280,8 +280,8 @@ fdxxd(fd: int, data: *byte, len: int) {
 				break;
 			}
 
-			if data[i + j]:int >= 0x20 && data[i + j]:int < 0x80 {
-				fdputc(fd, data[i + j]: int);
+			if data[i + j] as int >= 0x20 && data[i + j] as int < 0x80 {
+				fdputc(fd, data[i + j] as int);
 			} else {
 				fdputc(fd, '.');
 			}
@@ -302,7 +302,7 @@ bzero(s: *byte, size: int) {
 		if i == size {
 			break;
 		}
-		s[i] = 0:byte;
+		s[i] = 0 as byte;
 		i = i + 1;
 	}
 }
@@ -319,7 +319,7 @@ memset(dest: *byte, c: int, size: int) {
 		if i == size {
 			break;
 		}
-		dest[i] = c:byte;
+		dest[i] = c as byte;
 		i = i + 1;
 	}
 }
@@ -361,7 +361,7 @@ unhex(dest: *byte, src: *byte): int {
 	i = 0;
 	dlen = 0;
 	loop {
-		x = src[i]:int;
+		x = src[i] as int;
 
 		if x == 0 {
 			break;
@@ -383,7 +383,7 @@ unhex(dest: *byte, src: *byte): int {
 			continue;
 		}
 
-		y = src[i + 1]:int;
+		y = src[i + 1] as int;
 
 		if y == 0 {
 			break;
@@ -400,7 +400,7 @@ unhex(dest: *byte, src: *byte): int {
 			continue;
 		}
 
-		dest[dlen] = ((x << 4) | y):byte;
+		dest[dlen] = ((x << 4) | y) as byte;
 		dlen = dlen + 1;
 		i = i + 2;
 	}
@@ -488,7 +488,7 @@ hex2int(s: *byte, len: int, ok: *int): int {
 			break;
 		}
 
-		d = s[i]:int;
+		d = s[i] as int;
 
 		if d == '_' {
 			i = i + 1;
@@ -537,7 +537,7 @@ dec2int(s: *byte, len: int, ok: *int): int {
 			break;
 		}
 
-		d = s[i]:int;
+		d = s[i] as int;
 		if d == '_' {
 			i = i + 1;
 			continue;
@@ -596,7 +596,7 @@ unescape(s: *byte, i: *int, len: int, ok: *int): int {
 		return 0;
 	}
 
-	ch = s[*i]:int;
+	ch = s[*i] as int;
 	*i = *i + 1;
 
 	if ch != '\\' {
@@ -608,7 +608,7 @@ unescape(s: *byte, i: *int, len: int, ok: *int): int {
 		return 0;
 	}
 
-	ch = s[*i]:int;
+	ch = s[*i] as int;
 	*i = *i + 1;
 
 	if ch == 't' {
@@ -629,7 +629,7 @@ unescape(s: *byte, i: *int, len: int, ok: *int): int {
 			return 0;
 		}
 
-		ch = s[*i]:int;
+		ch = s[*i] as int;
 		*i = *i + 1;
 
 		hex = hexdig(ch, ok) * 16;
@@ -642,7 +642,7 @@ unescape(s: *byte, i: *int, len: int, ok: *int): int {
 			return 0;
 		}
 
-		ch = s[*i]:int;
+		ch = s[*i] as int;
 		*i = *i + 1;
 
 		hex = hex | hexdig(ch, ok);

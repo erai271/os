@@ -9,7 +9,7 @@ struct alloc {
 }
 
 setup_alloc(c: *alloc) {
-	c.page = 0: *page;
+	c.page = 0 as *page;
 }
 
 alloc(c: *alloc, size: int): *byte {
@@ -29,16 +29,16 @@ alloc(c: *alloc, size: int): *byte {
 		if (mret == -1) {
 			die("out of memory");
 		}
-		ret = mret: *byte;
+		ret = mret as *byte;
 		return ret;
 	}
 
 	page = c.page;
 	if (page) {
 		if (size <= page.size - page.fill) {
-			mret = page.ptr:int + page.fill;
+			mret = page.ptr as int + page.fill;
 			page.fill = page.fill + size;
-			ret = mret: *byte;
+			ret = mret as *byte;
 			return ret;
 		}
 	}
@@ -50,8 +50,8 @@ alloc(c: *alloc, size: int): *byte {
 		die("out of memory");
 	}
 
-	page = mret: *page;
-	page.ptr = (&page[1]): *byte;
+	page = mret as *page;
+	page.ptr = (&page[1]) as *byte;
 	ret = page.ptr;
 	page.size = psize - sizeof(*page);
 	page.fill = size;

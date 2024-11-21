@@ -74,26 +74,26 @@ enum {
 
 mknode(c: *parser, kind: int, a: *node, b: *node): *node {
 	var ret: *node;
-	ret = alloc(c.a, sizeof(*ret)):*node;
+	ret = alloc(c.a, sizeof(*ret)) as *node;
 	ret.kind = kind;
 	ret.a = a;
 	ret.b = b;
-	ret.filename = 0:*byte;
+	ret.filename = 0 as *byte;
 	ret.lineno = 0;
 	ret.colno = 0;
 	ret.n = 0;
-	ret.s = 0:*byte;
-	ret.t = 0:*type;
+	ret.s = 0 as *byte;
+	ret.t = 0 as *type;
 	fillpos(c, ret);
 	return ret;
 }
 
 mknode0(c: *parser, kind: int): *node {
-	return mknode(c, kind, 0:*node, 0:*node);
+	return mknode(c, kind, 0 as *node, 0 as *node);
 }
 
 mknode1(c: *parser, kind: int, a: *node): *node {
-	return mknode(c, kind, a, 0:*node);
+	return mknode(c, kind, a, 0 as *node);
 }
 
 concat_program(a: *node, b: *node): *node {
@@ -203,15 +203,15 @@ show_node(out: *file, n: *node) {
 		fputc(out, '"');
 		i = 0;
 		loop {
-			ch = n.s[i]:int;
+			ch = n.s[i] as int;
 			if !ch {
 				break;
 			}
 			if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
 				fputc(out, '\\');
 				fputc(out, 'x');
-				fputc(out, hex[ch >> 4]:int);
-				fputc(out, hex[ch & 15]:int);
+				fputc(out, hex[ch >> 4] as int);
+				fputc(out, hex[ch & 15] as int);
 			} else {
 				fputc(out, ch);
 			}

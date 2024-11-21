@@ -92,7 +92,7 @@ fail(c: *peg) {
 		c.fail_tag = c.tag;
 		c.fail_line = c.line;
 		c.fail_col = c.col;
-		c.fail_literal = 0:*byte;
+		c.fail_literal = 0 as *byte;
 	}
 
 	c.sp = c.sp - 1;
@@ -111,7 +111,7 @@ get(c: *peg): int {
 		return -1;
 	}
 
-	ch = c.src[c.pos]:int;
+	ch = c.src[c.pos] as int;
 	c.pos = c.pos + 1;
 	c.col = c.col + 1;
 
@@ -138,7 +138,7 @@ literal(c: *peg, s: *byte): int {
 		}
 
 		ch = get(c);
-		if ch != (s[i]:int) {
+		if ch != (s[i] as int) {
 			fail(c);
 			c.fail_literal = s;
 			return 0;
@@ -175,13 +175,13 @@ leave(c: *peg, tag: int) {
 	if c.op == c.cap {
 		if c.cap == 0 {
 			c.cap = 1024;
-			c.out = alloc(c.a, c.cap * sizeof(c.out[0])):*peg_op;
+			c.out = alloc(c.a, c.cap * sizeof(c.out[0])) as *peg_op;
 		} else {
 			c.cap = c.cap * 2;
 			tmp = alloc(c.a, c.cap * sizeof(c.out[0]));
-			memcpy(tmp, c.out:*byte, c.op * sizeof(c.out[0]));
-			free(c.a, c.out:*byte);
-			c.out = tmp:*peg_op;
+			memcpy(tmp, c.out as *byte, c.op * sizeof(c.out[0]));
+			free(c.a, c.out as *byte);
+			c.out = tmp as *peg_op;
 		}
 	}
 
@@ -209,7 +209,7 @@ charset(c: *peg, s: *byte): int {
 			return 0;
 		}
 
-		if ch == (s[i]:int) {
+		if ch == (s[i] as int) {
 			break;
 		}
 
@@ -236,7 +236,7 @@ construct(c: *peg, sp: int): *peg_node {
 	var n: *peg_node;
 	var link: **peg_node;
 
-	c.nstack[0] = 0:*peg_node;
+	c.nstack[0] = 0 as *peg_node;
 
 	i = 0;
 	loop {
@@ -245,11 +245,11 @@ construct(c: *peg, sp: int): *peg_node {
 		}
 
 		if c.out[i].tag != sp {
-			n = alloc(c.a, sizeof(*n)):*peg_node;
+			n = alloc(c.a, sizeof(*n)) as *peg_node;
 
 			n.tag = c.out[i].tag;
-			n.next = 0:*peg_node;
-			n.child = 0:*peg_node;
+			n.next = 0 as *peg_node;
+			n.child = 0 as *peg_node;
 			n.str = &c.src[c.out[i].start];
 			n.len = c.out[i].end - c.out[i].start;
 			n.filename = c.filename;
@@ -281,7 +281,7 @@ construct(c: *peg, sp: int): *peg_node {
 				die("node overflow");
 			}
 		} else {
-			n = 0:*peg_node;
+			n = 0 as *peg_node;
 		}
 
 		c.nstack[c.np] = n;
@@ -294,7 +294,7 @@ construct(c: *peg, sp: int): *peg_node {
 peg_new(filename: *byte, src: *byte, len: int, a: *alloc, grammar: (func(c:*peg):int), tag_to_str: (func(t:int):*byte)): *peg {
 	var c: *peg;
 
-	c = alloc(a, sizeof(*c)):*peg;
+	c = alloc(a, sizeof(*c)) as *peg;
 
 	c.a = a;
 
@@ -315,19 +315,19 @@ peg_new(filename: *byte, src: *byte, len: int, a: *alloc, grammar: (func(c:*peg)
 	c.fail_tag = 0;
 	c.fail_line = 0;
 	c.fail_col = 0;
-	c.fail_literal = 0:*byte;
+	c.fail_literal = 0 as *byte;
 
 	c.limit = 1024;
-	c.stack = alloc(a, c.limit * sizeof(*c.stack)):*peg_frame;
+	c.stack = alloc(a, c.limit * sizeof(*c.stack)) as *peg_frame;
 	c.sp = 0;
 
 	c.depth = 0;
 	c.op = 0;
-	c.out = 0:*peg_op;
+	c.out = 0 as *peg_op;
 	c.cap = 0;
 
 	c.ncap = 1024;
-	c.nstack = alloc(a, c.ncap * sizeof(*c.nstack)):**peg_node;
+	c.nstack = alloc(a, c.ncap * sizeof(*c.nstack)) as **peg_node;
 	c.np = 0;
 
 	return c;
@@ -369,7 +369,7 @@ peg_reset(c: *peg, filename: *byte, src: *byte, len: int) {
 	c.fail_tag = 0;
 	c.fail_line = 0;
 	c.fail_col = 0;
-	c.fail_literal = 0:*byte;
+	c.fail_literal = 0 as *byte;
 	c.depth = 0;
 	c.sp = 0;
 	c.op = 0;
@@ -377,10 +377,10 @@ peg_reset(c: *peg, filename: *byte, src: *byte, len: int) {
 }
 
 peg_free(c: *peg) {
-	free(c.a, c.stack: *byte);
-	free(c.a, c.nstack: *byte);
-	free(c.a, c.out: *byte);
-	free(c.a, c: *byte);
+	free(c.a, c.stack as *byte);
+	free(c.a, c.nstack as *byte);
+	free(c.a, c.out as *byte);
+	free(c.a, c as *byte);
 }
 
 peg_show(c: *peg, out: *file, n: *peg_node) {
@@ -411,12 +411,12 @@ peg_show(c: *peg, out: *file, n: *peg_node) {
 				break;
 			}
 
-			ch = n.str[i]:int;
+			ch = n.str[i] as int;
 			if ch < 32 || ch > 127 || ch == '\\' || ch == '"' {
 				fputc(out, '\\');
 				fputc(out, 'x');
-				fputc(out, hex[ch >> 4]:int);
-				fputc(out, hex[ch & 15]:int);
+				fputc(out, hex[ch >> 4] as int);
+				fputc(out, hex[ch & 15] as int);
 			} else {
 				fputc(out, ch);
 			}

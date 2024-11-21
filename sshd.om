@@ -18,12 +18,12 @@ read_line(fd: int, buf: *byte, max: int): int {
 			return 0;
 		}
 
-		if c == '\n':byte {
-			buf[len] = 0:byte;
+		if c == '\n' as byte {
+			buf[len] = 0 as byte;
 			return len;
 		}
 
-		if c == '\r':byte {
+		if c == '\r' as byte {
 			continue;
 		}
 
@@ -81,7 +81,7 @@ read_rand(buf: *byte, n: int) {
 		if i == n {
 			break;
 		}
-		buf[i] = _rdrand():byte;
+		buf[i] = _rdrand() as byte;
 		i = i + 1;
 	}
 }
@@ -106,39 +106,39 @@ read_frame(ctx: *sshd_ctx) {
 	var _mac: _sha256_digest;
 	var mac: *byte;
 
-	nonce = (&_nonce):*byte;
-	mackey = (&_mackey):*byte;
-	mac  = (&_mac):*byte;
+	nonce = (&_nonce) as *byte;
+	mackey = (&_mackey) as *byte;
+	mac  = (&_mac) as *byte;
 
 	if read_fill(ctx.fd, ctx.buf, 4) != 0 {
 		die("truncated");
 	}
 
 	if ctx.en_client_to_server {
-		nonce[0] = 0:byte;
-		nonce[1] = 0:byte;
-		nonce[2] = 0:byte;
-		nonce[3] = 0:byte;
-		nonce[4] = (ctx.seq_client_to_server >> 56):byte;
-		nonce[5] = (ctx.seq_client_to_server >> 48):byte;
-		nonce[6] = (ctx.seq_client_to_server >> 40):byte;
-		nonce[7] = (ctx.seq_client_to_server >> 32):byte;
-		nonce[8] = (ctx.seq_client_to_server >> 24):byte;
-		nonce[9] = (ctx.seq_client_to_server >> 16):byte;
-		nonce[10] = (ctx.seq_client_to_server >> 8):byte;
-		nonce[11] = ctx.seq_client_to_server:byte;
+		nonce[0] = 0 as byte;
+		nonce[1] = 0 as byte;
+		nonce[2] = 0 as byte;
+		nonce[3] = 0 as byte;
+		nonce[4] = (ctx.seq_client_to_server >> 56) as byte;
+		nonce[5] = (ctx.seq_client_to_server >> 48) as byte;
+		nonce[6] = (ctx.seq_client_to_server >> 40) as byte;
+		nonce[7] = (ctx.seq_client_to_server >> 32) as byte;
+		nonce[8] = (ctx.seq_client_to_server >> 24) as byte;
+		nonce[9] = (ctx.seq_client_to_server >> 16) as byte;
+		nonce[10] = (ctx.seq_client_to_server >> 8) as byte;
+		nonce[11] = ctx.seq_client_to_server as byte;
 
 		seq = 0;
-		chacha20_stream((&tmp):*byte, ctx.buf, 4, &seq, &((&ctx.ek_client_to_server):*byte)[32], nonce);
+		chacha20_stream((&tmp) as *byte, ctx.buf, 4, &seq, &((&ctx.ek_client_to_server) as *byte)[32], nonce);
 
 		minlen = 16;
 		align = 8;
 		maclen = 16;
 
-		len = ((&tmp):*byte)[3]:int
-			| (((&tmp):*byte)[2]:int << 8)
-			| (((&tmp):*byte)[1]:int << 16)
-			| (((&tmp):*byte)[0]:int << 24);
+		len = ((&tmp) as *byte)[3] as int
+			| (((&tmp) as *byte)[2] as int << 8)
+			| (((&tmp) as *byte)[1] as int << 16)
+			| (((&tmp) as *byte)[0] as int << 24);
 
 		if len % align != 0 {
 			die("not aligned");
@@ -148,10 +148,10 @@ read_frame(ctx: *sshd_ctx) {
 		align = 8;
 		maclen = 0;
 
-		len = ctx.buf[3]:int
-			| (ctx.buf[2]:int << 8)
-			| (ctx.buf[1]:int << 16)
-			| (ctx.buf[0]:int << 24);
+		len = ctx.buf[3] as int
+			| (ctx.buf[2] as int << 8)
+			| (ctx.buf[1] as int << 16)
+			| (ctx.buf[0] as int << 24);
 
 		if (len + 4) % align != 0 {
 			die("not aligned");
@@ -173,17 +173,17 @@ read_frame(ctx: *sshd_ctx) {
 	if ctx.en_client_to_server {
 		bzero(mackey, 64);
 		seq = 0;
-		chacha20_stream(mackey, mackey, 64, &seq, (&ctx.ek_client_to_server):*byte, nonce);
+		chacha20_stream(mackey, mackey, 64, &seq, (&ctx.ek_client_to_server) as *byte, nonce);
 		poly1305(mac, mackey, ctx.buf, len + 4);
 		if memcmp(mac, &ctx.buf[len + 4], 16) {
 			die("mac");
 		}
-		memcpy(ctx.buf, (&tmp):*byte, 4);
+		memcpy(ctx.buf, (&tmp) as *byte, 4);
 		seq = 64;
-		chacha20_stream(&ctx.buf[4], &ctx.buf[4], len, &seq, (&ctx.ek_client_to_server):*byte, nonce);
+		chacha20_stream(&ctx.buf[4], &ctx.buf[4], len, &seq, (&ctx.ek_client_to_server) as *byte, nonce);
 	}
 
-	padlen = ctx.buf[4]:int;
+	padlen = ctx.buf[4] as int;
 
 	if padlen < 4 || padlen > len - 1 {
 		die("bad padding");
@@ -207,8 +207,8 @@ write_frame(ctx: *sshd_ctx) {
 	var _mackey: _sha512_digest;
 	var mackey: *byte;
 
-	nonce = (&_nonce):*byte;
-	mackey = (&_mackey):*byte;
+	nonce = (&_nonce) as *byte;
+	mackey = (&_mackey) as *byte;
 
 	if ctx.en_server_to_client {
 		minlen = 16;
@@ -216,18 +216,18 @@ write_frame(ctx: *sshd_ctx) {
 		maclen = 16;
 		padlen = align - ((ctx.framelen + 1) % align);
 
-		nonce[0] = 0:byte;
-		nonce[1] = 0:byte;
-		nonce[2] = 0:byte;
-		nonce[3] = 0:byte;
-		nonce[4] = (ctx.seq_server_to_client >> 56):byte;
-		nonce[5] = (ctx.seq_server_to_client >> 48):byte;
-		nonce[6] = (ctx.seq_server_to_client >> 40):byte;
-		nonce[7] = (ctx.seq_server_to_client >> 32):byte;
-		nonce[8] = (ctx.seq_server_to_client >> 24):byte;
-		nonce[9] = (ctx.seq_server_to_client >> 16):byte;
-		nonce[10] = (ctx.seq_server_to_client >> 8):byte;
-		nonce[11] = ctx.seq_server_to_client:byte;
+		nonce[0] = 0 as byte;
+		nonce[1] = 0 as byte;
+		nonce[2] = 0 as byte;
+		nonce[3] = 0 as byte;
+		nonce[4] = (ctx.seq_server_to_client >> 56) as byte;
+		nonce[5] = (ctx.seq_server_to_client >> 48) as byte;
+		nonce[6] = (ctx.seq_server_to_client >> 40) as byte;
+		nonce[7] = (ctx.seq_server_to_client >> 32) as byte;
+		nonce[8] = (ctx.seq_server_to_client >> 24) as byte;
+		nonce[9] = (ctx.seq_server_to_client >> 16) as byte;
+		nonce[10] = (ctx.seq_server_to_client >> 8) as byte;
+		nonce[11] = ctx.seq_server_to_client as byte;
 	} else {
 		minlen = 16;
 		align = 8;
@@ -254,21 +254,21 @@ write_frame(ctx: *sshd_ctx) {
 	len = padlen + ctx.framelen + 1;
 
 	ctx.frame = &ctx.frame[-5];
-	ctx.frame[0] = (len >> 24):byte;
-	ctx.frame[1] = (len >> 16):byte;
-	ctx.frame[2] = (len >> 8):byte;
-	ctx.frame[3] = len:byte;
-	ctx.frame[4] = padlen:byte;
+	ctx.frame[0] = (len >> 24) as byte;
+	ctx.frame[1] = (len >> 16) as byte;
+	ctx.frame[2] = (len >> 8) as byte;
+	ctx.frame[3] = len as byte;
+	ctx.frame[4] = padlen as byte;
 	read_rand(&ctx.frame[ctx.framelen + 5], padlen);
 	ctx.framelen = ctx.framelen + 5 + padlen;
 
 	if ctx.en_server_to_client {
 		seq = 0;
-		chacha20_stream(ctx.buf, ctx.buf, 4, &seq, &((&ctx.ek_server_to_client):*byte)[32], nonce);
+		chacha20_stream(ctx.buf, ctx.buf, 4, &seq, &((&ctx.ek_server_to_client) as *byte)[32], nonce);
 		seq = 0;
-		chacha20_stream(mackey, mackey, 64, &seq, (&ctx.ek_server_to_client):*byte, nonce);
+		chacha20_stream(mackey, mackey, 64, &seq, (&ctx.ek_server_to_client) as *byte, nonce);
 		seq = 64;
-		chacha20_stream(&ctx.buf[4], &ctx.buf[4], len, &seq, (&ctx.ek_server_to_client):*byte, nonce);
+		chacha20_stream(&ctx.buf[4], &ctx.buf[4], len, &seq, (&ctx.ek_server_to_client) as *byte, nonce);
 		poly1305(&ctx.buf[len + 4], mackey, ctx.buf, len + 4);
 	}
 
@@ -365,7 +365,7 @@ doversion(ctx: *sshd_ctx) {
 
 	ctx.cver = alloc(ctx.a, n + 1);
 	memcpy(ctx.cver, ctx.buf, n);
-	ctx.cver[n] = 0:byte;
+	ctx.cver[n] = 0 as byte;
 
 	if writeall(ctx.fd, ctx.sver, strlen(ctx.sver)) != 0 {
 		die("write truncated");
@@ -431,7 +431,7 @@ decode_u8(s: *int, ctx: *sshd_ctx) {
 	if ctx.framelen < 1 || ctx.index > ctx.framelen - 1 {
 		die("u8 truncated");
 	}
-	*s = ctx.frame[ctx.index]:int;
+	*s = ctx.frame[ctx.index] as int;
 	ctx.index = ctx.index + 1;
 }
 
@@ -439,10 +439,10 @@ decode_u32(s: *int, ctx: *sshd_ctx) {
 	if ctx.framelen < 4 || ctx.index > ctx.framelen - 4 {
 		die("u32 truncated");
 	}
-	*s = (ctx.frame[ctx.index]:int << 24)
-		| (ctx.frame[ctx.index + 1]: int << 16)
-		| (ctx.frame[ctx.index + 2]: int << 8)
-		| ctx.frame[ctx.index + 3]: int;
+	*s = (ctx.frame[ctx.index] as int << 24)
+		| (ctx.frame[ctx.index + 1] as int << 16)
+		| (ctx.frame[ctx.index + 2] as int << 8)
+		| ctx.frame[ctx.index + 3] as int;
 	ctx.index = ctx.index + 4;
 }
 
@@ -604,7 +604,7 @@ encode_u8(x: *int, ctx: *sshd_ctx) {
 	if ctx.framelen < 1 || ctx.index > ctx.framelen - 1 {
 		die("u8 truncated");
 	}
-	ctx.frame[ctx.index] = (*x):byte;
+	ctx.frame[ctx.index] = (*x) as byte;
 	ctx.index = ctx.index + 1;
 }
 
@@ -626,10 +626,10 @@ encode_u32(x: *int, ctx: *sshd_ctx) {
 	if ctx.framelen < 4 || ctx.index > ctx.framelen - 4 {
 		die("u32 truncated");
 	}
-	ctx.frame[ctx.index] = (*x >> 24): byte;
-	ctx.frame[ctx.index + 1] = (*x >> 16): byte;
-	ctx.frame[ctx.index + 2] = (*x >> 8): byte;
-	ctx.frame[ctx.index + 3] = (*x): byte;
+	ctx.frame[ctx.index] = (*x >> 24) as byte;
+	ctx.frame[ctx.index + 1] = (*x >> 16) as byte;
+	ctx.frame[ctx.index + 2] = (*x >> 8) as byte;
+	ctx.frame[ctx.index + 3] = (*x) as byte;
 	ctx.index = ctx.index + 4;
 }
 
@@ -766,13 +766,13 @@ encode_ecdh_reply(dh: *ssh_ecdh_reply, ctx: *sshd_ctx) {
 
 ssh_u32_sha256_update(ctx: *sha256_ctx, n: int) {
 	var a: byte;
-	a = (n >> 24):byte;
+	a = (n >> 24) as byte;
 	sha256_update(ctx, &a, 1);
-	a = (n >> 16):byte;
+	a = (n >> 16) as byte;
 	sha256_update(ctx, &a, 1);
-	a = (n >> 8):byte;
+	a = (n >> 8) as byte;
 	sha256_update(ctx, &a, 1);
-	a = n:byte;
+	a = n as byte;
 	sha256_update(ctx, &a, 1);
 }
 
@@ -795,7 +795,7 @@ ssh_mpint_sha256_update(ctx: *sha256_ctx, b: *byte, n: int) {
 			break;
 		}
 
-		if b[0]:int != 0 {
+		if b[0] as int != 0 {
 			break;
 		}
 
@@ -803,9 +803,9 @@ ssh_mpint_sha256_update(ctx: *sha256_ctx, b: *byte, n: int) {
 		n = n - 1;
 	}
 
-	if b[0]:int & 128 {
+	if b[0] as int & 128 {
 		ssh_u32_sha256_update(ctx, n + 1);
-		a = 0:byte;
+		a = 0 as byte;
 		sha256_update(ctx, &a, 1);
 		sha256_update(ctx, b, n);
 	} else {
@@ -1019,7 +1019,7 @@ struct ssh_channel_request {
 
 decode_channel_request(p: *ssh_channel_request, ctx: *sshd_ctx) {
 	var tag: int;
-	bzero(p:*byte, sizeof(*p));
+	bzero(p as *byte, sizeof(*p));
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_CHANNEL_REQUEST {
 		die("not a channel_request");
@@ -1138,9 +1138,9 @@ dokex(ctx: *sshd_ctx) {
 	}
 
 	// -> SSH_MSG_KEXINIT
-	read_rand((&cookie): *byte, 16);
+	read_rand((&cookie) as *byte, 16);
 	skex.cookie.len = 16;
-	skex.cookie.s = (&cookie): *byte;
+	skex.cookie.s = (&cookie) as *byte;
 	set_str(&skex.kex_algorithms, "curve25519-sha256");
 	set_str(&skex.server_host_key_algorithms, "ssh-ed25519");
 	set_str(&skex.encryption_algorithms_client_to_server, "chacha20-poly1305@openssh.com");
@@ -1168,22 +1168,22 @@ dokex(ctx: *sshd_ctx) {
 		die("bad ecdh_init");
 	}
 
-	read_rand((&rs):*byte, 32);
+	read_rand((&rs) as *byte, 32);
 
-	x25519_base((&qs):*byte);
+	x25519_base((&qs) as *byte);
 
-	if !x25519((&qs):*byte, (&qs):*byte, (&rs):*byte) {
+	if !x25519((&qs) as *byte, (&qs) as *byte, (&rs) as *byte) {
 		die("bad x25519 server");
 	}
 
-	if !x25519((&k):*byte, cdh.qc.s, (&rs):*byte) {
+	if !x25519((&k) as *byte, cdh.qc.s, (&rs) as *byte) {
 		die("bad x25519 client");
 	}
 
-	set_blob(&sdh.ks, "ssh-ed25519", (&ctx.pub):*byte, 32);
-	sdh.qs.s = (&qs):*byte;
+	set_blob(&sdh.ks, "ssh-ed25519", (&ctx.pub) as *byte, 32);
+	sdh.qs.s = (&qs) as *byte;
 	sdh.qs.len = 32;
-	set_blob(&sdh.sig, "ssh-ed25519", (&sig):*byte, 64);
+	set_blob(&sdh.sig, "ssh-ed25519", (&sig) as *byte, 64);
 
 	sha256_init(&ehctx);
 	ssh_str_sha256_update(&ehctx, ctx.cver, strlen(ctx.cver));
@@ -1192,30 +1192,30 @@ dokex(ctx: *sshd_ctx) {
 	ssh_str_sha256_update(&ehctx, ctx.skex, ctx.skexlen);
 	ssh_blob_sha256_update(&ehctx, &sdh.ks);
 	ssh_str_sha256_update(&ehctx, cdh.qc.s, 32);
-	ssh_str_sha256_update(&ehctx, (&qs):*byte, 32);
-	ssh_mpint_sha256_update(&ehctx, (&k):*byte, 32);
-	sha256_final((&eh):*byte, &ehctx);
+	ssh_str_sha256_update(&ehctx, (&qs) as *byte, 32);
+	ssh_mpint_sha256_update(&ehctx, (&k) as *byte, 32);
+	sha256_final((&eh) as *byte, &ehctx);
 
-	ed25519_sign((&sig):*byte, (&ctx.priv):*byte, (&eh):*byte, 32);
+	ed25519_sign((&sig) as *byte, (&ctx.priv) as *byte, (&eh) as *byte, 32);
 
 	// -> SSH_MSG_ECDH_REPLY
 	encode_ecdh_reply(&sdh, ctx);
 	write_frame(ctx);
 
 	if !ctx.has_session_id {
-		memcpy((&ctx.session_id):*byte, (&eh):*byte, 32);
+		memcpy((&ctx.session_id) as *byte, (&eh) as *byte, 32);
 		ctx.has_session_id = 1;
 	}
 
-	memcpy((&ctx.eh):*byte, (&eh):*byte, 32);
-	memcpy((&ctx.k):*byte, (&k):*byte, 32);
+	memcpy((&ctx.eh) as *byte, (&eh) as *byte, 32);
+	memcpy((&ctx.k) as *byte, (&k) as *byte, 32);
 
-	kex_key((&ctx.iv_client_to_server):*byte, "A", ctx);
-	kex_key((&ctx.iv_server_to_client):*byte, "B", ctx);
-	kex_key((&ctx.ek_client_to_server):*byte, "C", ctx);
-	kex_key((&ctx.ek_server_to_client):*byte, "D", ctx);
-	kex_key((&ctx.ik_client_to_server):*byte, "E", ctx);
-	kex_key((&ctx.ik_server_to_client):*byte, "F", ctx);
+	kex_key((&ctx.iv_client_to_server) as *byte, "A", ctx);
+	kex_key((&ctx.iv_server_to_client) as *byte, "B", ctx);
+	kex_key((&ctx.ek_client_to_server) as *byte, "C", ctx);
+	kex_key((&ctx.ek_server_to_client) as *byte, "D", ctx);
+	kex_key((&ctx.ik_client_to_server) as *byte, "E", ctx);
+	kex_key((&ctx.ik_server_to_client) as *byte, "F", ctx);
 
 	// -> SSH_MSG_NEWKEYS
 	encode_newkeys(&newkeys, ctx);
@@ -1232,15 +1232,15 @@ kex_key(key: *byte, a: *byte, ctx: *sshd_ctx) {
 	var h: sha256_ctx;
 
 	sha256_init(&h);
-	ssh_mpint_sha256_update(&h, (&ctx.k):*byte, 32);
-	sha256_update(&h, (&ctx.eh):*byte, 32);
+	ssh_mpint_sha256_update(&h, (&ctx.k) as *byte, 32);
+	sha256_update(&h, (&ctx.eh) as *byte, 32);
 	sha256_update(&h, a, 1);
-	sha256_update(&h, (&ctx.session_id):*byte, 32);
+	sha256_update(&h, (&ctx.session_id) as *byte, 32);
 	sha256_final(key, &h);
 
 	sha256_init(&h);
-	ssh_mpint_sha256_update(&h, (&ctx.k):*byte, 32);
-	sha256_update(&h, (&ctx.eh):*byte, 32);
+	ssh_mpint_sha256_update(&h, (&ctx.k) as *byte, 32);
+	sha256_update(&h, (&ctx.eh) as *byte, 32);
 	sha256_update(&h, key, 32);
 	sha256_final(&key[32], &h);
 }
@@ -1317,10 +1317,10 @@ doauth(ctx: *sshd_ctx) {
 		die("sig wrong length");
 	}
 
-	memcpy((&sig):*byte, &cua.sig.s[19], 64);
+	memcpy((&sig) as *byte, &cua.sig.s[19], 64);
 
 	clear_frame(ctx);
-	s.s = (&ctx.session_id):*byte;
+	s.s = (&ctx.session_id) as *byte;
 	s.len = 32;
 	encode_str(&s, ctx);
 	b = SSH_MSG_USERAUTH_REQUEST;
@@ -1340,7 +1340,7 @@ doauth(ctx: *sshd_ctx) {
 	encode_str(&s, ctx);
 	finish_frame(ctx);
 
-	if !ed25519_verify((&sig):*byte, (&ctx.userpub):*byte, ctx.frame, ctx.framelen) {
+	if !ed25519_verify((&sig) as *byte, (&ctx.userpub) as *byte, ctx.frame, ctx.framelen) {
 		die("bad signature");
 	}
 
@@ -1463,7 +1463,7 @@ ssh_spawn(ctx: *sshd_ctx, argv: **byte) {
 		close(stdout_write);
 		close(stderr_write);
 
-		exec(argv[0], argv, 0:**byte);
+		exec(argv[0], argv, 0 as **byte);
 
 		exit(255);
 	}
@@ -1487,7 +1487,7 @@ dopty(cr: *ssh_cr_pty, ctx: *sshd_ctx): int {
 doshell(cr: *ssh_cr_shell, ctx: *sshd_ctx): int {
 	var argv: _argv4;
 	argv.arg0 = "/bin/sh";
-	argv.arg1 = 0:*byte;
+	argv.arg1 = 0 as *byte;
 	ssh_spawn(ctx, &argv.arg0);
 	return 1;
 }
@@ -1497,11 +1497,11 @@ doexec(cr: *ssh_cr_exec, ctx: *sshd_ctx): int {
 	var cmd: *byte;
 	cmd = alloc(ctx.a, cr.command.len + 1);
 	memcpy(cmd, cr.command.s, cr.command.len);
-	cmd[cr.command.len] = 0:byte;
+	cmd[cr.command.len] = 0 as byte;
 	argv.arg0 = "/bin/sh";
 	argv.arg1 = "-c";
 	argv.arg2 = cmd;
-	argv.arg3 = 0:*byte;
+	argv.arg3 = 0 as *byte;
 	ssh_spawn(ctx, &argv.arg0);
 	free(ctx.a, cmd);
 	return 1;
@@ -1688,7 +1688,7 @@ poll_client(revents: int, ctx: *sshd_ctx) {
 
 			loop {
 				read_frame(ctx);
-				if ctx.frame[0]:int == SSH_MSG_DISCONNECT {
+				if ctx.frame[0] as int == SSH_MSG_DISCONNECT {
 					break;
 				}
 			}
@@ -1698,7 +1698,7 @@ poll_client(revents: int, ctx: *sshd_ctx) {
 	} else {
 		read_frame(ctx);
 
-		tag = ctx.frame[0]:int;
+		tag = ctx.frame[0] as int;
 		if tag == SSH_MSG_DISCONNECT {
 			dodisconnect(ctx);
 		} else if tag == SSH_MSG_KEXINIT {
@@ -1933,11 +1933,11 @@ _restorer();
 
 signal(sig: int, handler: func()) {
 	var act: sigaction;
-	act.handler = (&dosigchld):int;
+	act.handler = (&dosigchld) as int;
 	act.flags = 1 << 26;
-	act.restorer = _restorer:int;
+	act.restorer = _restorer as int;
 	act.mask = 0;
-	sigaction(sig, &act, 0:*sigaction);
+	sigaction(sig, &act, 0 as *sigaction);
 }
 
 main(argc: int, argv: **byte, envp: **byte) {
@@ -1950,15 +1950,15 @@ main(argc: int, argv: **byte, envp: **byte) {
 	setup_alloc(&a);
 
 	signal(SIGCHLD, dosigchld);
-	signal(SIGPIPE, SIG_IGN:func());
+	signal(SIGPIPE, SIG_IGN as func());
 
-	bzero((&ctx):*byte, sizeof(ctx));
+	bzero((&ctx) as *byte, sizeof(ctx));
 
-	if unhex((&ctx.userpub):*byte, "5afb3032d86d60d700e1782bfe8083ff95504cecbda531bef5ba8cdd20f34c82") != 32 {
+	if unhex((&ctx.userpub) as *byte, "5afb3032d86d60d700e1782bfe8083ff95504cecbda531bef5ba8cdd20f34c82") != 32 {
 		die("invalid userpub");
 	}
 
-	ed25519_pub((&ctx.pub):*byte, (&ctx.priv):*byte);
+	ed25519_pub((&ctx.pub) as *byte, (&ctx.priv) as *byte);
 
 	ctx.child_pid = -1;
 	ctx.child_stdin = -1;
@@ -1980,8 +1980,8 @@ main(argc: int, argv: **byte, envp: **byte) {
 	ctx.stderr_buf = alloc(ctx.a, ctx.stderr_size);
 
 	ctx.username = "erai";
-	format_key(&ctx.hostkey, &ctx.hostkeylen, (&ctx.pub):*byte, &ctx);
-	format_key(&ctx.userkey, &ctx.userkeylen, (&ctx.userpub):*byte, &ctx);
+	format_key(&ctx.hostkey, &ctx.hostkeylen, (&ctx.pub) as *byte, &ctx);
+	format_key(&ctx.userkey, &ctx.userkeylen, (&ctx.userpub) as *byte, &ctx);
 
 	fd = socket(AF_INET, SOCK_STREAM, 0);
 	if fd < 0 {
@@ -1991,7 +1991,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	port = 22;
 	sa.fpa = AF_INET | ((port & 0xff) << 24) | (((port >> 8) & 0xff) << 16);
 	sa.pad = 0;
-	if bind(fd, (&sa):*byte, sizeof(sa)) != 0 {
+	if bind(fd, (&sa) as *byte, sizeof(sa)) != 0 {
 		die("failed to bind");
 	}
 
@@ -2001,12 +2001,12 @@ main(argc: int, argv: **byte, envp: **byte) {
 
 	loop {
 		loop {
-			if wait(-1, 0:*int, WNOHANG) <= 0 {
+			if wait(-1, 0 as *int, WNOHANG) <= 0 {
 				break;
 			}
 		}
 
-		ctx.fd = accept(fd, 0:*byte, 0:*int);
+		ctx.fd = accept(fd, 0 as *byte, 0 as *int);
 		if ctx.fd == -EINTR {
 			continue;
 		}

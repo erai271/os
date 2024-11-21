@@ -92,7 +92,7 @@ count_args(c: *compiler, t: *type): int {
 mktype(c: *compiler, kind: int, a: *type, b: *type, st: *decl): *type {
 	var t: *type;
 
-	t = alloc(c.a, sizeof(*t)):*type;
+	t = alloc(c.a, sizeof(*t)) as *type;
 
 	t.kind = kind;
 	t.st = st;
@@ -103,23 +103,23 @@ mktype(c: *compiler, kind: int, a: *type, b: *type, st: *decl): *type {
 }
 
 mktype_struct(c: *compiler, st: *decl): *type {
-	return mktype(c, TY_STRUCT, 0:*type, 0:*type, st);
+	return mktype(c, TY_STRUCT, 0 as *type, 0 as *type, st);
 }
 
 mktype_union(c: *compiler, st: *decl): *type {
-	return mktype(c, TY_UNION, 0:*type, 0:*type, st);
+	return mktype(c, TY_UNION, 0 as *type, 0 as *type, st);
 }
 
 mktype0(c: *compiler, kind: int): *type {
-	return mktype(c, kind, 0:*type, 0:*type, 0:*decl);
+	return mktype(c, kind, 0 as *type, 0 as *type, 0 as *decl);
 }
 
 mktype1(c: *compiler, kind: int, a: *type): *type {
-	return mktype(c, kind, a, 0:*type, 0:*decl);
+	return mktype(c, kind, a, 0 as *type, 0 as *decl);
 }
 
 mktype2(c: *compiler, kind: int, a: *type, b: *type): *type {
-	return mktype(c, kind, a, b, 0:*decl);
+	return mktype(c, kind, a, b, 0 as *decl);
 }
 
 type_isint(t: *type): int {
@@ -137,7 +137,7 @@ prototype(c: *compiler, n: *node): *type {
 	var kind: int;
 
 	if (!n) {
-		return 0:*type;
+		return 0 as *type;
 	}
 
 	c.lineno = n.lineno;
@@ -157,7 +157,7 @@ prototype(c: *compiler, n: *node): *type {
 			return mktype0(c, TY_BYTE);
 		}
 
-		st = find(c, n.s, 0:*byte, 0);
+		st = find(c, n.s, 0 as *byte, 0);
 		if (!st || !st.struct_defined) {
 			cdie(c, "unknown struct");
 		}

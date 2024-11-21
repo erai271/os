@@ -33,7 +33,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 			fdputs(1, &buf[i + 19]);
 			fdputc(1, ' ');
 
-			i = i + ((&buf[i + 16]):*int[0] & 0xffff);
+			i = i + ((&buf[i + 16]) as *int[0] & 0xffff);
 		}
 	}
 
