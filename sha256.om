@@ -40,7 +40,7 @@ struct _sha256_digest {
 	d4: int;
 }
 
-sha256_init(r: *sha256_ctx) {
+func sha256_init(r: *sha256_ctx) {
 	r.a = 0x6a09e667;
 	r.b = 0xbb67ae85;
 	r.c = 0x3c6ef372;
@@ -52,11 +52,11 @@ sha256_init(r: *sha256_ctx) {
 	r.len = 0;
 }
 
-ror32(x: int, n: int): int {
+func ror32(x: int, n: int): int {
 	return ((x >> n) | (x << (32 - n))) & (-1 >> 32);
 }
 
-sha256_round(ctx: *sha256_ctx, w: *int, k: int) {
+func sha256_round(ctx: *sha256_ctx, w: *int, k: int) {
 	var t1: int;
 	var t2: int;
 	var s0: int;
@@ -103,7 +103,7 @@ sha256_round(ctx: *sha256_ctx, w: *int, k: int) {
 	ctx.a = (t1 + t2) & (-1 >> 32);
 }
 
-sha256_rounds(ctx: *sha256_ctx, block: *byte) {
+func sha256_rounds(ctx: *sha256_ctx, block: *byte) {
 	var _w: _sha256_block;
 	var w: *int;
 	var r: sha256_ctx;
@@ -258,7 +258,7 @@ sha256_rounds(ctx: *sha256_ctx, block: *byte) {
 	ctx.h = (ctx.h + r.h) & (-1 >> 32);
 }
 
-sha256_finish(ctx: *sha256_ctx, nblocks: int, data: *byte, len: int) {
+func sha256_finish(ctx: *sha256_ctx, nblocks: int, data: *byte, len: int) {
 	var _final: sha256_ctx;
 	var final: *byte;
 	var pad: int;
@@ -333,7 +333,7 @@ sha256_finish(ctx: *sha256_ctx, nblocks: int, data: *byte, len: int) {
 	sha256_rounds(ctx, final);
 }
 
-sha256_digest(digest: *byte, ctx: *sha256_ctx) {
+func sha256_digest(digest: *byte, ctx: *sha256_ctx) {
 	digest[0] = (ctx.a >> 24) as byte;
 	digest[1] = (ctx.a >> 16) as byte;
 	digest[2] = (ctx.a >> 8) as byte;
@@ -368,14 +368,14 @@ sha256_digest(digest: *byte, ctx: *sha256_ctx) {
 	digest[31] = ctx.h as byte;
 }
 
-sha256(digest: *byte, data: *byte, dlen: int) {
+func sha256(digest: *byte, data: *byte, dlen: int) {
 	var ctx: sha256_ctx;
 	sha256_init(&ctx);
 	sha256_finish(&ctx, 0, data, dlen);
 	sha256_digest(digest, &ctx);
 }
 
-sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
+func sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	var _digest: _sha256_block;
 	var digest: *byte;
 	var _ipad: _sha256_block;
@@ -438,7 +438,7 @@ sha256_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	sha256_digest(mac, &ctx);
 }
 
-sha256_update(ctx: *sha256_ctx, msg: *byte, len: int) {
+func sha256_update(ctx: *sha256_ctx, msg: *byte, len: int) {
 	var o: int;
 	var r: int;
 
@@ -473,7 +473,7 @@ sha256_update(ctx: *sha256_ctx, msg: *byte, len: int) {
 	}
 }
 
-sha256_final(digest: *byte, ctx: *sha256_ctx) {
+func sha256_final(digest: *byte, ctx: *sha256_ctx) {
 	sha256_finish(ctx, ctx.len >> 6, (&ctx.block) as *byte, ctx.len & 63);
 	sha256_digest(digest, ctx);
 }

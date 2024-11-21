@@ -1,53 +1,53 @@
-ud2();
+func ud2();
 
-syscall(n: int, a1: int, a2: int, a3: int, a4: int, a5: int, a6: int): int;
+func syscall(n: int, a1: int, a2: int, a3: int, a4: int, a5: int, a6: int): int;
 
-cpuid(a: *int, c: *int, d: *int, b: *int);
+func cpuid(a: *int, c: *int, d: *int, b: *int);
 
-inb(a: int): int;
-outb(a: int, x: int);
+func inb(a: int): int;
+func outb(a: int, x: int);
 
-inw(a: int): int;
-outw(a: int, x: int);
+func inw(a: int): int;
+func outw(a: int, x: int);
 
-ind(a: int): int;
-outd(a: int, x: int);
+func ind(a: int): int;
+func outd(a: int, x: int);
 
-rdmsr(r: int): int;
-wrmsr(r: int, x: int);
+func rdmsr(r: int): int;
+func wrmsr(r: int, x: int);
 
-rdcr0(): int;
-wrcr0(x: int);
-rdcr2(): int;
-wrcr2(x: int);
-rdcr3(): int;
-wrcr3(x: int);
-rdcr4(): int;
-wrcr4(x: int);
+func rdcr0(): int;
+func wrcr0(x: int);
+func rdcr2(): int;
+func wrcr2(x: int);
+func rdcr3(): int;
+func wrcr3(x: int);
+func rdcr4(): int;
+func wrcr4(x: int);
 
-lgdt(base: *int, size: int);
-lidt(base: *int, size: int);
-lldt(s: int);
-ltr(s: int);
-lseg(cs: int, ds: int);
+func lgdt(base: *int, size: int);
+func lidt(base: *int, size: int);
+func lldt(s: int);
+func ltr(s: int);
+func lseg(cs: int, ds: int);
 
-hlt();
+func hlt();
 
-cli();
-sti();
-rdflags(): int;
-wrflags(x: int);
+func cli();
+func sti();
+func rdflags(): int;
+func wrflags(x: int);
 
-wbinvld(x: int);
-invlpg(x: int);
+func wbinvld(x: int);
+func invlpg(x: int);
 
-_isr0();
-_ssr0();
+func _isr0();
+func _ssr0();
 
-_include(name: *byte, len: *int): *byte;
-_rdrand(): int;
+func _include(name: *byte, len: *int): *byte;
+func _rdrand(): int;
 
-_rgs(x: int): int;
+func _rgs(x: int): int;
 
 struct regs {
 	rax: int;	// 0
@@ -75,13 +75,13 @@ struct regs {
 			// 176
 }
 
-taskswitch(save_regs: *regs, load_regs: *regs);
+func taskswitch(save_regs: *regs, load_regs: *regs);
 
-_r32(p: *byte): int;
-_w32(p: *byte, x: int): int;
+func _r32(p: *byte): int;
+func _w32(p: *byte, x: int): int;
 
-_r16(p: *byte): int;
-_w16(p: *byte, x: int): int;
+func _r16(p: *byte): int;
+func _w16(p: *byte, x: int): int;
 
 enum {
 	IO_PIC1 = 0x20,
@@ -89,7 +89,7 @@ enum {
 	IO_PIT = 0x40,
 }
 
-gdt_tss(s: *int, base: int, size: int, access: int, flags: int) {
+func gdt_tss(s: *int, base: int, size: int, access: int, flags: int) {
 	s[0] = (((base & ~0xffff) << 32)
 		+ ((flags & 0xf) << 52)
 		+ (((size - 1) & 0xf0000) << 32)
@@ -100,7 +100,7 @@ gdt_tss(s: *int, base: int, size: int, access: int, flags: int) {
 	s[1] = base >> 32;
 }
 
-idt_gate(s: *int, offset: int, dpl: int, ist: int) {
+func idt_gate(s: *int, offset: int, dpl: int, ist: int) {
 	s[0] = (((offset & ~0xffff) << 32)
 		+ (1 << 47)
 		+ ((dpl & 3) << 45)
@@ -111,7 +111,7 @@ idt_gate(s: *int, offset: int, dpl: int, ist: int) {
 	s[1] = offset >> 32;
 }
 
-bzero(s: *byte, size: int) {
+func bzero(s: *byte, size: int) {
 	var i: int;
 	i = 0;
 	loop {
@@ -123,7 +123,7 @@ bzero(s: *byte, size: int) {
 	}
 }
 
-panic(r: *regs) {
+func panic(r: *regs) {
 	var i: int;
 	var sp: int;
 
@@ -219,7 +219,7 @@ panic(r: *regs) {
 	}
 }
 
-_isr(r: *regs) {
+func _isr(r: *regs) {
 	var global: *global;
 	global = g();
 
@@ -247,7 +247,7 @@ _isr(r: *regs) {
 	}
 }
 
-fill_idt(s: *int) {
+func fill_idt(s: *int) {
 	var i: int;
 	var ist: int;
 	loop {
@@ -264,7 +264,7 @@ fill_idt(s: *int) {
 	}
 }
 
-memcmp(a: *byte, b: *byte, n: int): int {
+func memcmp(a: *byte, b: *byte, n: int): int {
 	var i: int;
 
 	i = 0;
@@ -286,7 +286,7 @@ memcmp(a: *byte, b: *byte, n: int): int {
 	}
 }
 
-bytesum(a: *byte, n: int): byte {
+func bytesum(a: *byte, n: int): byte {
 	var i: int;
 	var x: byte;
 
@@ -303,7 +303,7 @@ bytesum(a: *byte, n: int): byte {
 	}
 }
 
-ptov(p: int): *byte {
+func ptov(p: int): *byte {
 	if p < (1 << 30) {
 		return (p - 0x80000000) as *byte;
 	} else {
@@ -311,7 +311,7 @@ ptov(p: int): *byte {
 	}
 }
 
-vtop(v: *byte): int {
+func vtop(v: *byte): int {
 	var va: int;
 	va = v as int;
 
@@ -328,14 +328,14 @@ vtop(v: *byte): int {
 	kdie("BAD VA");
 }
 
-acpi_len(p: int): int {
+func acpi_len(p: int): int {
 	if p == 0 {
 		return 0;
 	}
 	return _r32((ptov(p) as int + 4) as *byte);
 }
 
-valid_table(p: int, sig: *byte): int {
+func valid_table(p: int, sig: *byte): int {
 	var len: int;
 	var v: *byte;
 
@@ -357,23 +357,23 @@ valid_table(p: int, sig: *byte): int {
 	return len;
 }
 
-kputh(x: int) {
+func kputh(x: int) {
 	_kputh(x, 64);
 }
 
-kputh8(x: int) {
+func kputh8(x: int) {
 	_kputh(x, 8);
 }
 
-kputh16(x: int) {
+func kputh16(x: int) {
 	_kputh(x, 16);
 }
 
-kputh32(x: int) {
+func kputh32(x: int) {
 	_kputh(x, 32);
 }
 
-_kputh(x: int, d: int) {
+func _kputh(x: int, d: int) {
 	loop {
 		if d == 0 {
 			break;
@@ -383,7 +383,7 @@ _kputh(x: int, d: int) {
 	}
 }
 
-kputd(x: int) {
+func kputd(x: int) {
 	var a: int;
 
 	if x < 0 {
@@ -402,7 +402,7 @@ kputd(x: int) {
 	kputc('0' + a);
 }
 
-find_rsdt(): int {
+func find_rsdt(): int {
 	var p: int;
 	var v: *byte;
 	var len: int;
@@ -433,7 +433,7 @@ find_rsdt(): int {
 	return p;
 }
 
-find_acpi(rsdt: int, sig: *byte): int {
+func find_acpi(rsdt: int, sig: *byte): int {
 	var i: int;
 	var len: int;
 	var p: int;
@@ -460,7 +460,7 @@ find_acpi(rsdt: int, sig: *byte): int {
 	}
 }
 
-map_pci(pa: int): *byte {
+func map_pci(pa: int): *byte {
 	var global: *global;
 	var va: int;
 	var pt4p: int;
@@ -500,7 +500,7 @@ struct pcidev {
 	msi: *byte;
 }
 
-scan_pci(base: *byte, visit: func(dev: *pcidev)) {
+func scan_pci(base: *byte, visit: func(dev: *pcidev)) {
 	var i: int;
 	var cap: int;
 	var capid: int;
@@ -562,7 +562,7 @@ scan_pci(base: *byte, visit: func(dev: *pcidev)) {
 	}
 }
 
-show_pcidev(dev: *pcidev) {
+func show_pcidev(dev: *pcidev) {
 	kputh16(dev.bus);
 	kputc(':');
 	kputc(' ');
@@ -588,7 +588,7 @@ show_pcidev(dev: *pcidev) {
 	kputc('\n');
 }
 
-onesum(h: *byte, n: int, s: int): int {
+func onesum(h: *byte, n: int, s: int): int {
 	var i: int;
 	i = 0;
 	s = (s & 0xffff) + (s >> 16);
@@ -619,7 +619,7 @@ struct vga {
 	y: int;
 }
 
-vinit(v: *vga, base: *byte, fb: *byte) {
+func vinit(v: *vga, base: *byte, fb: *byte) {
 	v.base = base;
 	v.fb = fb;
 	v.cx = 80;
@@ -628,7 +628,7 @@ vinit(v: *vga, base: *byte, fb: *byte) {
 	v.y = 0;
 }
 
-vcursor(v: *vga) {
+func vcursor(v: *vga) {
 	var i: int;
 	i = v.y * v.cx + v.x;
 	outb(0x3d4, 0x0f);
@@ -637,7 +637,7 @@ vcursor(v: *vga) {
 	outb(0x3d5, i >> 8);
 }
 
-vblit(v: *vga) {
+func vblit(v: *vga) {
 	var i: int;
 	var d: *int;
 	var s: *int;
@@ -657,7 +657,7 @@ vblit(v: *vga) {
 	}
 }
 
-vclear(v: *vga) {
+func vclear(v: *vga) {
 	var i: int;
 	v.x = 0;
 	v.y = 0;
@@ -674,7 +674,7 @@ vclear(v: *vga) {
 	vblit(v);
 }
 
-vshift(v: *vga) {
+func vshift(v: *vga) {
 	var i: int;
 	memcpy(v.fb, &v.fb[v.cx * 2], (v.cy - 1) * v.cx * 2);
 	i = (v.cy - 1) * v.cx;
@@ -692,7 +692,7 @@ vshift(v: *vga) {
 	vblit(v);
 }
 
-vputc(v: *vga, c: int) {
+func vputc(v: *vga, c: int) {
 	if c == '\r' {
 		v.x = 0;
 		vblit(v);
@@ -721,13 +721,13 @@ vputc(v: *vga, c: int) {
 	vcursor(v);
 }
 
-kputc(c: int) {
+func kputc(c: int) {
 	var global: *global;
 	global = g();
 	vputc(&global.vga, c);
 }
 
-kputs(s: *byte) {
+func kputs(s: *byte) {
 	var i: int;
 	var global: *global;
 	global = g();
@@ -831,15 +831,15 @@ struct free_range {
 	end: int;
 }
 
-g(): *global {
+func g(): *global {
 	return _rgs(0) as **global[0];
 }
 
-rand(): int {
+func rand(): int {
 	return _rdrand();
 }
 
-memset(dest: *byte, c: int, size: int) {
+func memset(dest: *byte, c: int, size: int) {
 	var i: int;
 
 	if size < 0 {
@@ -856,7 +856,7 @@ memset(dest: *byte, c: int, size: int) {
 	}
 }
 
-memcpy(dest: *byte, src: *byte, size: int) {
+func memcpy(dest: *byte, src: *byte, size: int) {
 	var i: int;
 
 	if size < 0 {
@@ -884,7 +884,7 @@ memcpy(dest: *byte, src: *byte, size: int) {
 	}
 }
 
-memswap(a: *byte, b: *byte, size: int) {
+func memswap(a: *byte, b: *byte, size: int) {
 	var i: int;
 	var t: byte;
 
@@ -904,7 +904,7 @@ memswap(a: *byte, b: *byte, size: int) {
 	}
 }
 
-insert_sort(arr: *void, nitems: int, size: int, cmp: (func(a: *void, b: *void): int)) {
+func insert_sort(arr: *void, nitems: int, size: int, cmp: (func(a: *void, b: *void): int)) {
 	var i: int;
 	var j: int;
 	var a: *void;
@@ -944,7 +944,7 @@ insert_sort(arr: *void, nitems: int, size: int, cmp: (func(a: *void, b: *void): 
 	}
 }
 
-mmap_cmp(a: *void, b: *void): int {
+func mmap_cmp(a: *void, b: *void): int {
 	var a_addr: int;
 	var b_addr: int;
 	a_addr = a as *int[0];
@@ -957,7 +957,7 @@ mmap_cmp(a: *void, b: *void): int {
 	return 0;
 }
 
-free(p: *byte) {
+func free(p: *byte) {
 	var global: *global;
 	var fp: *free_page;
 	var flags: int;
@@ -982,7 +982,7 @@ free(p: *byte) {
 	wrflags(flags);
 }
 
-alloc_page(): int {
+func alloc_page(): int {
 	var global: *global;
 	var fr: *free_range;
 	var fp: *free_page;
@@ -1018,7 +1018,7 @@ alloc_page(): int {
 	kdie("OOM");
 }
 
-direct_map(brk: *int) {
+func direct_map(brk: *int) {
 	var pt4p: int;
 	var pt4: *int;
 	var pt3p: int;
@@ -1075,7 +1075,7 @@ direct_map(brk: *int) {
 	invlpt();
 }
 
-invlpt() {
+func invlpt() {
 	var global: *global;
 	var t: *task;
 	var tpt: *int;
@@ -1100,7 +1100,7 @@ invlpt() {
 	wrcr3(t.pt);
 }
 
-setup_ring(ring: int, own: int) {
+func setup_ring(ring: int, own: int) {
 	var v: *byte;
 	var i: int;
 	var p: int;
@@ -1144,11 +1144,11 @@ struct realtek_ring {
 	index: int;
 }
 
-alloc(): *byte {
+func alloc(): *byte {
 	return ptov(alloc_page());
 }
 
-realtek_mkring(ring: *realtek_ring, rx: int) {
+func realtek_mkring(ring: *realtek_ring, rx: int) {
 	var i: int;
 	ring.count = 4096 >> 4;
 	ring.index = 0;
@@ -1165,7 +1165,7 @@ realtek_mkring(ring: *realtek_ring, rx: int) {
 	}
 }
 
-init_realtek(dev: *pcidev) {
+func init_realtek(dev: *pcidev) {
 	var global: *global;
 	var realtek_port: *realtek_port;
 	var io: int;
@@ -1260,7 +1260,7 @@ init_realtek(dev: *pcidev) {
 	global.realtek_port = realtek_port;
 }
 
-kputmac(a: int) {
+func kputmac(a: int) {
 	kputh8((a >> 40) & 0xff);
 	kputc(':');
 	kputh8((a >> 32) & 0xff);
@@ -1274,7 +1274,7 @@ kputmac(a: int) {
 	kputh8(a & 0xff);
 }
 
-kputip(a: int) {
+func kputip(a: int) {
 	kputd((a >> 24) & 0xff);
 	kputc('.');
 	kputd((a >> 16) & 0xff);
@@ -1352,7 +1352,7 @@ struct rxinfo {
 	tcp_seg_len: int;
 }
 
-memo_arp(ether: int, ip: int, auth: int) {
+func memo_arp(ether: int, ip: int, auth: int) {
 	var global: *global;
 	var mask: int;
 	global = g();
@@ -1473,7 +1473,7 @@ struct txinfo {
 	tcp_opt_len: int;
 }
 
-alloc_tx(): *txinfo {
+func alloc_tx(): *txinfo {
 	var pkt: *txinfo;
 	pkt = alloc() as *txinfo;
 	bzero(pkt as *byte, 4096);
@@ -1481,11 +1481,11 @@ alloc_tx(): *txinfo {
 	return pkt;
 }
 
-free_tx(pkt: *txinfo) {
+func free_tx(pkt: *txinfo) {
 	free(pkt as *byte);
 }
 
-send_realtek(pkt: *txinfo) {
+func send_realtek(pkt: *txinfo) {
 	var port: *realtek_port;
 	var i: int;
 	var flags: int;
@@ -1516,7 +1516,7 @@ send_realtek(pkt: *txinfo) {
 	wrflags(flags);
 }
 
-send_ether(pkt: *txinfo) {
+func send_ether(pkt: *txinfo) {
 	pkt.buf = &pkt.buf[-14];
 	pkt.len = pkt.len + 14;
 
@@ -1540,7 +1540,7 @@ send_ether(pkt: *txinfo) {
 	send_realtek(pkt);
 }
 
-send_arp2(port: *realtek_port, tha: int, tpa: int) {
+func send_arp2(port: *realtek_port, tha: int, tpa: int) {
 	var pkt: *txinfo;
 	var global: *global;
 	var sha: int;
@@ -1618,7 +1618,7 @@ send_arp2(port: *realtek_port, tha: int, tpa: int) {
 	free_tx(pkt);
 }
 
-handle_arp(pkt: *rxinfo) {
+func handle_arp(pkt: *rxinfo) {
 	var global: *global;
 	global = g();
 
@@ -1635,7 +1635,7 @@ handle_arp(pkt: *rxinfo) {
 	}
 }
 
-rx_arp(pkt: *rxinfo) {
+func rx_arp(pkt: *rxinfo) {
 	var x: int;
 
 	if pkt.arp_len < 28 {
@@ -1694,7 +1694,7 @@ rx_arp(pkt: *rxinfo) {
 	handle_arp(pkt);
 }
 
-send_arp1(port: *realtek_port, tha: int, tpa: int) {
+func send_arp1(port: *realtek_port, tha: int, tpa: int) {
 	var pkt: *txinfo;
 	var global: *global;
 	var sha: int;
@@ -1764,7 +1764,7 @@ send_arp1(port: *realtek_port, tha: int, tpa: int) {
 	free_tx(pkt);
 }
 
-find_arp(pkt: *txinfo): int {
+func find_arp(pkt: *txinfo): int {
 	var flags: int;
 	var global: *global;
 	var mask: int;
@@ -1809,7 +1809,7 @@ find_arp(pkt: *txinfo): int {
 	}
 }
 
-send_ip(pkt: *txinfo) {
+func send_ip(pkt: *txinfo) {
 	var id: int;
 	var sum: int;
 	var dest: int;
@@ -1888,7 +1888,7 @@ send_ip(pkt: *txinfo) {
 	send_ether(pkt);
 }
 
-send_icmp(pkt: *txinfo) {
+func send_icmp(pkt: *txinfo) {
 	var sum: int;
 
 	pkt.buf = &pkt.buf[-8];
@@ -1912,7 +1912,7 @@ send_icmp(pkt: *txinfo) {
 	send_ip(pkt);
 }
 
-send_pong(pkt: *rxinfo) {
+func send_pong(pkt: *rxinfo) {
 	var global: *global;
 	var tx: *txinfo;
 	global = g();
@@ -1929,7 +1929,7 @@ send_pong(pkt: *rxinfo) {
 	free_tx(tx);
 }
 
-handle_icmp(pkt: *rxinfo) {
+func handle_icmp(pkt: *rxinfo) {
 	if pkt.icmp_type == ICMP_PING {
 		if pkt.icmp_code == 0 {
 			send_pong(pkt);
@@ -1937,7 +1937,7 @@ handle_icmp(pkt: *rxinfo) {
 	}
 }
 
-rx_icmp(pkt: *rxinfo) {
+func rx_icmp(pkt: *rxinfo) {
 	if pkt.icmp_len < 8 {
 		return;
 	}
@@ -1958,7 +1958,7 @@ rx_icmp(pkt: *rxinfo) {
 	handle_icmp(pkt);
 }
 
-send_udp(pkt: *txinfo) {
+func send_udp(pkt: *txinfo) {
 	var sum: int;
 
 	pkt.ip_proto = IP_UDP;
@@ -1989,7 +1989,7 @@ send_udp(pkt: *txinfo) {
 	send_ip(pkt);
 }
 
-udp_echo(pkt: *rxinfo) {
+func udp_echo(pkt: *rxinfo) {
 	var tx: *txinfo;
 	tx = alloc_tx();
 	tx.ip_src = pkt.ip_dest;
@@ -2002,13 +2002,13 @@ udp_echo(pkt: *rxinfo) {
 	free_tx(tx);
 }
 
-handle_udp(pkt: *rxinfo) {
+func handle_udp(pkt: *rxinfo) {
 	if pkt.udp_dest == 8000 {
 		udp_echo(pkt);
 	}
 }
 
-rx_udp(pkt: *rxinfo) {
+func rx_udp(pkt: *rxinfo) {
 	var sum: int;
 	var len: int;
 
@@ -2043,7 +2043,7 @@ rx_udp(pkt: *rxinfo) {
 	handle_udp(pkt);
 }
 
-send_tcp(pkt: *txinfo) {
+func send_tcp(pkt: *txinfo) {
 	var len: int;
 	var sum: int;
 
@@ -2092,7 +2092,7 @@ send_tcp(pkt: *txinfo) {
 	send_ip(pkt);
 }
 
-alloc_tcp(): *tcp_state {
+func alloc_tcp(): *tcp_state {
 	var global: *global;
 	var flags: int;
 	var i: int;
@@ -2124,7 +2124,7 @@ alloc_tcp(): *tcp_state {
 	}
 }
 
-tcp_free(tcb: *tcp_state) {
+func tcp_free(tcb: *tcp_state) {
 	var global: *global;
 	var flags: int;
 	var i: int;
@@ -2148,7 +2148,7 @@ tcp_free(tcb: *tcp_state) {
 	wrflags(flags);
 }
 
-tcp_listen(port: int, event_func: func(tcb: *tcp_state)) {
+func tcp_listen(port: int, event_func: func(tcb: *tcp_state)) {
 	var global: *global;
 	var tcb: *tcp_state;
 	global = g();
@@ -2162,7 +2162,7 @@ tcp_listen(port: int, event_func: func(tcb: *tcp_state)) {
 	tcb.state = TCP_LISTEN;
 }
 
-tcp_echo(tcb: *tcp_state) {
+func tcp_echo(tcb: *tcp_state) {
 	var buf: *byte;
 	var len: int;
 
@@ -2187,7 +2187,7 @@ tcp_echo(tcb: *tcp_state) {
 	free(buf);
 }
 
-task_ssh(t: *task) {
+func task_ssh(t: *task) {
 	var tcb: *tcp_state;
 	var buf: *byte;
 	var c: byte;
@@ -2227,13 +2227,13 @@ task_ssh(t: *task) {
 	free(buf);
 }
 
-tcp_ssh(tcb: *tcp_state) {
+func tcp_ssh(tcb: *tcp_state) {
 	if !tcb.task {
 		tcb.task = spawn(task_ssh, "sshd", tcb as *void);
 	}
 }
 
-send_rst(pkt: *rxinfo) {
+func send_rst(pkt: *rxinfo) {
 	var tx: *txinfo;
 	tx = alloc_tx();
 
@@ -2264,7 +2264,7 @@ send_rst(pkt: *rxinfo) {
 	free_tx(tx);
 }
 
-send_ack(tcb: *tcp_state) {
+func send_ack(tcb: *tcp_state) {
 	var tx: *txinfo;
 	tx = alloc_tx();
 
@@ -2290,7 +2290,7 @@ send_ack(tcb: *tcp_state) {
 	free_tx(tx);
 }
 
-send_psh(tcb: *tcp_state) {
+func send_psh(tcb: *tcp_state) {
 	var tx: *txinfo;
 	var len: int;
 	tx = alloc_tx();
@@ -2359,7 +2359,7 @@ enum {
 	TCP_TIME_WAIT = 10,
 }
 
-find_tcb(pkt: *rxinfo): *tcp_state {
+func find_tcb(pkt: *rxinfo): *tcp_state {
 	var global: *global;
 	var tcb: *tcp_state;
 	var i: int;
@@ -2408,7 +2408,7 @@ find_tcb(pkt: *rxinfo): *tcp_state {
 	return 0 as *tcp_state;
 }
 
-handle_syn(tcb: *tcp_state, pkt: *rxinfo) {
+func handle_syn(tcb: *tcp_state, pkt: *rxinfo) {
 	var c: *tcp_state;
 	var tx: *txinfo;
 
@@ -2458,7 +2458,7 @@ handle_syn(tcb: *tcp_state, pkt: *rxinfo) {
 	free_tx(tx);
 }
 
-handle_seg(tcb: *tcp_state, pkt: *rxinfo) {
+func handle_seg(tcb: *tcp_state, pkt: *rxinfo) {
 	var offset: int;
 	var wnd: int;
 	var len: int;
@@ -2563,7 +2563,7 @@ handle_seg(tcb: *tcp_state, pkt: *rxinfo) {
 	}
 }
 
-tcp_tick(tcb: *tcp_state) {
+func tcp_tick(tcb: *tcp_state) {
 	var global: *global;
 	var len: int;
 	global = g();
@@ -2603,7 +2603,7 @@ tcp_tick(tcb: *tcp_state) {
 	tcb.deadline = tcb.rto;
 }
 
-tcp_send(tcb: *tcp_state, b: *byte, n: int): int {
+func tcp_send(tcb: *tcp_state, b: *byte, n: int): int {
 	var cap: int;
 	var flags: int;
 	flags = rdflags();
@@ -2626,7 +2626,7 @@ tcp_send(tcb: *tcp_state, b: *byte, n: int): int {
 	return n;
 }
 
-tcp_recv(tcb: *tcp_state, b: *byte, n: int): int {
+func tcp_recv(tcb: *tcp_state, b: *byte, n: int): int {
 	var cap: int;
 	var flags: int;
 	flags = rdflags();
@@ -2649,7 +2649,7 @@ tcp_recv(tcb: *tcp_state, b: *byte, n: int): int {
 	return n;
 }
 
-tcp_close(tcb: *tcp_state) {
+func tcp_close(tcb: *tcp_state) {
 	var flags: int;
 	flags = rdflags();
 	cli();
@@ -2660,7 +2660,7 @@ tcp_close(tcb: *tcp_state) {
 	wrflags(flags);
 }
 
-handle_tcp(pkt: *rxinfo) {
+func handle_tcp(pkt: *rxinfo) {
 	var tcb: *tcp_state;
 
 	if pkt.tcp_src == 0 || pkt.tcp_dest == 0 {
@@ -2706,7 +2706,7 @@ enum {
 	TCP_FIN = 1,
 }
 
-rx_tcp(pkt: *rxinfo) {
+func rx_tcp(pkt: *rxinfo) {
 	var sum: int;
 	var off: int;
 
@@ -2749,7 +2749,7 @@ rx_tcp(pkt: *rxinfo) {
 	handle_tcp(pkt);
 }
 
-rx_ip(pkt: *rxinfo) {
+func rx_ip(pkt: *rxinfo) {
 	var global: *global;
 	var len: int;
 	var frag: int;
@@ -2822,7 +2822,7 @@ rx_ip(pkt: *rxinfo) {
 	}
 }
 
-rx_ether(pkt: *rxinfo) {
+func rx_ether(pkt: *rxinfo) {
 	if pkt.ether_len < 14 {
 		return;
 	}
@@ -2853,7 +2853,7 @@ rx_ether(pkt: *rxinfo) {
 	}
 }
 
-isr_realtek() {
+func isr_realtek() {
 	var pkt: rxinfo;
 	var global: *global;
 	var port: *realtek_port;
@@ -2899,7 +2899,7 @@ isr_realtek() {
 	}
 }
 
-init_ahci(dev: *pcidev) {
+func init_ahci(dev: *pcidev) {
 	var global: *global;
 	var ahci: *byte;
 
@@ -2960,7 +2960,7 @@ struct ahci_port {
 	buf: *byte;
 }
 
-init_ahci_port(ahci: *byte, i: int) {
+func init_ahci_port(ahci: *byte, i: int) {
 	var global: *global;
 	var port: *byte;
 
@@ -3048,7 +3048,7 @@ enum {
 	ATA_WRITE = 0x35,
 }
 
-fill_fis_h2d(ahci_port: *ahci_port, cmd: int, lba: int) {
+func fill_fis_h2d(ahci_port: *ahci_port, cmd: int, lba: int) {
 	var w: int;
 	var size: int;
 
@@ -3103,7 +3103,7 @@ fill_fis_h2d(ahci_port: *ahci_port, cmd: int, lba: int) {
 	_w32(&ahci_port.ctab[0x8c], (1 << 31) + (size - 1));
 }
 
-isr_ahci() {
+func isr_ahci() {
 	var global: *global;
 	var ahci_port: *ahci_port;
 	var i: int;
@@ -3122,7 +3122,7 @@ isr_ahci() {
 	}
 }
 
-tick(r: *regs) {
+func tick(r: *regs) {
 	var global: *global;
 	var tcb: *tcp_state;
 	var cur: *task;
@@ -3159,11 +3159,11 @@ tick(r: *regs) {
 	memcpy(r as *byte, (&next.regs) as *byte, sizeof(*r));
 }
 
-freept(pt: int) {
+func freept(pt: int) {
 	free(ptov(pt));
 }
 
-free_task(t: *task) {
+func free_task(t: *task) {
 	var i: int;
 	i = 0;
 	loop {
@@ -3182,7 +3182,7 @@ free_task(t: *task) {
 	free(t as *byte);
 }
 
-schedule() {
+func schedule() {
 	var global: *global;
 	var cur: *task;
 	var next: *task;
@@ -3210,7 +3210,7 @@ schedule() {
 	invlpt();
 }
 
-task_exit() {
+func task_exit() {
 	var global: *global;
 	var t: *task;
 	global = g();
@@ -3222,7 +3222,7 @@ task_exit() {
 	}
 }
 
-yield() {
+func yield() {
 	var global: *global;
 	var flags: int;
 	var cur: *task;
@@ -3239,7 +3239,7 @@ yield() {
 	wrflags(flags);
 }
 
-kdie(msg: *byte) {
+func kdie(msg: *byte) {
 	kputs("die: ");
 	kputs(msg);
 	kputs("\n");
@@ -3249,7 +3249,7 @@ kdie(msg: *byte) {
 	}
 }
 
-sleep(ms: int) {
+func sleep(ms: int) {
 	var global: *global;
 	var deadline: int;
 
@@ -3272,7 +3272,7 @@ sleep(ms: int) {
 	}
 }
 
-xxd(data: *byte, len: int) {
+func xxd(data: *byte, len: int) {
 	var i: int;
 	var j: int;
 	loop {
@@ -3334,12 +3334,12 @@ xxd(data: *byte, len: int) {
 	}
 }
 
-read_cmos(a: int): int {
+func read_cmos(a: int): int {
 	outb(0x70, (a & 0x7f) | 0x80);
 	return inb(0x71);
 }
 
-read_rtc() {
+func read_rtc() {
 	var global: *global;
 	var epoch_time: int;
 	var days_since_epoch: int;
@@ -3452,7 +3452,7 @@ read_rtc() {
 	global.boot_time = epoch_time;
 }
 
-_tstart() {
+func _tstart() {
 	var global: *global;
 	var t: *task;
 	global = g();
@@ -3462,7 +3462,7 @@ _tstart() {
 	task_exit();
 }
 
-spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
+func spawn(f: (func(t: *task)), name: *byte, a: *void): *task {
 	var global: *global;
 	var t: *task;
 	var cur: *task;
@@ -3541,7 +3541,7 @@ enum {
 	S_IFREG = 0x8000,
 }
 
-strlen(s: *byte): int {
+func strlen(s: *byte): int {
 	var i: int;
 	i = 0;
 	loop {
@@ -3552,7 +3552,7 @@ strlen(s: *byte): int {
 	}
 }
 
-strndup(s: *byte, n: int): *byte {
+func strndup(s: *byte, n: int): *byte {
 	var r: *byte;
 	if n >= 4096 {
 		kdie("str too large");
@@ -3563,11 +3563,11 @@ strndup(s: *byte, n: int): *byte {
 	return r;
 }
 
-strdup(s: *byte): *byte {
+func strdup(s: *byte): *byte {
 	return strndup(s, strlen(s));
 }
 
-mkvnode(): *vnode {
+func mkvnode(): *vnode {
 	var v: *vnode;
 	var global: *global;
 	global = g();
@@ -3582,7 +3582,7 @@ mkvnode(): *vnode {
 	return v;
 }
 
-mkfile(v: *vnode, mode: int): *vfile {
+func mkfile(v: *vnode, mode: int): *vfile {
 	var f: *vfile;
 	if !v {
 		v = mkvnode();
@@ -3595,7 +3595,7 @@ mkfile(v: *vnode, mode: int): *vfile {
 	return f;
 }
 
-mkroot(): *vfile {
+func mkroot(): *vfile {
 	var f: *vfile;
 	f = mkfile(0 as *vnode, S_IFDIR);
 	f.node.nlink = 1;
@@ -3603,7 +3603,7 @@ mkroot(): *vfile {
 	return f;
 }
 
-efind(d: *vfile, name: *byte, nlen: int): *vent {
+func efind(d: *vfile, name: *byte, nlen: int): *vent {
 	var e: *vent;
 	e = d.node.ents;
 	loop {
@@ -3618,7 +3618,7 @@ efind(d: *vfile, name: *byte, nlen: int): *vent {
 	return e;
 }
 
-vlink(d: *vfile, name: *byte, nlen: int, f: *vfile) {
+func vlink(d: *vfile, name: *byte, nlen: int, f: *vfile) {
 	var e: *vent;
 	e = efind(d, name, nlen);
 	if e {
@@ -3638,7 +3638,7 @@ vlink(d: *vfile, name: *byte, nlen: int, f: *vfile) {
 	}
 }
 
-vlookup(d: *vfile, name: *byte, nlen: int, flags: int, mode: int): *vfile {
+func vlookup(d: *vfile, name: *byte, nlen: int, flags: int, mode: int): *vfile {
 	var f: *vfile;
 	var e: *vent;
 
@@ -3686,7 +3686,7 @@ vlookup(d: *vfile, name: *byte, nlen: int, flags: int, mode: int): *vfile {
 	return f;
 }
 
-vopen(name: *byte, flags: int, mode: int): *vfile {
+func vopen(name: *byte, flags: int, mode: int): *vfile {
 	var d: *vfile;
 	var f: *vfile;
 	var i: int;
@@ -3741,7 +3741,7 @@ vopen(name: *byte, flags: int, mode: int): *vfile {
 	return f;
 }
 
-vrelease_page(p: *vpage) {
+func vrelease_page(p: *vpage) {
 	var q: *vpage;
 
 	loop {
@@ -3777,7 +3777,7 @@ vrelease_page(p: *vpage) {
 	}
 }
 
-vrelease(v: *vnode): int {
+func vrelease(v: *vnode): int {
 	var e: *vent;
 	var n: *vent;
 	v.refcount = v.refcount - 1;
@@ -3800,7 +3800,7 @@ vrelease(v: *vnode): int {
 	return 0;
 }
 
-vclose(f: *vfile): int {
+func vclose(f: *vfile): int {
 	var n: *vnode;
 
 	if !f {
@@ -3819,7 +3819,7 @@ vclose(f: *vfile): int {
 	return vrelease(n);
 }
 
-vseek(f: *vfile, o: int, w: int): int {
+func vseek(f: *vfile, o: int, w: int): int {
 	if w == 0 {
 		f.offset = o;
 	} else if w == 1 {
@@ -3835,7 +3835,7 @@ vseek(f: *vfile, o: int, w: int): int {
 	return f.offset;
 }
 
-vwrite_page(v: *vnode, o: int, b: *byte, n: int): int {
+func vwrite_page(v: *vnode, o: int, b: *byte, n: int): int {
 	var key: int;
 	var p: *vpage;
 	var q: *vpage;
@@ -3902,7 +3902,7 @@ vwrite_page(v: *vnode, o: int, b: *byte, n: int): int {
 	return n;
 }
 
-vread_page(v: *vnode, o: int, b: *byte, n: int): int {
+func vread_page(v: *vnode, o: int, b: *byte, n: int): int {
 	var key: int;
 	var p: *vpage;
 
@@ -3947,7 +3947,7 @@ vread_page(v: *vnode, o: int, b: *byte, n: int): int {
 	return n;
 }
 
-vwrite(f: *vfile, b: *byte, n: int): int {
+func vwrite(f: *vfile, b: *byte, n: int): int {
 	var o: int;
 	var m: int;
 	var len: int;
@@ -3985,7 +3985,7 @@ vwrite(f: *vfile, b: *byte, n: int): int {
 	return m;
 }
 
-vread(f: *vfile, b: *byte, n: int): int {
+func vread(f: *vfile, b: *byte, n: int): int {
 	var o: int;
 	var m: int;
 	var len: int;
@@ -4019,21 +4019,21 @@ vread(f: *vfile, b: *byte, n: int): int {
 	return m;
 }
 
-vdup(f: *vfile): *vfile {
+func vdup(f: *vfile): *vfile {
 	f.refcount = f.refcount + 1;
 	return f;
 }
 
-vnodedup(v: *vnode): *vnode {
+func vnodedup(v: *vnode): *vnode {
 	v.refcount = v.refcount + 1;
 	return v;
 }
 
-vmkdir(name: *byte): *vfile {
+func vmkdir(name: *byte): *vfile {
 	return vopen(name, O_DIRECTORY | O_CREAT, 0);
 }
 
-_ssr(r: *regs) {
+func _ssr(r: *regs) {
 	if r.rax == 0 {
 		kputs("read\n");
 		r.rax = -1;
@@ -4101,11 +4101,11 @@ _ssr(r: *regs) {
 	}
 }
 
-initramfs(len: *int): *byte {
+func initramfs(len: *int): *byte {
 	return _include("initramfs", len);
 }
 
-parse_hex32(i: int, r: *byte, n: int, x: *int): int {
+func parse_hex32(i: int, r: *byte, n: int, x: *int): int {
 	var j: int;
 	var z: int;
 
@@ -4139,7 +4139,7 @@ parse_hex32(i: int, r: *byte, n: int, x: *int): int {
 	return i;
 }
 
-parse_initramfs_file(i: int, r: *byte, n: int): int {
+func parse_initramfs_file(i: int, r: *byte, n: int): int {
 	var ino: int;
 	var mode: int;
 	var uid: int;
@@ -4213,7 +4213,7 @@ parse_initramfs_file(i: int, r: *byte, n: int): int {
 	return i;
 }
 
-parse_initramfs() {
+func parse_initramfs() {
 	var r: *byte;
 	var len: int;
 	var i: int;
@@ -4234,7 +4234,7 @@ parse_initramfs() {
 	}
 }
 
-initramfs_create(name: *byte, data: *byte, size: int, mode: int) {
+func initramfs_create(name: *byte, data: *byte, size: int, mode: int) {
 	var type: int;
 	var n: int;
 	var ret: int;
@@ -4265,7 +4265,7 @@ initramfs_create(name: *byte, data: *byte, size: int, mode: int) {
 	}
 }
 
-userswitch(entry: int, stack: int) {
+func userswitch(entry: int, stack: int) {
 	var r: regs;
 	var discard: regs;
 	bzero((&r) as *byte, sizeof(r));
@@ -4278,7 +4278,7 @@ userswitch(entry: int, stack: int) {
 	taskswitch(&discard, &r);
 }
 
-map_user(vaddr: int): *byte {
+func map_user(vaddr: int): *byte {
 	var global: *global;
 	var task: *task;
 	var pt: *int;
@@ -4324,7 +4324,7 @@ map_user(vaddr: int): *byte {
 	return 0 as *byte;
 }
 
-vload(f: *vfile, offset: int, vaddr: int, filesz: int, memsz: int): int {
+func vload(f: *vfile, offset: int, vaddr: int, filesz: int, memsz: int): int {
 	var t: *task;
 	var i: int;
 	var o: int;
@@ -4381,7 +4381,7 @@ vload(f: *vfile, offset: int, vaddr: int, filesz: int, memsz: int): int {
 	return 0;
 }
 
-map_stack(argc: int, argv: **byte, envc: int, envv: **byte): int {
+func map_stack(argc: int, argv: **byte, envc: int, envv: **byte): int {
 	var m: *int;
 	var i: int;
 	var sp: int;
@@ -4456,7 +4456,7 @@ map_stack(argc: int, argv: **byte, envc: int, envv: **byte): int {
 	return sp;
 }
 
-vexec(prog: *byte, argv: **byte, envp: **byte): int {
+func vexec(prog: *byte, argv: **byte, envp: **byte): int {
 	var f: *vfile;
 	var head: *byte;
 	var args: **byte;
@@ -4746,7 +4746,7 @@ vexec(prog: *byte, argv: **byte, envp: **byte): int {
 	userswitch(entry, stack);
 	kdie("unreachable");
 
-:fail;
+fail:
 	if f {
 		vclose(f);
 	}
@@ -4778,7 +4778,7 @@ vexec(prog: *byte, argv: **byte, envp: **byte): int {
 	return -1;
 }
 
-task_init(t: *task) {
+func task_init(t: *task) {
 	// open("/dev/null") => 0
 	// open("/dev/tty") => 1
 	// dup(1) => 2
@@ -4787,7 +4787,7 @@ task_init(t: *task) {
 	}
 }
 
-_kstart(mb: int) {
+func _kstart(mb: int) {
 	var global: global;
 	var task: task;
 	var brk: int;

@@ -120,7 +120,7 @@ struct _ed25519_sig {
 	x7: int;
 }
 
-ed25519_reduce(r: *int) {
+func ed25519_reduce(r: *int) {
 	var c: int;
 	var k: int;
 
@@ -145,7 +145,7 @@ ed25519_reduce(r: *int) {
 	c = c + r[7] + ((1 << 31) & k); r[7] = c & (-1 >> 32); c = c >> 32;
 }
 
-ed25519_add(r: *int, a: *int, b: *int) {
+func ed25519_add(r: *int, a: *int, b: *int) {
 	var c: int;
 
 	c = a[0] + b[0]; r[0] = c & (-1 >> 32); c = c >> 32;
@@ -160,7 +160,7 @@ ed25519_add(r: *int, a: *int, b: *int) {
 	ed25519_reduce(r);
 }
 
-ed25519_sub(r: *int, a: *int, b: *int) {
+func ed25519_sub(r: *int, a: *int, b: *int) {
 	var c: int;
 
 	c = 1 + a[0] + (-19 & (-1 >> 32)) + (b[0] ^ (-1 >> 32)); r[0] = c & (-1 >> 32); c = c >> 32;
@@ -175,7 +175,7 @@ ed25519_sub(r: *int, a: *int, b: *int) {
 	ed25519_reduce(r);
 }
 
-ed25519_mul(r: *int, a: *int, b: *int) {
+func ed25519_mul(r: *int, a: *int, b: *int) {
 	var _x: _ed25519_point;
 	var x: *int;
 	var c: int;
@@ -251,7 +251,7 @@ ed25519_mul(r: *int, a: *int, b: *int) {
 	r[7] = x[7];
 }
 
-ed25519_inv(r: *int, a: *int)  {
+func ed25519_inv(r: *int, a: *int)  {
 	var _x: _ed25519_point;
 	var x: *int;
 	var i: int;
@@ -280,7 +280,7 @@ ed25519_inv(r: *int, a: *int)  {
 	}
 }
 
-ed25519_selectl(r: *int, a: *int, b: *int, k: int) {
+func ed25519_selectl(r: *int, a: *int, b: *int, k: int) {
 	k = -(k & 1);
 	r[0] = (a[0] & ~k) | (b[0] & k);
 	r[1] = (a[1] & ~k) | (b[1] & k);
@@ -292,7 +292,7 @@ ed25519_selectl(r: *int, a: *int, b: *int, k: int) {
 	r[7] = (a[7] & ~k) | (b[7] & k);
 }
 
-ed25519_zero(r: *int) {
+func ed25519_zero(r: *int) {
 	r[0] = 0;
 	r[1] = 0;
 	r[2] = 0;
@@ -303,7 +303,7 @@ ed25519_zero(r: *int) {
 	r[7] = 0;
 }
 
-ed25519_one(r: *int) {
+func ed25519_one(r: *int) {
 	r[0] = 1;
 	r[1] = 0;
 	r[2] = 0;
@@ -314,7 +314,7 @@ ed25519_one(r: *int) {
 	r[7] = 0;
 }
 
-ed25519_d(d: *int) {
+func ed25519_d(d: *int) {
 	d[7] = 0x52036cee;
 	d[6] = 0x2b6ffe73;
 	d[5] = 0x8cc74079;
@@ -325,7 +325,7 @@ ed25519_d(d: *int) {
 	d[0] = 0x135978a3;
 }
 
-ed25519_a(a: *int) {
+func ed25519_a(a: *int) {
 	a[7] = 0;
 	a[6] = 0;
 	a[5] = 0;
@@ -339,7 +339,7 @@ ed25519_a(a: *int) {
 ////           x1 * y2 + x2 * y1                y1 * y2 - a * x1 * x2
 //// x3 = ---------------------------,  y3 = ---------------------------
 ////       1 + d * x1 * x2 * y1 * y2          1 - d * x1 * x2 * y1 * y2
-ed25519_pa(r: *int, a: *int, b: * int) {
+func ed25519_pa(r: *int, a: *int, b: * int) {
 	var _y1y2: _ed25519_limb;
 	var y1y2: *int;
 	var _x1x2: _ed25519_limb;
@@ -392,7 +392,7 @@ ed25519_pa(r: *int, a: *int, b: * int) {
 	ed25519_mul(&r[8], &r[8], dxy2);
 }
 
-ed25519_pk(r: *int, a: *int, k: *int) {
+func ed25519_pk(r: *int, a: *int, k: *int) {
 	var _b: _ed25519_point;
 	var b: *int;
 	var _c: _ed25519_point;
@@ -446,7 +446,7 @@ ed25519_pk(r: *int, a: *int, k: *int) {
 	}
 }
 
-ed25519_base(p: *int) {
+func ed25519_base(p: *int) {
 	p[7] = 0x216936d3;
 	p[6] = 0xcd6e53fe;
 	p[5] = 0xc0a4e231;
@@ -466,7 +466,7 @@ ed25519_base(p: *int) {
 }
 
 // 2**((p-1)//4)
-ed25519_sqrtz(z: *int) {
+func ed25519_sqrtz(z: *int) {
 	z[7] = 0x2b832480;
 	z[6] = 0x4fc1df0b;
 	z[5] = 0x2b4d0099;
@@ -478,7 +478,7 @@ ed25519_sqrtz(z: *int) {
 }
 
 // sqrt(x) = x**((p+3)/8) * [1 or 2**((p-1)/4)]
-ed25519_sqrt(r: *int, x: *int): int {
+func ed25519_sqrt(r: *int, x: *int): int {
 	var _a: _ed25519_limb;
 	var _z: _ed25519_limb;
 	var a: *int;
@@ -532,7 +532,7 @@ ed25519_sqrt(r: *int, x: *int): int {
 }
 
 // x**2 = (y**2 - 1) / (1 + d * y**2) mod p
-ed25519_decode(p: *int, y: *byte): int {
+func ed25519_decode(p: *int, y: *byte): int {
 	var _xy: _ed25519_point;
 	var xy: *int;
 	var _a: _ed25519_limb;
@@ -588,7 +588,7 @@ ed25519_decode(p: *int, y: *byte): int {
 	return 1;
 }
 
-ed25519_encode(dest: *byte, p: *int) {
+func ed25519_encode(dest: *byte, p: *int) {
 	dest[0] = p[8] as byte;
 	dest[1] = (p[8] >> 8) as byte;
 	dest[2] = (p[8] >> 16) as byte;
@@ -623,7 +623,7 @@ ed25519_encode(dest: *byte, p: *int) {
 	dest[31] = (p[15] >> 24) as byte | ((p[0] & 1) << 7) as byte;
 }
 
-ed25519_pub(pub: *byte, b: *byte) {
+func ed25519_pub(pub: *byte, b: *byte) {
 	var _h: _sha512_digest;
 	var h: *byte;
 	var _a: _ed25519_point;
@@ -649,7 +649,7 @@ ed25519_pub(pub: *byte, b: *byte) {
 	ed25519_encode(pub, a);
 }
 
-ed25519_sign(sig: *byte, b: *byte, msg: *byte, len: int) {
+func ed25519_sign(sig: *byte, b: *byte, msg: *byte, len: int) {
 	var _h: _sha512_digest;
 	var h: *byte;
 	var _hr: _sha512_digest;
@@ -716,7 +716,7 @@ ed25519_sign(sig: *byte, b: *byte, msg: *byte, len: int) {
 	ed25519_encode_l(&sig[32], s);
 }
 
-ed25519_l(l: *int) {
+func ed25519_l(l: *int) {
 	l[7] = 0x10000000;
 	l[6] = 0x00000000;
 	l[5] = 0x00000000;
@@ -727,7 +727,7 @@ ed25519_l(l: *int) {
 	l[0] = 0x5cf5d3ed;
 }
 
-ed25519_mod1(m: *int, l: *int, q: int) {
+func ed25519_mod1(m: *int, l: *int, q: int) {
 	var c: int;
 	var r: int;
 
@@ -755,7 +755,7 @@ ed25519_mod1(m: *int, l: *int, q: int) {
 }
 
 // r = x mod L
-ed25519_mod_l(r: *int, x: *int) {
+func ed25519_mod_l(r: *int, x: *int) {
 	var _l: _ed25519_limb;
 	var l: *int;
 	var _m: _ed25519_mod;
@@ -805,7 +805,7 @@ ed25519_mod_l(r: *int, x: *int) {
 }
 
 // x = a * b + y mod L
-ed25519_ma_l(x: *int, a: *int, b: *int, y: *int) {
+func ed25519_ma_l(x: *int, a: *int, b: *int, y: *int) {
 	var _z: _ed25519_mod;
 	var z: *int;
 	var c: int;
@@ -872,7 +872,7 @@ ed25519_ma_l(x: *int, a: *int, b: *int, y: *int) {
 }
 
 // x = a_512 mod L
-ed25519_reduce_l(x: *int, a: *byte) {
+func ed25519_reduce_l(x: *int, a: *byte) {
 	var _z: _ed25519_point;
 	var z: *int;
 
@@ -898,7 +898,7 @@ ed25519_reduce_l(x: *int, a: *byte) {
 	ed25519_mod_l(x, z);
 }
 
-ed25519_encode_l(dest: *byte, p: *int) {
+func ed25519_encode_l(dest: *byte, p: *int) {
 	dest[0] = p[0] as byte;
 	dest[1] = (p[0] >> 8) as byte;
 	dest[2] = (p[0] >> 16) as byte;
@@ -933,7 +933,7 @@ ed25519_encode_l(dest: *byte, p: *int) {
 	dest[31] = (p[7] >> 24) as byte;
 }
 
-ed25519_eq(a: *int, b: *int): int {
+func ed25519_eq(a: *int, b: *int): int {
 	var x: int;
 	x = a[0] ^ b[0];
 	x = x | (a[1] ^ b[1]);
@@ -960,7 +960,7 @@ ed25519_eq(a: *int, b: *int): int {
 	return (x & 1) ^ 1;
 }
 
-ed25519_verify(sig: *byte, pub: *byte, msg: *byte, len: int): int {
+func ed25519_verify(sig: *byte, pub: *byte, msg: *byte, len: int): int {
 	var ctx: sha512_ctx;
 	var _a: _ed25519_point;
 	var a: *int;
@@ -1018,7 +1018,7 @@ ed25519_verify(sig: *byte, pub: *byte, msg: *byte, len: int): int {
 	return ed25519_eq(a, b);
 }
 
-ed25519_bi(d: *int) {
+func ed25519_bi(d: *int) {
 	d[7] = 0x0f26edf4;
 	d[6] = 0x60a006bb;
 	d[5] = 0xd27b08dc;
@@ -1031,7 +1031,7 @@ ed25519_bi(d: *int) {
 
 // u = (1 + y) / (1 - y)
 // v = sqrt(-486664) * u / x
-cv25519_of_ed25519(uv: *int, xy: *int) {
+func cv25519_of_ed25519(uv: *int, xy: *int) {
 	var _a: _ed25519_limb;
 	var _b: _ed25519_limb;
 	var _c: _ed25519_limb;
@@ -1063,7 +1063,7 @@ cv25519_of_ed25519(uv: *int, xy: *int) {
 
 // x = sqrt(-486664) * u / v
 // y = (u - 1) / (u + 1)
-ed25519_of_cv25519(xy: *int, uv: *int) {
+func ed25519_of_cv25519(xy: *int, uv: *int) {
 	var _a: _ed25519_limb;
 	var _b: _ed25519_limb;
 	var _c: _ed25519_limb;
@@ -1093,7 +1093,7 @@ ed25519_of_cv25519(xy: *int, uv: *int) {
 }
 
 // cv25519: v**2 = u**3 + a*u**2 + u mod p
-x25519_decode(uv: *int, u: *byte): int {
+func x25519_decode(uv: *int, u: *byte): int {
 	var _v: _ed25519_limb;
 	var v: *int;
 
@@ -1123,7 +1123,7 @@ x25519_decode(uv: *int, u: *byte): int {
 	return !ed25519_zerop(&uv[8]);
 }
 
-x25519_encode(u: *byte, uv: *int) {
+func x25519_encode(u: *byte, uv: *int) {
 	u[0] = uv[0] as byte;
 	u[1] = (uv[0] >> 8) as byte;
 	u[2] = (uv[0] >> 16) as byte;
@@ -1158,12 +1158,12 @@ x25519_encode(u: *byte, uv: *int) {
 	u[31] = (uv[7] >> 24) as byte;
 }
 
-x25519_base(u: *byte) {
+func x25519_base(u: *byte) {
 	bzero(u, 32);
 	u[0] = 9 as byte;
 }
 
-x25519(uk: *byte, u: *byte, k: *byte): int {
+func x25519(uk: *byte, u: *byte, k: *byte): int {
 	var _uv: _ed25519_point;
 	var _xy: _ed25519_point;
 	var _kc: _ed25519_limb;
@@ -1187,7 +1187,7 @@ x25519(uk: *byte, u: *byte, k: *byte): int {
 	return 1;
 }
 
-ed25519_zerop(x: *int): int {
+func ed25519_zerop(x: *int): int {
 	var a: int;
 	a = x[0] | x[1] | x[2] | x[3] | x[4] | x[5] | x[6] | x[7];
 	a = (a >> 32) | a;
@@ -1200,7 +1200,7 @@ ed25519_zerop(x: *int): int {
 }
 
 // cv25519: v**2 = u**3 + a*u**2 + u mod p
-x25519_check(uv: *int): int {
+func x25519_check(uv: *int): int {
 	var _a: _ed25519_limb;
 	var _b: _ed25519_limb;
 	var a: *int;
@@ -1223,7 +1223,7 @@ x25519_check(uv: *int): int {
 }
 
 // ed25519: -x**2 + y**2 = 1 + d*x**2*y**2 mod p
-ed25519_check(xy: *int): int {
+func ed25519_check(xy: *int): int {
 	var _a: _ed25519_limb;
 	var _b: _ed25519_limb;
 	var _c: _ed25519_limb;
@@ -1251,7 +1251,7 @@ ed25519_check(xy: *int): int {
 	return ed25519_zerop(a);
 }
 
-ed25519_set_lsb(xy: *int, lsb: int) {
+func ed25519_set_lsb(xy: *int, lsb: int) {
 	var _a: _ed25519_limb;
 	var a: *int;
 
@@ -1263,7 +1263,7 @@ ed25519_set_lsb(xy: *int, lsb: int) {
 	ed25519_selectl(xy, xy, a, (xy[0] ^ lsb) & 1);
 }
 
-ed25519_clamp(k: *int, b: *byte) {
+func ed25519_clamp(k: *int, b: *byte) {
 	k[0] = (b[0] as int | (b[1] as int << 8) | (b[2] as int << 16) | (b[3] as int << 24)) & -8;
 	k[1] = b[4] as int | (b[5] as int << 8) | (b[6] as int << 16) | (b[7] as int << 24);
 	k[2] = b[8] as int | (b[9] as int << 8) | (b[10] as int << 16) | (b[11] as int << 24);

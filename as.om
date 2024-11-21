@@ -192,7 +192,7 @@ struct symbol {
 	name_offset: int;
 }
 
-setup_assembler(a: *alloc): *assembler {
+func setup_assembler(a: *alloc): *assembler {
 	var c: *assembler;
 	c = alloc(a, sizeof(*c)) as *assembler;
 	c.a = a;
@@ -208,7 +208,7 @@ setup_assembler(a: *alloc): *assembler {
 	return c;
 }
 
-add_section(c: *assembler, name: *byte, type: int) {
+func add_section(c: *assembler, name: *byte, type: int) {
 	var s: *section;
 	var n: *section;
 	var end: int;
@@ -245,7 +245,7 @@ add_section(c: *assembler, name: *byte, type: int) {
 	c.num_sections = c.num_sections + 1;
 }
 
-find_section(c: *assembler, name: *byte): *section {
+func find_section(c: *assembler, name: *byte): *section {
 	var n: *section;
 	n = c.sections;
 	loop {
@@ -262,11 +262,11 @@ find_section(c: *assembler, name: *byte): *section {
 	return n;
 }
 
-putchar(c: *assembler, ch: int) {
+func putchar(c: *assembler, ch: int) {
 	fputc(c.out, ch);
 }
 
-open_output(c: *assembler, filename: *byte) {
+func open_output(c: *assembler, filename: *byte) {
 	var fd: int;
 
 	if (c.out) {
@@ -284,7 +284,7 @@ open_output(c: *assembler, filename: *byte) {
 }
 
 // Create a new label
-mklabel(c: *assembler): *label {
+func mklabel(c: *assembler): *label {
 	var l: *label;
 
 	l = alloc(c.a, sizeof(*l)) as *label;
@@ -297,7 +297,7 @@ mklabel(c: *assembler): *label {
 }
 
 // Reserve size in the output buffer
-reserve(c: *assembler, n: int) {
+func reserve(c: *assembler, n: int) {
 	var m: *byte;
 	var b: *chunk;
 
@@ -327,7 +327,7 @@ reserve(c: *assembler, n: int) {
 }
 
 // Add a single byte to the output
-emit(c: *assembler, x: int) {
+func emit(c: *assembler, x: int) {
 	reserve(c, 1);
 	c.text_end.buf[c.text_end.fill] = x as byte;
 	c.text_end.fill = c.text_end.fill + 1;
@@ -335,7 +335,7 @@ emit(c: *assembler, x: int) {
 }
 
 // Fix a single reference
-fixup(c: *assembler, here: *byte, delta: int) {
+func fixup(c: *assembler, here: *byte, delta: int) {
 	here[0] = delta as byte;
 	here[1] = (delta >> 8) as byte;
 	here[2] = (delta >> 16) as byte;
@@ -343,7 +343,7 @@ fixup(c: *assembler, here: *byte, delta: int) {
 }
 
 // Add an new fixup for the current position
-addfixup(c: *assembler, l: *label) {
+func addfixup(c: *assembler, l: *label) {
 	var f: *fixup;
 	var here: *byte;
 
@@ -367,7 +367,7 @@ addfixup(c: *assembler, l: *label) {
 }
 
 // Fix references to a label to the current position
-fixup_label(c: *assembler, l: *label) {
+func fixup_label(c: *assembler, l: *label) {
 	var f: *fixup;
 
 	if (l.fixed) {
@@ -387,7 +387,7 @@ fixup_label(c: *assembler, l: *label) {
 	}
 }
 
-add_symbol(c: *assembler, name: *byte, l: *label) {
+func add_symbol(c: *assembler, name: *byte, l: *label) {
 	var s: *symbol;
 
 	s = alloc(c.a, sizeof(*s)) as *symbol;
@@ -399,28 +399,28 @@ add_symbol(c: *assembler, name: *byte, l: *label) {
 	c.symbols = s;
 }
 
-emit_restorer(c: *assembler) {
+func emit_restorer(c: *assembler) {
 	as_modri(c, OP_MOVI, R_RAX, 15);
 	as_op(c, OP_SYSCALL);
 }
 
-emit_ptr(c: *assembler, l: *label) {
+func emit_ptr(c: *assembler, l: *label) {
 	reserve(c, 16);
 	as_modrm(c, OP_LEA, R_RAX, R_RIP, 0, 0, 128);
 	addfixup(c, l);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_jmp(c: *assembler, l: *label) {
+func emit_jmp(c: *assembler, l: *label) {
 	as_jmp(c, OP_JMP, l);
 }
 
-emit_num(c: *assembler, x: int) {
+func emit_num(c: *assembler, x: int) {
 	as_opri64(c, OP_MOVABS, R_RDX, x);
 	as_opr(c, OP_PUSHR, R_RDX);
 }
 
-emit_blob(c: *assembler, s: *byte, n: int) {
+func emit_blob(c: *assembler, s: *byte, n: int) {
 	var a: *label;
 	var b: *label;
 	var i: int;
@@ -455,7 +455,7 @@ emit_blob(c: *assembler, s: *byte, n: int) {
 	emit_ptr(c, a);
 }
 
-emit_str(c: *assembler, s: *byte) {
+func emit_str(c: *assembler, s: *byte) {
 	var a: *label;
 	var b: *label;
 	var i: int;
@@ -490,11 +490,11 @@ emit_str(c: *assembler, s: *byte) {
 	emit_ptr(c, a);
 }
 
-emit_pop(c: *assembler, n: int) {
+func emit_pop(c: *assembler, n: int) {
 	as_modri(c, OP_ADDI, R_RSP, n << 3);
 }
 
-emit_kstart(c: *assembler) {
+func emit_kstart(c: *assembler) {
 	var hang: *label;
 	var do_iret: *label;
 	var do_ret: *label;
@@ -660,7 +660,7 @@ emit_kstart(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RBP);
 }
 
-emit_preamble(c: *assembler, n: int, pragma: int) {
+func emit_preamble(c: *assembler, n: int, pragma: int) {
 	var i: int;
 	if (pragma == 1) {
 		as_modrr(c, OP_XORRM, R_RBP, R_RBP);
@@ -686,7 +686,7 @@ emit_preamble(c: *assembler, n: int, pragma: int) {
 	}
 }
 
-emit_store(c: *assembler, t: *type) {
+func emit_store(c: *assembler, t: *type) {
 	as_opr(c, OP_POPR, R_RDI);
 	as_opr(c, OP_POPR, R_RAX);
 	if (t.kind == TY_BYTE) {
@@ -699,7 +699,7 @@ emit_store(c: *assembler, t: *type) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_load(c: *assembler, t: *type) {
+func emit_load(c: *assembler, t: *type) {
 	as_opr(c, OP_POPR, R_RDI);
 	if (t.kind == TY_BYTE) {
 		as_modrr(c, OP_XORRM, R_RAX, R_RAX);
@@ -712,70 +712,70 @@ emit_load(c: *assembler, t: *type) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_jz(c: *assembler, l: *label) {
+func emit_jz(c: *assembler, l: *label) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_modrr(c, OP_TESTRM, R_RAX, R_RAX);
 	as_jmp(c, OP_JCC + CC_E, l);
 }
 
-emit_lea(c: *assembler, offset: int) {
+func emit_lea(c: *assembler, offset: int) {
 	as_modrm(c, OP_LEA, R_RAX, R_RBP, 0, 0, offset);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_and(c: *assembler) {
+func emit_and(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RDX);
 	as_modrr(c, OP_ANDRM, R_RAX, R_RDX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_or(c: *assembler) {
+func emit_or(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RDX);
 	as_modrr(c, OP_ORRM, R_RAX, R_RDX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_xor(c: *assembler) {
+func emit_xor(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RDX);
 	as_modrr(c, OP_XORRM, R_RAX, R_RDX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_add(c: *assembler) {
+func emit_add(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RDX);
 	as_modrr(c, OP_ADDRM, R_RAX, R_RDX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_ud(c: *assembler) {
+func emit_ud(c: *assembler) {
 	as_op(c, OP_UD2);
 }
 
-emit_ret(c: *assembler) {
+func emit_ret(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_modrr(c, OP_MOVE, R_RSP, R_RBP);
 	as_opr(c, OP_POPR, R_RBP);
 	as_op(c, OP_RET);
 }
 
-emit_call(c: *assembler, n: int) {
+func emit_call(c: *assembler, n: int) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_modr(c, OP_ICALLM, R_RAX);
 	emit_pop(c, n);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_lcall(c: *assembler, l: *label, n: int) {
+func emit_lcall(c: *assembler, l: *label, n: int) {
 	as_jmp(c, OP_CALL, l);
 	emit_pop(c, n);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_gt(c: *assembler) {
+func emit_gt(c: *assembler) {
 	as_opr(c, OP_POPR, R_RDX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
@@ -784,7 +784,7 @@ emit_gt(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_lt(c: *assembler) {
+func emit_lt(c: *assembler) {
 	as_opr(c, OP_POPR, R_RDX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
@@ -793,7 +793,7 @@ emit_lt(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_ge(c: *assembler) {
+func emit_ge(c: *assembler) {
 	as_opr(c, OP_POPR, R_RDX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
@@ -802,7 +802,7 @@ emit_ge(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_le(c: *assembler) {
+func emit_le(c: *assembler) {
 	as_opr(c, OP_POPR, R_RDX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
@@ -811,7 +811,7 @@ emit_le(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_eq(c: *assembler) {
+func emit_eq(c: *assembler) {
 	as_opr(c, OP_POPR, R_RDX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
@@ -820,7 +820,7 @@ emit_eq(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_ne(c: *assembler) {
+func emit_ne(c: *assembler) {
 	as_opr(c, OP_POPR, R_RDX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modrr(c, OP_XORRM, R_RAX, R_RAX);
@@ -829,21 +829,21 @@ emit_ne(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_sub(c: *assembler) {
+func emit_sub(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RDX);
 	as_modrr(c, OP_SUBRM, R_RAX, R_RDX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_mul(c: *assembler) {
+func emit_mul(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modr(c, OP_IMULM, R_RCX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_div(c: *assembler) {
+func emit_div(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modrr(c, OP_XORRM, R_RDX, R_RDX);
@@ -854,7 +854,7 @@ emit_div(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_mod(c: *assembler) {
+func emit_mod(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modrr(c, OP_XORRM, R_RDX, R_RDX);
@@ -865,33 +865,33 @@ emit_mod(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RDX);
 }
 
-emit_lsh(c: *assembler) {
+func emit_lsh(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modr(c, OP_SHLM, R_RAX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_rsh(c: *assembler) {
+func emit_rsh(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_opr(c, OP_POPR, R_RCX);
 	as_modr(c, OP_SHRM, R_RAX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_not(c: *assembler) {
+func emit_not(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_modr(c, OP_NOTM, R_RAX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_neg(c: *assembler) {
+func emit_neg(c: *assembler) {
 	as_opr(c, OP_POPR, R_RAX);
 	as_modr(c, OP_NEGM, R_RAX);
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_syscall(c: *assembler) {
+func emit_syscall(c: *assembler) {
 	as_modrm(c, OP_LOAD, R_RAX, R_RBP, 0, 0, 16);
 	as_modrm(c, OP_LOAD, R_RDI, R_RBP, 0, 0, 24);
 	as_modrm(c, OP_LOAD, R_RSI, R_RBP, 0, 0, 32);
@@ -903,7 +903,7 @@ emit_syscall(c: *assembler) {
 	as_opr(c, OP_PUSHR, R_RAX);
 }
 
-emit_align(c: *assembler, n: int, b: int) {
+func emit_align(c: *assembler, n: int, b: int) {
 	var pad: int;
 
 	pad = c.at & (n - 1);
@@ -923,7 +923,7 @@ emit_align(c: *assembler, n: int, b: int) {
 	}
 }
 
-emit_strtab_str(c: *assembler, s: *byte): int {
+func emit_strtab_str(c: *assembler, s: *byte): int {
 	var i: int;
 
 	i = 0;
@@ -947,7 +947,7 @@ enum {
 	SHT_STRTAB = 3,
 }
 
-emit_sections(c: *assembler): int {
+func emit_sections(c: *assembler): int {
 	var at: int;
 	var s: *section;
 	var y: *symbol;
@@ -1177,7 +1177,7 @@ emit_sections(c: *assembler): int {
 	return at;
 }
 
-writeout(c: *assembler, start: *label, kstart: *label) {
+func writeout(c: *assembler, start: *label, kstart: *label) {
 	var b: *chunk;
 	var i: int;
 	var text_size: int;
@@ -1479,11 +1479,11 @@ writeout(c: *assembler, start: *label, kstart: *label) {
 	fflush(c.out);
 }
 
-as_emit(a: *assembler, b: int) {
+func as_emit(a: *assembler, b: int) {
 	emit(a, b);
 }
 
-as_rex(a: *assembler, op: int, r: int, i: int, b: int) {
+func as_rex(a: *assembler, op: int, r: int, i: int, b: int) {
 	var w: int;
 	if a.bits32 {
 		return;
@@ -1495,7 +1495,7 @@ as_rex(a: *assembler, op: int, r: int, i: int, b: int) {
 	as_emit(a, 0x40 + w + ((r >> 1) & 4) + ((i >> 2) & 2) + ((b >> 3) & 1));
 }
 
-as_op(a: *assembler, op: int) {
+func as_op(a: *assembler, op: int) {
 	if op > 0xff {
 		as_emit(a, op >> 8);
 		as_emit(a, op);
@@ -1505,7 +1505,7 @@ as_op(a: *assembler, op: int) {
 }
 
 // op + r
-as_opr(a: *assembler, op: int, r: int) {
+func as_opr(a: *assembler, op: int, r: int) {
 	if r < 0 || r > 15 {
 		die("invalid reg");
 	}
@@ -1515,7 +1515,7 @@ as_opr(a: *assembler, op: int, r: int) {
 	as_op(a, op + (r & 7));
 }
 
-as_opri64(a: *assembler, op: int, r: int, x: int) {
+func as_opri64(a: *assembler, op: int, r: int, x: int) {
 	if op != OP_MOVABS {
 		die("only movabs");
 	}
@@ -1531,7 +1531,7 @@ as_opri64(a: *assembler, op: int, r: int, x: int) {
 }
 
 // modrm
-as_modrr(a: *assembler, op: int, r: int, b: int) {
+func as_modrr(a: *assembler, op: int, r: int, b: int) {
 	if r < 0 || r > 15 || b < 0 || b > 15 {
 		die("invalid reg");
 	}
@@ -1541,12 +1541,12 @@ as_modrr(a: *assembler, op: int, r: int, b: int) {
 }
 
 // modrm /op
-as_modr(a: *assembler, op: int, b: int) {
+func as_modr(a: *assembler, op: int, b: int) {
 	as_modrr(a, op & 0xffff, op >> 16, b);
 }
 
 // modrm + disp
-as_modra(a: *assembler, op: int, r: int, d: int) {
+func as_modra(a: *assembler, op: int, r: int, d: int) {
 	as_rex(a, op, r, 0, 0);
 	as_op(a, op);
 	as_emit(a, ((r << 3) & 0x38) + R_RSP);
@@ -1558,7 +1558,7 @@ as_modra(a: *assembler, op: int, r: int, d: int) {
 }
 
 // modrm + sib + disp
-as_modrm(a: *assembler, op: int, r: int, b: int, i: int, s: int, d: int) {
+func as_modrm(a: *assembler, op: int, r: int, b: int, i: int, s: int, d: int) {
 	var sib: int;
 	var mod: int;
 	var rm: int;
@@ -1682,11 +1682,11 @@ as_modrm(a: *assembler, op: int, r: int, b: int, i: int, s: int, d: int) {
 }
 
 // modrm /op
-as_modm(a: *assembler, op: int, b: int, i: int, s: int, d: int) {
+func as_modm(a: *assembler, op: int, b: int, i: int, s: int, d: int) {
 	as_modrm(a, op & 0xffff, op >> 16, b, i, s, d);
 }
 
-as_modri(a: *assembler, op: int, r: int, x: int) {
+func as_modri(a: *assembler, op: int, r: int, x: int) {
 	if x < -(1 << 31) || x >= (1 << 31) {
 		die("immediate too large");
 	}
@@ -1697,7 +1697,7 @@ as_modri(a: *assembler, op: int, r: int, x: int) {
 	as_emit(a, x >> 24);
 }
 
-as_jmp(a: *assembler, op: int, l: *label) {
+func as_jmp(a: *assembler, op: int, l: *label) {
 	reserve(a, 16);
 	as_op(a, op);
 	as_emit(a, 0);

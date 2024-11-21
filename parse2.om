@@ -3,7 +3,7 @@ struct parser {
 	p: *peg;
 }
 
-setup_parser(a: *alloc): *parser {
+func setup_parser(a: *alloc): *parser {
 	var c: *parser;
 
 	c = alloc(a, sizeof(*c)) as *parser;
@@ -15,7 +15,7 @@ setup_parser(a: *alloc): *parser {
 	return c;
 }
 
-parse(c: *parser, filename: *byte): *node {
+func parse(c: *parser, filename: *byte): *node {
 	var f: *file;
 	var fd: int;
 	var len: int;
@@ -40,16 +40,16 @@ parse(c: *parser, filename: *byte): *node {
 	return reconstruct(c, pn);
 }
 
-fillpos(c: *parser, n: *node) {
+func fillpos(c: *parser, n: *node) {
 }
 
-copypos(n: *node, pn: *peg_node) {
+func copypos(n: *node, pn: *peg_node) {
 	n.filename = pn.filename;
 	n.lineno = pn.line;
 	n.colno = pn.col;
 }
 
-reconstruct(c: *parser, pn: *peg_node): *node {
+func reconstruct(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var link: **node;
 	var n: *node;
@@ -89,7 +89,7 @@ reconstruct(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_intern(c: *parser, pn: *peg_node, s: *byte, len: int): *node {
+func reconstruct_intern(c: *parser, pn: *peg_node, s: *byte, len: int): *node {
 	var n: *node;
 	var i: int;
 	n = mknode0(c, N_IDENT);
@@ -107,12 +107,12 @@ reconstruct_intern(c: *parser, pn: *peg_node, s: *byte, len: int): *node {
 	return n;
 }
 
-reconstruct_ident(c: *parser, pn: *peg_node): *node {
+func reconstruct_ident(c: *parser, pn: *peg_node): *node {
 	assert(pn.tag == P_ident, "ident");
 	return reconstruct_intern(c, pn, pn.str, pn.len);
 }
 
-reconstruct_enum_item(c: *parser, pn: *peg_node): *node {
+func reconstruct_enum_item(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var b: *node;
 	var n: *node;
@@ -132,7 +132,7 @@ reconstruct_enum_item(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_enum(c: *parser, pn: *peg_node): *node {
+func reconstruct_enum(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var link: **node;
 	var n: *node;
@@ -159,7 +159,7 @@ reconstruct_enum(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_arg_decl(c: *parser, pn: *peg_node): *node {
+func reconstruct_arg_decl(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var b: *node;
 	var n: *node;
@@ -174,7 +174,7 @@ reconstruct_arg_decl(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_func_type(c: *parser, pn: *peg_node): *node {
+func reconstruct_func_type(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var b: *node;
 	var n: *node;
@@ -208,7 +208,7 @@ reconstruct_func_type(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_type(c: *parser, pn: *peg_node): *node {
+func reconstruct_type(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	assert(pn.tag == P_type, "type");
 	pn = pn.child;
@@ -233,7 +233,7 @@ reconstruct_type(c: *parser, pn: *peg_node): *node {
 	}
 }
 
-reconstruct_member_decl(c: *parser, pn: *peg_node): *node {
+func reconstruct_member_decl(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var b: *node;
 	var n: *node;
@@ -248,7 +248,7 @@ reconstruct_member_decl(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_member_list(c: *parser, pn: *peg_node): *node {
+func reconstruct_member_list(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	var a: *node;
 	var ret: *node;
@@ -275,7 +275,7 @@ reconstruct_member_list(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_struct(c: *parser, pn: *peg_node): *node {
+func reconstruct_struct(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	var a: *node;
 	var b: *node;
@@ -287,7 +287,7 @@ reconstruct_struct(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_union(c: *parser, pn: *peg_node): *node {
+func reconstruct_union(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	var a: *node;
 	var b: *node;
@@ -299,12 +299,12 @@ reconstruct_union(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_expr(c: *parser, pn: *peg_node): *node {
+func reconstruct_expr(c: *parser, pn: *peg_node): *node {
 	assert(pn.tag == P_expr, "expr");
 	return reconstruct_bool(c, pn.child);
 }
 
-reconstruct_bool(c: *parser, pn: *peg_node): *node {
+func reconstruct_bool(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var n: *node;
 	var link: **node;
@@ -339,7 +339,7 @@ reconstruct_bool(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_comp(c: *parser, pn: *peg_node): *node {
+func reconstruct_comp(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var b: *node;
 	var n: *node;
@@ -377,7 +377,7 @@ reconstruct_comp(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_add(c: *parser, pn: *peg_node): *node {
+func reconstruct_add(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var n: *node;
 	var link: **node;
@@ -415,7 +415,7 @@ reconstruct_add(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_mul(c: *parser, pn: *peg_node): *node {
+func reconstruct_mul(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var n: *node;
 	var link: **node;
@@ -453,7 +453,7 @@ reconstruct_mul(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_shift(c: *parser, pn: *peg_node): *node {
+func reconstruct_shift(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var n: *node;
 	var link: **node;
@@ -487,7 +487,7 @@ reconstruct_shift(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_unary(c: *parser, pn: *peg_node): *node {
+func reconstruct_unary(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	var ret: *node;
 	var link: **node;
@@ -527,7 +527,7 @@ reconstruct_unary(c: *parser, pn: *peg_node): *node {
 	}
 }
 
-reconstruct_args(c: *parser, pn: *peg_node): *node {
+func reconstruct_args(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var link: **node;
 	var a: *node;
@@ -553,7 +553,7 @@ reconstruct_args(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_post(c: *parser, pn: *peg_node): *node {
+func reconstruct_post(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var n: *node;
 	var tag: int;
@@ -595,7 +595,7 @@ reconstruct_post(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_primary(c: *parser, pn: *peg_node): *node {
+func reconstruct_primary(c: *parser, pn: *peg_node): *node {
 	assert(pn.tag == P_primary, "primary");
 	pn = pn.child;
 	if pn.tag == P_ident {
@@ -617,7 +617,7 @@ reconstruct_primary(c: *parser, pn: *peg_node): *node {
 	}
 }
 
-reconstruct_hex(c: *parser, pn: *peg_node): *node {
+func reconstruct_hex(c: *parser, pn: *peg_node): *node {
 	var x: int;
 	var n: *node;
 	var ok: int;
@@ -632,7 +632,7 @@ reconstruct_hex(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_dec(c: *parser, pn: *peg_node): *node {
+func reconstruct_dec(c: *parser, pn: *peg_node): *node {
 	var x: int;
 	var n: *node;
 	var ok: int;
@@ -647,7 +647,7 @@ reconstruct_dec(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_str(c: *parser, pn: *peg_node): *node {
+func reconstruct_str(c: *parser, pn: *peg_node): *node {
 	var i: int;
 	var j: int;
 	var len: int;
@@ -678,7 +678,7 @@ reconstruct_str(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_char(c: *parser, pn: *peg_node): *node {
+func reconstruct_char(c: *parser, pn: *peg_node): *node {
 	var i: int;
 	var x: int;
 	var ok: int;
@@ -694,7 +694,7 @@ reconstruct_char(c: *parser, pn: *peg_node): *node {
 	n.n = x;
 	return n;
 }
-reconstruct_sizeof(c: *parser, pn: *peg_node): *node {
+func reconstruct_sizeof(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	var a: *node;
 	assert(pn.tag == P_sizeof_expr, "sizeof_expr");
@@ -704,7 +704,7 @@ reconstruct_sizeof(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_stmt(c: *parser, pn: *peg_node): *node {
+func reconstruct_stmt(c: *parser, pn: *peg_node): *node {
 	assert(pn.tag == P_stmt, "stmt");
 	pn = pn.child;
 	if pn.tag == P_if_stmt {
@@ -736,7 +736,7 @@ reconstruct_stmt(c: *parser, pn: *peg_node): *node {
 	}
 }
 
-reconstruct_if(c: *parser, pn: *peg_node): *node {
+func reconstruct_if(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var link: **node;
 	var a: *node;
@@ -784,7 +784,7 @@ reconstruct_if(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_loop(c: *parser, pn: *peg_node): *node {
+func reconstruct_loop(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	var a: *node;
 	assert(pn.tag == P_loop_stmt, "loop_stmt");
@@ -794,7 +794,7 @@ reconstruct_loop(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_break(c: *parser, pn: *peg_node): *node {
+func reconstruct_break(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	assert(pn.tag == P_break_stmt, "break_stmt");
 	n = mknode0(c, N_BREAK);
@@ -802,7 +802,7 @@ reconstruct_break(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_continue(c: *parser, pn: *peg_node): *node {
+func reconstruct_continue(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	assert(pn.tag == P_continue_stmt, "continue_stmt");
 	n = mknode0(c, N_CONTINUE);
@@ -810,7 +810,7 @@ reconstruct_continue(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_return(c: *parser, pn: *peg_node): *node {
+func reconstruct_return(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var n: *node;
 	assert(pn.tag == P_return_stmt, "return_stmt");
@@ -823,7 +823,7 @@ reconstruct_return(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_var(c: *parser, pn: *peg_node): *node {
+func reconstruct_var(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var b: *node;
 	var n: *node;
@@ -835,7 +835,7 @@ reconstruct_var(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_label(c: *parser, pn: *peg_node): *node {
+func reconstruct_label(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var n: *node;
 	assert(pn.tag == P_label_stmt, "label_stmt");
@@ -845,7 +845,7 @@ reconstruct_label(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_goto(c: *parser, pn: *peg_node): *node {
+func reconstruct_goto(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var n: *node;
 	assert(pn.tag == P_goto_stmt, "goto_stmt");
@@ -855,7 +855,7 @@ reconstruct_goto(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_assign(c: *parser, pn: *peg_node): *node {
+func reconstruct_assign(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var b: *node;
 	var n: *node;
@@ -867,17 +867,17 @@ reconstruct_assign(c: *parser, pn: *peg_node): *node {
 	return n;
 }
 
-reconstruct_expr_stmt(c: *parser, pn: *peg_node): *node {
+func reconstruct_expr_stmt(c: *parser, pn: *peg_node): *node {
 	assert(pn.tag == P_expr_stmt, "expr_stmt");
 	return reconstruct_expr(c, pn.child);
 }
 
-reconstruct_empty(c: *parser, pn: *peg_node): *node {
+func reconstruct_empty(c: *parser, pn: *peg_node): *node {
 	assert(pn.tag == P_empty_stmt, "empty_stmt");
 	return 0 as *node;
 }
 
-reconstruct_compound(c: *parser, pn: *peg_node): *node {
+func reconstruct_compound(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
 	var n: *node;
 	var a: *node;
@@ -904,7 +904,7 @@ reconstruct_compound(c: *parser, pn: *peg_node): *node {
 	return ret;
 }
 
-reconstruct_func(c: *parser, pn: *peg_node): *node {
+func reconstruct_func(c: *parser, pn: *peg_node): *node {
 	var a: *node;
 	var b: *node;
 	var d: *node;

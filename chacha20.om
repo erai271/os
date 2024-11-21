@@ -19,11 +19,11 @@ struct _chacha20_state {
 	s15: int;
 }
 
-rol32(x: int, n: int): int {
+func rol32(x: int, n: int): int {
 	return ((x << n) | (x >> (32 - n))) & (-1 >> 32);
 }
 
-chacha20_qround(a: *int, b: *int, c: *int, d: *int) {
+func chacha20_qround(a: *int, b: *int, c: *int, d: *int) {
 	*a = (*a + *b) & (-1 >> 32);
 	*d = (*d ^ *a) & (-1 >> 32);
 	*d = rol32(*d, 16);
@@ -41,7 +41,7 @@ chacha20_qround(a: *int, b: *int, c: *int, d: *int) {
 	*b = rol32(*b, 7);
 }
 
-chacha20_block(block: *byte, key: *byte, counter: int, nonce: *byte) {
+func chacha20_block(block: *byte, key: *byte, counter: int, nonce: *byte) {
 	var _initial: _chacha20_state;
 	var initial: *int;
 	var _s: _chacha20_state;
@@ -151,7 +151,7 @@ chacha20_block(block: *byte, key: *byte, counter: int, nonce: *byte) {
 	}
 }
 
-chacha20_stream(cipher: *byte, plain: *byte, len: int, index: *int, key: *byte, nonce: *byte) {
+func chacha20_stream(cipher: *byte, plain: *byte, len: int, index: *int, key: *byte, nonce: *byte) {
 	var _block: _chacha20_state;
 	var block: *byte;
 	var i: int;

@@ -8,7 +8,7 @@ struct file {
 	eof: int;
 }
 
-fopen(fd: int, a: *alloc): *file {
+func fopen(fd: int, a: *alloc): *file {
 	var f: *file;
 
 	f = alloc(a, sizeof(*f)) as *file;
@@ -25,7 +25,7 @@ fopen(fd: int, a: *alloc): *file {
 	return f;
 }
 
-fclose(f: *file): void {
+func fclose(f: *file): void {
 	fflush(f);
 
 	if (close(f.fd) != 0) {
@@ -37,7 +37,7 @@ fclose(f: *file): void {
 	free(f.a, f as *byte);
 }
 
-fflush(f: *file): void {
+func fflush(f: *file): void {
 	var ret: int;
 
 	loop {
@@ -57,7 +57,7 @@ fflush(f: *file): void {
 	}
 }
 
-ffill(f: *file): void {
+func ffill(f: *file): void {
 	var ret: int;
 
 	if (f.eof) {
@@ -86,7 +86,7 @@ ffill(f: *file): void {
 	f.w = f.w + ret;
 }
 
-fputc(f: *file, ch: int): void {
+func fputc(f: *file, ch: int): void {
 	if (f.w == f.cap) {
 		fflush(f);
 	}
@@ -99,7 +99,7 @@ fputc(f: *file, ch: int): void {
 	}
 }
 
-fgetc(f: *file): int {
+func fgetc(f: *file): int {
 	var ch: int;
 
 	if (f.r == f.w) {
@@ -117,7 +117,7 @@ fgetc(f: *file): int {
 	return ch;
 }
 
-fgets(f: *file, buf: *byte, len: int): int {
+func fgets(f: *file, buf: *byte, len: int): int {
 	var i: int;
 	var c: int;
 
@@ -144,7 +144,7 @@ fgets(f: *file, buf: *byte, len: int): int {
 	}
 }
 
-fputs(f: *file, s: *byte) {
+func fputs(f: *file, s: *byte) {
 	var i: int;
 	i = 0;
 	loop {
@@ -156,7 +156,7 @@ fputs(f: *file, s: *byte) {
 	}
 }
 
-fputb(f: *file, s: *byte, n: int) {
+func fputb(f: *file, s: *byte, n: int) {
 	var i: int;
 	i = 0;
 	loop {
@@ -168,7 +168,7 @@ fputb(f: *file, s: *byte, n: int) {
 	}
 }
 
-fputd(out: *file, n: int) {
+func fputd(out: *file, n: int) {
 	var a: int;
 
 	if (n < 0) {
@@ -187,7 +187,7 @@ fputd(out: *file, n: int) {
 	fputc(out, '0' + a);
 }
 
-fseek(f: *file, off: int) {
+func fseek(f: *file, off: int) {
 	f.r = 0;
 	f.w = 0;
 	f.eof = 0;
@@ -196,7 +196,7 @@ fseek(f: *file, off: int) {
 	}
 }
 
-freadall(f: *file, size: *int): *byte {
+func freadall(f: *file, size: *int): *byte {
 	var i: int;
 	var cap: int;
 	var ret: *byte;

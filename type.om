@@ -16,7 +16,7 @@ enum {
 	TY_UNION,
 }
 
-type_sizeof(c: *compiler, t: *type): int {
+func type_sizeof(c: *compiler, t: *type): int {
 	var kind: int;
 
 	kind = t.kind;
@@ -40,7 +40,7 @@ type_sizeof(c: *compiler, t: *type): int {
 }
 
 // Unify two types
-unify(c: *compiler, a: *type, b: *type) {
+func unify(c: *compiler, a: *type, b: *type) {
 	var kind: int;
 
 	if (a == b) {
@@ -73,7 +73,7 @@ unify(c: *compiler, a: *type, b: *type) {
 	}
 }
 
-count_args(c: *compiler, t: *type): int {
+func count_args(c: *compiler, t: *type): int {
 	var nargs: int;
 
 	nargs = 0;
@@ -89,7 +89,7 @@ count_args(c: *compiler, t: *type): int {
 	return nargs;
 }
 
-mktype(c: *compiler, kind: int, a: *type, b: *type, st: *decl): *type {
+func mktype(c: *compiler, kind: int, a: *type, b: *type, st: *decl): *type {
 	var t: *type;
 
 	t = alloc(c.a, sizeof(*t)) as *type;
@@ -102,35 +102,35 @@ mktype(c: *compiler, kind: int, a: *type, b: *type, st: *decl): *type {
 	return t;
 }
 
-mktype_struct(c: *compiler, st: *decl): *type {
+func mktype_struct(c: *compiler, st: *decl): *type {
 	return mktype(c, TY_STRUCT, 0 as *type, 0 as *type, st);
 }
 
-mktype_union(c: *compiler, st: *decl): *type {
+func mktype_union(c: *compiler, st: *decl): *type {
 	return mktype(c, TY_UNION, 0 as *type, 0 as *type, st);
 }
 
-mktype0(c: *compiler, kind: int): *type {
+func mktype0(c: *compiler, kind: int): *type {
 	return mktype(c, kind, 0 as *type, 0 as *type, 0 as *decl);
 }
 
-mktype1(c: *compiler, kind: int, a: *type): *type {
+func mktype1(c: *compiler, kind: int, a: *type): *type {
 	return mktype(c, kind, a, 0 as *type, 0 as *decl);
 }
 
-mktype2(c: *compiler, kind: int, a: *type, b: *type): *type {
+func mktype2(c: *compiler, kind: int, a: *type, b: *type): *type {
 	return mktype(c, kind, a, b, 0 as *decl);
 }
 
-type_isint(t: *type): int {
+func type_isint(t: *type): int {
 	return t.kind == TY_INT || t.kind == TY_BYTE;
 }
 
-type_isprim(t: *type): int {
+func type_isprim(t: *type): int {
 	return t.kind != TY_VOID && t.kind != TY_STRUCT && t.kind != TY_UNION;
 }
 
-prototype(c: *compiler, n: *node): *type {
+func prototype(c: *compiler, n: *node): *type {
 	var a: *type;
 	var b: *type;
 	var st: *decl;

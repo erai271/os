@@ -1,4 +1,4 @@
-main(argc: int, argv: **byte, envp: **byte) {
+func main(argc: int, argv: **byte, envp: **byte) {
 	var fd: int;
 	var i: int;
 	var n: int;

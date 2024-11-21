@@ -1,4 +1,4 @@
-main(argc: int, argv: **byte, envp: **byte) {
+func main(argc: int, argv: **byte, envp: **byte) {
 	if argc != 3 {
 		die("usage: mv [src] [dest]");
 	}

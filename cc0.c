@@ -9447,6 +9447,7 @@ void( my_translate)(struct my_peg_compiler* my_c,struct my_peg_node* my_n){
 	(my_v)=((my_v)->my_next);
 	}
 	(my_fputs)(((my_c)->my_out),((unsigned char *)"}\012\012"));
+	(my_fputs)(((my_c)->my_out),((unsigned char *)"func "));
 	(my_fputs)(((my_c)->my_out),((my_c)->my_prefix));
 	(my_fputs)(((my_c)->my_out),((unsigned char *)"tag_to_str(tag: int): *byte {\012"));
 	(my_v)=((my_n)->my_child);
@@ -9472,7 +9473,7 @@ void( my_translate)(struct my_peg_compiler* my_c,struct my_peg_node* my_n){
 	break;
 	}
 	if ((unsigned long)(((long)((my_v)->my_tag))==((long)(my_PEG_rule)))) {
-	(my_fputs)(((my_c)->my_out),((unsigned char *)"\012peg_"));
+	(my_fputs)(((my_c)->my_out),((unsigned char *)"\012func peg_"));
 	(my_fputs)(((my_c)->my_out),((my_c)->my_prefix));
 	(my_fputb)(((my_c)->my_out),(((my_v)->my_child)->my_str),(((my_v)->my_child)->my_len));
 	(my_fputs)(((my_c)->my_out),((unsigned char *)"(c: *peg): int {\012"));

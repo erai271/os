@@ -62,7 +62,7 @@ struct peg_node {
 	col: int;
 }
 
-choice(c: *peg) {
+func choice(c: *peg) {
 	if c.sp == c.limit {
 		die("choice overflow");
 	}
@@ -75,14 +75,14 @@ choice(c: *peg) {
 	c.sp = c.sp + 1;
 }
 
-commit(c: *peg) {
+func commit(c: *peg) {
 	if c.sp == 0 {
 		die("commit underflow");
 	}
 	c.sp = c.sp - 1;
 }
 
-fail(c: *peg) {
+func fail(c: *peg) {
 	if c.sp == 0 {
 		die("fail underflow");
 	}
@@ -104,7 +104,7 @@ fail(c: *peg) {
 	c.col = c.stack[c.sp].col;
 }
 
-get(c: *peg): int {
+func get(c: *peg): int {
 	var ch: int;
 
 	if c.pos == c.size {
@@ -127,7 +127,7 @@ get(c: *peg): int {
 	return ch;
 }
 
-literal(c: *peg, s: *byte): int {
+func literal(c: *peg, s: *byte): int {
 	var i: int;
 	var ch: int;
 
@@ -150,12 +150,12 @@ literal(c: *peg, s: *byte): int {
 	return 1;
 }
 
-enter(c: *peg, tag: int) {
+func enter(c: *peg, tag: int) {
 	choice(c);
 	c.tag = tag;
 }
 
-leave(c: *peg, tag: int) {
+func leave(c: *peg, tag: int) {
 	var nargs: int;
 	var start: int;
 	var line: int;
@@ -196,7 +196,7 @@ leave(c: *peg, tag: int) {
 	c.depth = c.depth - nargs + 1;
 }
 
-charset(c: *peg, s: *byte): int {
+func charset(c: *peg, s: *byte): int {
 	var i: int;
 	var ch: int;
 
@@ -219,7 +219,7 @@ charset(c: *peg, s: *byte): int {
 	return 1;
 }
 
-any(c: *peg): int {
+func any(c: *peg): int {
 	var ch: int;
 	ch = get(c);
 	if ch == -1 {
@@ -229,7 +229,7 @@ any(c: *peg): int {
 	return 1;
 }
 
-construct(c: *peg, sp: int): *peg_node {
+func construct(c: *peg, sp: int): *peg_node {
 	var i: int;
 	var j: int;
 	var nargs: int;
@@ -291,7 +291,7 @@ construct(c: *peg, sp: int): *peg_node {
 	}
 }
 
-peg_new(filename: *byte, src: *byte, len: int, a: *alloc, grammar: (func(c:*peg):int), tag_to_str: (func(t:int):*byte)): *peg {
+func peg_new(filename: *byte, src: *byte, len: int, a: *alloc, grammar: (func(c:*peg):int), tag_to_str: (func(t:int):*byte)): *peg {
 	var c: *peg;
 
 	c = alloc(a, sizeof(*c)) as *peg;
@@ -333,7 +333,7 @@ peg_new(filename: *byte, src: *byte, len: int, a: *alloc, grammar: (func(c:*peg)
 	return c;
 }
 
-peg_parse(c: *peg, sp: int): *peg_node {
+func peg_parse(c: *peg, sp: int): *peg_node {
 	choice(c);
 	if !c.grammar(c) {
 		fdputs(2, "syntax error at ");
@@ -356,7 +356,7 @@ peg_parse(c: *peg, sp: int): *peg_node {
 	return construct(c, sp);
 }
 
-peg_reset(c: *peg, filename: *byte, src: *byte, len: int) {
+func peg_reset(c: *peg, filename: *byte, src: *byte, len: int) {
 	c.filename = filename;
 	c.src = src;
 	c.size = len;
@@ -376,14 +376,14 @@ peg_reset(c: *peg, filename: *byte, src: *byte, len: int) {
 	c.np = 0;
 }
 
-peg_free(c: *peg) {
+func peg_free(c: *peg) {
 	free(c.a, c.stack as *byte);
 	free(c.a, c.nstack as *byte);
 	free(c.a, c.out as *byte);
 	free(c.a, c as *byte);
 }
 
-peg_show(c: *peg, out: *file, n: *peg_node) {
+func peg_show(c: *peg, out: *file, n: *peg_node) {
 	var i: int;
 	var ch: int;
 	var hex: *byte;

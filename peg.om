@@ -14,7 +14,7 @@ enum {
 	LOOK_AND,
 }
 
-decode_look(n: *peg_node): int {
+func decode_look(n: *peg_node): int {
 	var ret: int;
 
 	ret = LOOK_NORMAL;
@@ -36,7 +36,7 @@ enum {
 	ONE_OR_MORE,
 }
 
-decode_count(n: *peg_node): int {
+func decode_count(n: *peg_node): int {
 	var ret: int;
 
 	ret = EXACTLY_ONE;
@@ -72,7 +72,7 @@ decode_count(n: *peg_node): int {
 	}
 }
 
-translate_literal(c: *peg_compiler, n: *peg_node) {
+func translate_literal(c: *peg_compiler, n: *peg_node) {
 	var i: int;
 	var len: int;
 	var ch: int;
@@ -104,7 +104,7 @@ translate_literal(c: *peg_compiler, n: *peg_node) {
 	fputs(c.out, "\");\n");
 }
 
-parse_escape(s: *byte, i: *int, n: int): int {
+func parse_escape(s: *byte, i: *int, n: int): int {
 	var nc: int;
 	var ok: int;
 
@@ -152,7 +152,7 @@ parse_escape(s: *byte, i: *int, n: int): int {
 	}
 }
 
-translate_charset(c: *peg_compiler, n: *peg_node) {
+func translate_charset(c: *peg_compiler, n: *peg_node) {
 	var i: int;
 	var len: int;
 	var ch: int;
@@ -256,7 +256,7 @@ translate_charset(c: *peg_compiler, n: *peg_node) {
 	fputs(c.out, "\");\n");
 }
 
-translate_pattern(c: *peg_compiler, n: *peg_node) {
+func translate_pattern(c: *peg_compiler, n: *peg_node) {
 	var count: int;
 	var look: int;
 	var d: *peg_node;
@@ -371,7 +371,7 @@ translate_pattern(c: *peg_compiler, n: *peg_node) {
 	}
 }
 
-translate(c: *peg_compiler, n: *peg_node) {
+func translate(c: *peg_compiler, n: *peg_node) {
 	var v: *peg_node;
 
 	// Generate tags for each rule
@@ -394,6 +394,7 @@ translate(c: *peg_compiler, n: *peg_node) {
 	fputs(c.out, "}\n\n");
 
 	// Generate tag to string
+	fputs(c.out, "func ");
 	fputs(c.out, c.prefix);
 	fputs(c.out, "tag_to_str(tag: int): *byte {\n");
 	v = n.child;
@@ -424,7 +425,7 @@ translate(c: *peg_compiler, n: *peg_node) {
 		}
 
 		if v.tag == PEG_rule {
-			fputs(c.out, "\npeg_");
+			fputs(c.out, "\nfunc peg_");
 			fputs(c.out, c.prefix);
 			fputb(c.out, v.child.str, v.child.len);
 			fputs(c.out, "(c: *peg): int {\n");
@@ -446,7 +447,7 @@ translate(c: *peg_compiler, n: *peg_node) {
 	}
 }
 
-setup_peg(a: *alloc, prefix: *byte): *peg_compiler {
+func setup_peg(a: *alloc, prefix: *byte): *peg_compiler {
 	var c: *peg_compiler;
 	c = alloc(a, sizeof(*c)) as *peg_compiler;
 	c.a = a;
@@ -455,7 +456,7 @@ setup_peg(a: *alloc, prefix: *byte): *peg_compiler {
 	return c;
 }
 
-peg_open_output(c: *peg_compiler, filename: *byte) {
+func peg_open_output(c: *peg_compiler, filename: *byte) {
 	var fd: int;
 	var f: *file;
 
@@ -470,7 +471,7 @@ peg_open_output(c: *peg_compiler, filename: *byte) {
 	c.out = f;
 }
 
-peg_compile(c: *peg_compiler, filename: *byte) {
+func peg_compile(c: *peg_compiler, filename: *byte) {
 	var fd: int;
 	var f: *file;
 	var src: *byte;

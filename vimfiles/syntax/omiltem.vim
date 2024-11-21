@@ -62,7 +62,6 @@ hi def link oGoto Statement
 hi def link oVar Keyword
 hi def link oAs Keyword
 hi def link oNil Keyword
-hi def link oFunc Keyword
 
 hi def link oEnum Structure
 hi def link oStruct Structure
@@ -71,5 +70,6 @@ hi def link oUnion Structure
 hi def link oByte Type
 hi def link oInt Type
 hi def link oVoid Type
+hi def link oFunc Type
 
 let b:current_syntax = "omiltem"

@@ -1,4 +1,4 @@
-read_line(fd: int, buf: *byte, max: int): int {
+func read_line(fd: int, buf: *byte, max: int): int {
 	var len: int;
 	var ret: int;
 	var c: byte;
@@ -32,7 +32,7 @@ read_line(fd: int, buf: *byte, max: int): int {
 	}
 }
 
-writeall(fd: int, buf: *byte, n: int): int {
+func writeall(fd: int, buf: *byte, n: int): int {
 	var ret: int;
 	loop {
 		if n == 0 {
@@ -52,7 +52,7 @@ writeall(fd: int, buf: *byte, n: int): int {
 	}
 }
 
-read_fill(fd: int, buf: *byte, n: int): int {
+func read_fill(fd: int, buf: *byte, n: int): int {
 	var ret: int;
 	loop {
 		if n == 0 {
@@ -73,8 +73,8 @@ read_fill(fd: int, buf: *byte, n: int): int {
 	}
 }
 
-_rdrand(): int;
-read_rand(buf: *byte, n: int) {
+func _rdrand(): int;
+func read_rand(buf: *byte, n: int) {
 	var i: int;
 	i = 0;
 	loop {
@@ -91,7 +91,7 @@ struct _ssh_nonce {
 	x1: int;
 }
 
-read_frame(ctx: *sshd_ctx) {
+func read_frame(ctx: *sshd_ctx) {
 	var len: int;
 	var padlen: int;
 	var minlen: int;
@@ -195,7 +195,7 @@ read_frame(ctx: *sshd_ctx) {
 	ctx.index = 0;
 }
 
-write_frame(ctx: *sshd_ctx) {
+func write_frame(ctx: *sshd_ctx) {
 	var len: int;
 	var padlen: int;
 	var minlen: int;
@@ -353,7 +353,7 @@ struct ssh_cr_exit_signal {
 	lang: ssh_str;
 }
 
-doversion(ctx: *sshd_ctx) {
+func doversion(ctx: *sshd_ctx) {
 	var ident: *byte;
 	var n: int;
 
@@ -387,7 +387,7 @@ struct ssh_disconnect {
 	lang: ssh_str;
 }
 
-decode_disconnect(p: *ssh_disconnect, ctx: *sshd_ctx) {
+func decode_disconnect(p: *ssh_disconnect, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_DISCONNECT {
@@ -401,7 +401,7 @@ decode_disconnect(p: *ssh_disconnect, ctx: *sshd_ctx) {
 	}
 }
 
-encode_disconnect(p: *ssh_disconnect, ctx: *sshd_ctx) {
+func encode_disconnect(p: *ssh_disconnect, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_DISCONNECT;
@@ -427,7 +427,7 @@ struct ssh_kexinit {
 	reserved: int;
 }
 
-decode_u8(s: *int, ctx: *sshd_ctx) {
+func decode_u8(s: *int, ctx: *sshd_ctx) {
 	if ctx.framelen < 1 || ctx.index > ctx.framelen - 1 {
 		die("u8 truncated");
 	}
@@ -435,7 +435,7 @@ decode_u8(s: *int, ctx: *sshd_ctx) {
 	ctx.index = ctx.index + 1;
 }
 
-decode_u32(s: *int, ctx: *sshd_ctx) {
+func decode_u32(s: *int, ctx: *sshd_ctx) {
 	if ctx.framelen < 4 || ctx.index > ctx.framelen - 4 {
 		die("u32 truncated");
 	}
@@ -446,7 +446,7 @@ decode_u32(s: *int, ctx: *sshd_ctx) {
 	ctx.index = ctx.index + 4;
 }
 
-decode_str(s: *ssh_str, ctx: *sshd_ctx) {
+func decode_str(s: *ssh_str, ctx: *sshd_ctx) {
 	decode_u32(&s.len, ctx);
 	if s.len < 0 || ctx.framelen < s.len || ctx.index > ctx.framelen - s.len {
 		die("str truncated");
@@ -455,7 +455,7 @@ decode_str(s: *ssh_str, ctx: *sshd_ctx) {
 	ctx.index = ctx.index + s.len;
 }
 
-decode_cookie(s: *ssh_str, ctx: *sshd_ctx) {
+func decode_cookie(s: *ssh_str, ctx: *sshd_ctx) {
 	if ctx.framelen < 16 || ctx.index > ctx.framelen - 16 {
 		die("cookie truncated");
 	}
@@ -464,12 +464,12 @@ decode_cookie(s: *ssh_str, ctx: *sshd_ctx) {
 	ctx.index = ctx.index + 16;
 }
 
-decode_bool(s: *int, ctx: *sshd_ctx) {
+func decode_bool(s: *int, ctx: *sshd_ctx) {
 	decode_u8(s, ctx);
 	*s = (*s != 0);
 }
 
-decode_kexinit(kex: *ssh_kexinit, ctx: *sshd_ctx) {
+func decode_kexinit(kex: *ssh_kexinit, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_KEXINIT {
@@ -493,7 +493,7 @@ decode_kexinit(kex: *ssh_kexinit, ctx: *sshd_ctx) {
 	}
 }
 
-decode_newkeys(kex: *ssh_newkeys, ctx: *sshd_ctx) {
+func decode_newkeys(kex: *ssh_newkeys, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_NEWKEYS {
@@ -508,7 +508,7 @@ struct ssh_ecdh_init {
 	qc: ssh_str;
 }
 
-decode_ecdh_init(dh: *ssh_ecdh_init, ctx: *sshd_ctx) {
+func decode_ecdh_init(dh: *ssh_ecdh_init, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_ECDH_INIT {
@@ -524,7 +524,7 @@ struct ssh_service_request {
 	name: ssh_str;
 }
 
-decode_service_request(sr: *ssh_service_request, ctx: *sshd_ctx) {
+func decode_service_request(sr: *ssh_service_request, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_SERVICE_REQUEST {
@@ -546,7 +546,7 @@ struct ssh_userauth_request {
 	sig: ssh_str;
 }
 
-decode_userauth_request(ar: *ssh_userauth_request, ctx: *sshd_ctx) {
+func decode_userauth_request(ar: *ssh_userauth_request, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_USERAUTH_REQUEST {
@@ -580,7 +580,7 @@ decode_userauth_request(ar: *ssh_userauth_request, ctx: *sshd_ctx) {
 	}
 }
 
-set_str(s: *ssh_str, v: *byte) {
+func set_str(s: *ssh_str, v: *byte) {
 	s.s = v;
 	s.len = strlen(v);
 }
@@ -590,17 +590,17 @@ struct _ssh_cookie {
 	x1: int;
 }
 
-clear_frame(ctx: *sshd_ctx) {
+func clear_frame(ctx: *sshd_ctx) {
 	ctx.frame = &ctx.buf[5];
 	ctx.framelen = ctx.bufsz - 5;
 	ctx.index = 0;
 }
 
-finish_frame(ctx: *sshd_ctx) {
+func finish_frame(ctx: *sshd_ctx) {
 	ctx.framelen = ctx.index;
 }
 
-encode_u8(x: *int, ctx: *sshd_ctx) {
+func encode_u8(x: *int, ctx: *sshd_ctx) {
 	if ctx.framelen < 1 || ctx.index > ctx.framelen - 1 {
 		die("u8 truncated");
 	}
@@ -608,7 +608,7 @@ encode_u8(x: *int, ctx: *sshd_ctx) {
 	ctx.index = ctx.index + 1;
 }
 
-encode_cookie(x: *ssh_str, ctx: *sshd_ctx) {
+func encode_cookie(x: *ssh_str, ctx: *sshd_ctx) {
 	if x.len != 16 || ctx.framelen < 16 || ctx.index > ctx.framelen - 16 {
 		die("cookie truncated");
 	}
@@ -616,13 +616,13 @@ encode_cookie(x: *ssh_str, ctx: *sshd_ctx) {
 	ctx.index = ctx.index + 16;
 }
 
-encode_bool(x: *int, ctx: *sshd_ctx) {
+func encode_bool(x: *int, ctx: *sshd_ctx) {
 	var y: int;
 	y = *x != 0;
 	encode_u8(&y, ctx);
 }
 
-encode_u32(x: *int, ctx: *sshd_ctx) {
+func encode_u32(x: *int, ctx: *sshd_ctx) {
 	if ctx.framelen < 4 || ctx.index > ctx.framelen - 4 {
 		die("u32 truncated");
 	}
@@ -633,7 +633,7 @@ encode_u32(x: *int, ctx: *sshd_ctx) {
 	ctx.index = ctx.index + 4;
 }
 
-encode_blob(x: *ssh_blob, ctx: *sshd_ctx) {
+func encode_blob(x: *ssh_blob, ctx: *sshd_ctx) {
 	var len: int;
 	len = x.alg.len + x.blob.len + 8;
 	encode_u32(&len, ctx);
@@ -641,7 +641,7 @@ encode_blob(x: *ssh_blob, ctx: *sshd_ctx) {
 	encode_str(&x.blob, ctx);
 }
 
-encode_str(x: *ssh_str, ctx: *sshd_ctx) {
+func encode_str(x: *ssh_str, ctx: *sshd_ctx) {
 	encode_u32(&x.len, ctx);
 	if ctx.framelen < x.len || ctx.index > ctx.framelen - x.len {
 		die("str truncated");
@@ -650,7 +650,7 @@ encode_str(x: *ssh_str, ctx: *sshd_ctx) {
 	ctx.index = ctx.index + x.len;
 }
 
-encode_kexinit(kex: *ssh_kexinit, ctx: *sshd_ctx) {
+func encode_kexinit(kex: *ssh_kexinit, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_KEXINIT;
@@ -674,7 +674,7 @@ encode_kexinit(kex: *ssh_kexinit, ctx: *sshd_ctx) {
 struct ssh_newkeys {
 }
 
-encode_newkeys(kex: *ssh_newkeys, ctx: *sshd_ctx) {
+func encode_newkeys(kex: *ssh_newkeys, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_NEWKEYS;
@@ -686,7 +686,7 @@ struct ssh_service_accept {
 	name: ssh_str;
 }
 
-encode_service_accept(sa: *ssh_service_accept, ctx: *sshd_ctx) {
+func encode_service_accept(sa: *ssh_service_accept, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_SERVICE_ACCEPT;
@@ -700,7 +700,7 @@ struct ssh_userauth_failure {
 	partial_success: int;
 }
 
-encode_userauth_failure(uf: *ssh_userauth_failure, ctx: *sshd_ctx) {
+func encode_userauth_failure(uf: *ssh_userauth_failure, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_USERAUTH_FAILURE;
@@ -713,7 +713,7 @@ encode_userauth_failure(uf: *ssh_userauth_failure, ctx: *sshd_ctx) {
 struct ssh_userauth_success {
 }
 
-encode_userauth_success(us: *ssh_userauth_success, ctx: *sshd_ctx) {
+func encode_userauth_success(us: *ssh_userauth_success, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_USERAUTH_SUCCESS;
@@ -726,7 +726,7 @@ struct ssh_userauth_pk_ok {
 	pub: ssh_str;
 }
 
-encode_userauth_pk_ok(ok: *ssh_userauth_pk_ok, ctx: *sshd_ctx) {
+func encode_userauth_pk_ok(ok: *ssh_userauth_pk_ok, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_USERAUTH_PK_OK;
@@ -747,13 +747,13 @@ struct ssh_ecdh_reply {
 	sig: ssh_blob;
 }
 
-set_blob(d: *ssh_blob, alg: *byte, b: *byte, n: int) {
+func set_blob(d: *ssh_blob, alg: *byte, b: *byte, n: int) {
 	set_str(&d.alg, alg);
 	d.blob.s = b;
 	d.blob.len = n;
 }
 
-encode_ecdh_reply(dh: *ssh_ecdh_reply, ctx: *sshd_ctx) {
+func encode_ecdh_reply(dh: *ssh_ecdh_reply, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_ECDH_REPLY;
@@ -764,7 +764,7 @@ encode_ecdh_reply(dh: *ssh_ecdh_reply, ctx: *sshd_ctx) {
 	finish_frame(ctx);
 }
 
-ssh_u32_sha256_update(ctx: *sha256_ctx, n: int) {
+func ssh_u32_sha256_update(ctx: *sha256_ctx, n: int) {
 	var a: byte;
 	a = (n >> 24) as byte;
 	sha256_update(ctx, &a, 1);
@@ -776,18 +776,18 @@ ssh_u32_sha256_update(ctx: *sha256_ctx, n: int) {
 	sha256_update(ctx, &a, 1);
 }
 
-ssh_blob_sha256_update(ctx: *sha256_ctx, b: *ssh_blob) {
+func ssh_blob_sha256_update(ctx: *sha256_ctx, b: *ssh_blob) {
 	ssh_u32_sha256_update(ctx, b.alg.len + b.blob.len + 8);
 	ssh_str_sha256_update(ctx, b.alg.s, b.alg.len);
 	ssh_str_sha256_update(ctx, b.blob.s, b.blob.len);
 }
 
-ssh_str_sha256_update(ctx: *sha256_ctx, b: *byte, n: int) {
+func ssh_str_sha256_update(ctx: *sha256_ctx, b: *byte, n: int) {
 	ssh_u32_sha256_update(ctx, n);
 	sha256_update(ctx, b, n);
 }
 
-ssh_mpint_sha256_update(ctx: *sha256_ctx, b: *byte, n: int) {
+func ssh_mpint_sha256_update(ctx: *sha256_ctx, b: *byte, n: int) {
 	var a: byte;
 
 	loop {
@@ -821,7 +821,7 @@ struct ssh_channel_open {
 	maximum_packet_size: int;
 }
 
-decode_channel_open(p: *ssh_channel_open, ctx: *sshd_ctx) {
+func decode_channel_open(p: *ssh_channel_open, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_CHANNEL_OPEN {
@@ -845,7 +845,7 @@ struct ssh_channel_open_confirmation {
 	maximum_packet_size: int;
 }
 
-encode_channel_open_confirmation(p: *ssh_channel_open_confirmation, ctx: *sshd_ctx) {
+func encode_channel_open_confirmation(p: *ssh_channel_open_confirmation, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_OPEN_CONFIRMATION;
@@ -867,7 +867,7 @@ struct ssh_channel_open_failure {
 	lang: ssh_str;
 }
 
-encode_channel_open_failure(p: *ssh_channel_open_failure, ctx: *sshd_ctx) {
+func encode_channel_open_failure(p: *ssh_channel_open_failure, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_OPEN_FAILURE;
@@ -884,7 +884,7 @@ struct ssh_channel_window_adjust {
 	window: int;
 }
 
-decode_channel_window_adjust(p: *ssh_channel_window_adjust, ctx: *sshd_ctx) {
+func decode_channel_window_adjust(p: *ssh_channel_window_adjust, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_CHANNEL_WINDOW_ADJUST {
@@ -897,7 +897,7 @@ decode_channel_window_adjust(p: *ssh_channel_window_adjust, ctx: *sshd_ctx) {
 	}
 }
 
-encode_channel_window_adjust(p: *ssh_channel_window_adjust, ctx: *sshd_ctx) {
+func encode_channel_window_adjust(p: *ssh_channel_window_adjust, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_WINDOW_ADJUST;
@@ -912,7 +912,7 @@ struct ssh_channel_data {
 	data: ssh_str;
 }
 
-decode_channel_data(p: *ssh_channel_data, ctx: *sshd_ctx) {
+func decode_channel_data(p: *ssh_channel_data, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_CHANNEL_DATA {
@@ -925,7 +925,7 @@ decode_channel_data(p: *ssh_channel_data, ctx: *sshd_ctx) {
 	}
 }
 
-encode_channel_data(p: *ssh_channel_data, ctx: *sshd_ctx) {
+func encode_channel_data(p: *ssh_channel_data, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_DATA;
@@ -941,7 +941,7 @@ struct ssh_channel_extended_data {
 	data: ssh_str;
 }
 
-encode_channel_extended_data(p: *ssh_channel_extended_data, ctx: *sshd_ctx) {
+func encode_channel_extended_data(p: *ssh_channel_extended_data, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_EXTENDED_DATA;
@@ -956,7 +956,7 @@ struct ssh_channel_eof {
 	channel: int;
 }
 
-decode_channel_eof(p: *ssh_channel_eof, ctx: *sshd_ctx) {
+func decode_channel_eof(p: *ssh_channel_eof, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_CHANNEL_EOF {
@@ -968,7 +968,7 @@ decode_channel_eof(p: *ssh_channel_eof, ctx: *sshd_ctx) {
 	}
 }
 
-encode_channel_eof(p: *ssh_channel_eof, ctx: *sshd_ctx) {
+func encode_channel_eof(p: *ssh_channel_eof, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_EOF;
@@ -981,7 +981,7 @@ struct ssh_channel_close {
 	channel: int;
 }
 
-decode_channel_close(p: *ssh_channel_close, ctx: *sshd_ctx) {
+func decode_channel_close(p: *ssh_channel_close, ctx: *sshd_ctx) {
 	var tag: int;
 	decode_u8(&tag, ctx);
 	if tag != SSH_MSG_CHANNEL_CLOSE {
@@ -993,7 +993,7 @@ decode_channel_close(p: *ssh_channel_close, ctx: *sshd_ctx) {
 	}
 }
 
-encode_channel_close(p: *ssh_channel_close, ctx: *sshd_ctx) {
+func encode_channel_close(p: *ssh_channel_close, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_CLOSE;
@@ -1017,7 +1017,7 @@ struct ssh_channel_request {
 	exit_signal: ssh_cr_exit_signal;
 }
 
-decode_channel_request(p: *ssh_channel_request, ctx: *sshd_ctx) {
+func decode_channel_request(p: *ssh_channel_request, ctx: *sshd_ctx) {
 	var tag: int;
 	bzero(p as *byte, sizeof(*p));
 	decode_u8(&tag, ctx);
@@ -1060,7 +1060,7 @@ decode_channel_request(p: *ssh_channel_request, ctx: *sshd_ctx) {
 	}
 }
 
-encode_channel_request(p: *ssh_channel_request, ctx: *sshd_ctx) {
+func encode_channel_request(p: *ssh_channel_request, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_REQUEST;
@@ -1092,7 +1092,7 @@ struct ssh_channel_success {
 	channel: int;
 }
 
-encode_channel_success(p: *ssh_channel_success, ctx: *sshd_ctx) {
+func encode_channel_success(p: *ssh_channel_success, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_SUCCESS;
@@ -1105,7 +1105,7 @@ struct ssh_channel_failure {
 	channel: int;
 }
 
-encode_channel_failure(p: *ssh_channel_failure, ctx: *sshd_ctx) {
+func encode_channel_failure(p: *ssh_channel_failure, ctx: *sshd_ctx) {
 	var tag: int;
 	clear_frame(ctx);
 	tag = SSH_MSG_CHANNEL_FAILURE;
@@ -1114,7 +1114,7 @@ encode_channel_failure(p: *ssh_channel_failure, ctx: *sshd_ctx) {
 	finish_frame(ctx);
 }
 
-dokex(ctx: *sshd_ctx) {
+func dokex(ctx: *sshd_ctx) {
 	var cookie: _ssh_cookie;
 	var ckex: ssh_kexinit;
 	var skex: ssh_kexinit;
@@ -1228,7 +1228,7 @@ dokex(ctx: *sshd_ctx) {
 	ctx.en_client_to_server = 1;
 }
 
-kex_key(key: *byte, a: *byte, ctx: *sshd_ctx) {
+func kex_key(key: *byte, a: *byte, ctx: *sshd_ctx) {
 	var h: sha256_ctx;
 
 	sha256_init(&h);
@@ -1245,13 +1245,13 @@ kex_key(key: *byte, a: *byte, ctx: *sshd_ctx) {
 	sha256_final(&key[32], &h);
 }
 
-ssh_streq(a: *ssh_str, b: *byte): int {
+func ssh_streq(a: *ssh_str, b: *byte): int {
 	var len: int;
 	len = strlen(b);
 	return a.len == len && memcmp(a.s, b, len) == 0;
 }
 
-doauth(ctx: *sshd_ctx) {
+func doauth(ctx: *sshd_ctx) {
 	var csr: ssh_service_request;
 	var cua: ssh_userauth_request;
 	var ssa: ssh_service_accept;
@@ -1348,7 +1348,7 @@ doauth(ctx: *sshd_ctx) {
 	write_frame(ctx);
 }
 
-dosession(ctx: *sshd_ctx) {
+func dosession(ctx: *sshd_ctx) {
 	var cco: ssh_channel_open;
 	var scc: ssh_channel_open_confirmation;
 	var ccr: ssh_channel_request;
@@ -1374,19 +1374,19 @@ dosession(ctx: *sshd_ctx) {
 	write_frame(ctx);
 }
 
-dodisconnect(ctx: *sshd_ctx) {
+func dodisconnect(ctx: *sshd_ctx) {
 	var d: ssh_disconnect;
 	decode_disconnect(&d, ctx);
 	exit(0);
 }
 
-dowindow(ctx: *sshd_ctx) {
+func dowindow(ctx: *sshd_ctx) {
 	var cwa: ssh_channel_window_adjust;
 	decode_channel_window_adjust(&cwa, ctx);
 	ctx.stdout_window = ctx.stdout_window + cwa.window;
 }
 
-dodata(ctx: *sshd_ctx) {
+func dodata(ctx: *sshd_ctx) {
 	var cd: ssh_channel_data;
 	decode_channel_data(&cd, ctx);
 	if ctx.stdin_eof {
@@ -1399,13 +1399,13 @@ dodata(ctx: *sshd_ctx) {
 	ctx.stdin_fill = ctx.stdin_fill + cd.data.len;
 }
 
-doeof(ctx: *sshd_ctx) {
+func doeof(ctx: *sshd_ctx) {
 	var ce: ssh_channel_eof;
 	decode_channel_eof(&ce, ctx);
 	ctx.stdin_eof = 1;
 }
 
-doclose(ctx: *sshd_ctx) {
+func doclose(ctx: *sshd_ctx) {
 	var cc: ssh_channel_close;
 	decode_channel_close(&cc, ctx);
 	exit(0);
@@ -1418,7 +1418,7 @@ struct _argv4 {
 	arg3: *byte;
 }
 
-ssh_spawn(ctx: *sshd_ctx, argv: **byte) {
+func ssh_spawn(ctx: *sshd_ctx, argv: **byte) {
 	var pid: int;
 	var stdin_read: int;
 	var stdin_write: int;
@@ -1479,12 +1479,12 @@ ssh_spawn(ctx: *sshd_ctx, argv: **byte) {
 	ctx.child_stderr = stderr_read;
 }
 
-dopty(cr: *ssh_cr_pty, ctx: *sshd_ctx): int {
+func dopty(cr: *ssh_cr_pty, ctx: *sshd_ctx): int {
 	// allocate pty
 	return 0;
 }
 
-doshell(cr: *ssh_cr_shell, ctx: *sshd_ctx): int {
+func doshell(cr: *ssh_cr_shell, ctx: *sshd_ctx): int {
 	var argv: _argv4;
 	argv.arg0 = "/bin/sh";
 	argv.arg1 = 0 as *byte;
@@ -1492,7 +1492,7 @@ doshell(cr: *ssh_cr_shell, ctx: *sshd_ctx): int {
 	return 1;
 }
 
-doexec(cr: *ssh_cr_exec, ctx: *sshd_ctx): int {
+func doexec(cr: *ssh_cr_exec, ctx: *sshd_ctx): int {
 	var argv: _argv4;
 	var cmd: *byte;
 	cmd = alloc(ctx.a, cr.command.len + 1);
@@ -1507,17 +1507,17 @@ doexec(cr: *ssh_cr_exec, ctx: *sshd_ctx): int {
 	return 1;
 }
 
-dowinch(cr: *ssh_cr_winch, ctx: *sshd_ctx): int {
+func dowinch(cr: *ssh_cr_winch, ctx: *sshd_ctx): int {
 	// window change
 	return 0;
 }
 
-dosignal(cr: *ssh_cr_signal, ctx: *sshd_ctx): int {
+func dosignal(cr: *ssh_cr_signal, ctx: *sshd_ctx): int {
 	// signal
 	return 0;
 }
 
-dorequest(ctx: *sshd_ctx) {
+func dorequest(ctx: *sshd_ctx) {
 	var cr: ssh_channel_request;
 	var ss: ssh_channel_success;
 	var sf: ssh_channel_failure;
@@ -1564,7 +1564,7 @@ struct pfd4 {
 	p3: int;
 }
 
-reset_pfd(pfd: *int, ctx: *sshd_ctx): int {
+func reset_pfd(pfd: *int, ctx: *sshd_ctx): int {
 	var n: int;
 	var events: int;
 
@@ -1613,7 +1613,7 @@ reset_pfd(pfd: *int, ctx: *sshd_ctx): int {
 	return n;
 }
 
-poll_client(revents: int, ctx: *sshd_ctx) {
+func poll_client(revents: int, ctx: *sshd_ctx) {
 	var tag: int;
 	var len: int;
 	var swa: ssh_channel_window_adjust;
@@ -1719,7 +1719,7 @@ poll_client(revents: int, ctx: *sshd_ctx) {
 	}
 }
 
-poll_stdin(revents: int, ctx: *sshd_ctx) {
+func poll_stdin(revents: int, ctx: *sshd_ctx) {
 	var ret: int;
 	if ctx.stdin_fill == 0 && ctx.stdin_eof {
 		close(ctx.child_stdin);
@@ -1740,7 +1740,7 @@ poll_stdin(revents: int, ctx: *sshd_ctx) {
 	ctx.stdin_window = ctx.stdin_window + ret;
 }
 
-poll_stdout(revents: int, ctx: *sshd_ctx) {
+func poll_stdout(revents: int, ctx: *sshd_ctx) {
 	var ret: int;
 	ret = read(ctx.child_stdout, &ctx.stdout_buf[ctx.stdout_fill], ctx.stdout_size - ctx.stdout_fill);
 	if ret == -EINTR {
@@ -1754,7 +1754,7 @@ poll_stdout(revents: int, ctx: *sshd_ctx) {
 	ctx.stdout_fill = ctx.stdout_fill + ret;
 }
 
-poll_stderr(revents: int, ctx: *sshd_ctx) {
+func poll_stderr(revents: int, ctx: *sshd_ctx) {
 	var ret: int;
 	ret = read(ctx.child_stderr, &ctx.stderr_buf[ctx.stderr_fill], ctx.stderr_size - ctx.stderr_fill);
 	if ret == -EINTR {
@@ -1768,7 +1768,7 @@ poll_stderr(revents: int, ctx: *sshd_ctx) {
 	ctx.stderr_fill = ctx.stderr_fill + ret;
 }
 
-poll_exit(ctx: *sshd_ctx) {
+func poll_exit(ctx: *sshd_ctx) {
 	var ret: int;
 	var status: int;
 	loop {
@@ -1783,7 +1783,7 @@ poll_exit(ctx: *sshd_ctx) {
 	}
 }
 
-client_loop(ctx: *sshd_ctx) {
+func client_loop(ctx: *sshd_ctx) {
 	var _p: pfd4;
 	var p: *int;
 	var n: int;
@@ -1834,7 +1834,7 @@ client_loop(ctx: *sshd_ctx) {
 	}
 }
 
-cmain(ctx: *sshd_ctx) {
+func cmain(ctx: *sshd_ctx) {
 	doversion(ctx);
 
 	read_frame(ctx);
@@ -1911,7 +1911,7 @@ struct sshd_ctx {
 	exit_status: int;
 }
 
-format_key(d: **byte, dlen: *int, k: *byte, ctx: *sshd_ctx) {
+func format_key(d: **byte, dlen: *int, k: *byte, ctx: *sshd_ctx) {
 	var s: ssh_str;
 	clear_frame(ctx);
 	set_str(&s, "ssh-ed25519");
@@ -1926,12 +1926,12 @@ format_key(d: **byte, dlen: *int, k: *byte, ctx: *sshd_ctx) {
 	clear_frame(ctx);
 }
 
-dosigchld() {
+func dosigchld() {
 }
 
-_restorer();
+func _restorer();
 
-signal(sig: int, handler: func()) {
+func signal(sig: int, handler: func()) {
 	var act: sigaction;
 	act.handler = (&dosigchld) as int;
 	act.flags = 1 << 26;
@@ -1940,7 +1940,7 @@ signal(sig: int, handler: func()) {
 	sigaction(sig, &act, 0 as *sigaction);
 }
 
-main(argc: int, argv: **byte, envp: **byte) {
+func main(argc: int, argv: **byte, envp: **byte) {
 	var fd: int;
 	var cfd: int;
 	var port: int;

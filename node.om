@@ -72,7 +72,7 @@ enum {
 	N_MOD,
 }
 
-mknode(c: *parser, kind: int, a: *node, b: *node): *node {
+func mknode(c: *parser, kind: int, a: *node, b: *node): *node {
 	var ret: *node;
 	ret = alloc(c.a, sizeof(*ret)) as *node;
 	ret.kind = kind;
@@ -88,15 +88,15 @@ mknode(c: *parser, kind: int, a: *node, b: *node): *node {
 	return ret;
 }
 
-mknode0(c: *parser, kind: int): *node {
+func mknode0(c: *parser, kind: int): *node {
 	return mknode(c, kind, 0 as *node, 0 as *node);
 }
 
-mknode1(c: *parser, kind: int, a: *node): *node {
+func mknode1(c: *parser, kind: int, a: *node): *node {
 	return mknode(c, kind, a, 0 as *node);
 }
 
-concat_program(a: *node, b: *node): *node {
+func concat_program(a: *node, b: *node): *node {
 	var ret: *node;
 
 	if !a {
@@ -121,7 +121,7 @@ concat_program(a: *node, b: *node): *node {
 	return ret;
 }
 
-node_to_str(kind: int): *byte {
+func node_to_str(kind: int): *byte {
 	if kind == N_IDENT { return "N_IDENT"; }
 	if kind == N_NUM { return "N_NUM"; }
 	if kind == N_CHAR { return "N_CHAR"; }
@@ -184,7 +184,7 @@ node_to_str(kind: int): *byte {
 	return "(invalid)";
 }
 
-show_node(out: *file, n: *node) {
+func show_node(out: *file, n: *node) {
 	var i: int;
 	var ch: int;
 	var hex: *byte;

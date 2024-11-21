@@ -13,7 +13,7 @@ struct _poly1305_ctx {
 	a9: int;
 }
 
-poly1305_reduce(a: *int) {
+func poly1305_reduce(a: *int) {
 	var c: int;
 	var k: int;
 
@@ -32,7 +32,7 @@ poly1305_reduce(a: *int) {
 	c = c + a[4] + (-4 & (-1 >> 32) & k); a[4] = c & (-1 >> 32); c = c >> 32;
 }
 
-poly1305_load(dest: *int, src: *byte, n: int) {
+func poly1305_load(dest: *int, src: *byte, n: int) {
 	var i: int;
 	i = 0;
 	loop {
@@ -47,7 +47,7 @@ poly1305_load(dest: *int, src: *byte, n: int) {
 	}
 }
 
-poly1305_digest(dest: *byte, src: *int) {
+func poly1305_digest(dest: *byte, src: *int) {
 	dest[0] = src[0] as byte;
 	dest[1] = (src[0] >> 8) as byte;
 	dest[2] = (src[0] >> 16) as byte;
@@ -66,7 +66,7 @@ poly1305_digest(dest: *byte, src: *int) {
 	dest[15] = (src[3] >> 24) as byte;
 }
 
-poly1305_add(a: *int, x: *int) {
+func poly1305_add(a: *int, x: *int) {
 	var c: int;
 	c = x[0] + a[0]; a[0] = c & (-1 >> 32); c = c >> 32;
 	c = c + x[1] + a[1]; a[1] = c & (-1 >> 32); c = c >> 32;
@@ -75,7 +75,7 @@ poly1305_add(a: *int, x: *int) {
 	c = c + x[4] + a[4]; a[4] = c & (-1 >> 32);
 }
 
-poly1305_mul(a: *int, r: *int) {
+func poly1305_mul(a: *int, r: *int) {
 	var _x: _poly1305_ctx;
 	var x: *int;
 	var i: int;
@@ -144,7 +144,7 @@ poly1305_mul(a: *int, r: *int) {
 	c = c + (x[8] >> 2) * 5 + ((x[9] & 3) << 30) * 5 + a[4]; a[4] = c & (-1 >> 32); c = c >> 32;
 }
 
-poly1305_truncate(dest: *int, key: *byte) {
+func poly1305_truncate(dest: *int, key: *byte) {
 	poly1305_load(dest, key, 4);
 
 	dest[0] = dest[0] & 0x0fffffff;
@@ -154,7 +154,7 @@ poly1305_truncate(dest: *int, key: *byte) {
 	dest[4] = 0;
 }
 
-poly1305_pad(dest: *int, msg: *byte, n: int) {
+func poly1305_pad(dest: *int, msg: *byte, n: int) {
 	var _pad: _poly1305_ctx;
 	var pad: *byte;
 	var i: int;
@@ -188,7 +188,7 @@ poly1305_pad(dest: *int, msg: *byte, n: int) {
 	poly1305_load(dest, pad, 5);
 }
 
-poly1305(mac: *byte, key: *byte, msg: *byte, len: int) {
+func poly1305(mac: *byte, key: *byte, msg: *byte, len: int) {
 	var _a: _poly1305_ctx;
 	var a: *int;
 	var _r: _poly1305_ctx;

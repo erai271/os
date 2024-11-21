@@ -8,11 +8,11 @@ struct alloc {
 	page: *page;
 }
 
-setup_alloc(c: *alloc) {
+func setup_alloc(c: *alloc) {
 	c.page = 0 as *page;
 }
 
-alloc(c: *alloc, size: int): *byte {
+func alloc(c: *alloc, size: int): *byte {
 	var page: *page;
 	var mret: int;
 	var ret: *byte;
@@ -61,5 +61,5 @@ alloc(c: *alloc, size: int): *byte {
 	return ret;
 }
 
-free(a: *alloc, p: *byte): void {
+func free(a: *alloc, p: *byte): void {
 }

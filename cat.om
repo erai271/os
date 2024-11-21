@@ -1,4 +1,4 @@
-docat(fd: int, buf: *byte) {
+func docat(fd: int, buf: *byte) {
 	var n: int;
 	var m: int;
 	var k: int;
@@ -28,7 +28,7 @@ docat(fd: int, buf: *byte) {
 	}
 }
 
-main(argc: int, argv: **byte, envp: **byte) {
+func main(argc: int, argv: **byte, envp: **byte) {
 	var fd: int;
 	var i: int;
 	var a: alloc;

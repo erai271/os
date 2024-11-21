@@ -1,4 +1,4 @@
-getchar(): int {
+func getchar(): int {
 	var b: byte;
 	var ret: int;
 	ret = read(0, &b, 1);
@@ -11,7 +11,7 @@ getchar(): int {
 	return b as int;
 }
 
-putchar(ch: int): void {
+func putchar(ch: int): void {
 	var b: byte;
 	var ret: int;
 	b = ch as byte;
@@ -38,7 +38,7 @@ struct compiler {
 	d: *dfa;
 }
 
-setup(c: *compiler): void {
+func setup(c: *compiler): void {
 	setup_alloc(&c.a);
 	c.nc = getchar();
 	c.lineno = 1;
@@ -56,7 +56,7 @@ setup(c: *compiler): void {
 	feed(c);
 }
 
-feedc(c: *compiler): void {
+func feedc(c: *compiler): void {
 	c.nc = getchar();
 	if (c.nc == '\n') {
 		c.lineno = c.lineno + 1;
@@ -81,7 +81,7 @@ enum {
 	T_SEMI,
 }
 
-feed(c: *compiler): void {
+func feed(c: *compiler): void {
 	c.n = 0 as *nfa;
 	c.tlen = 0;
 
@@ -146,7 +146,7 @@ feed(c: *compiler): void {
 	}
 }
 
-feed_ident(c: *compiler): void {
+func feed_ident(c: *compiler): void {
 	c.tt = T_IDENT;
 	loop {
 		if (!((c.nc >= 'a' && c.nc <= 'z') ||
@@ -167,7 +167,7 @@ feed_ident(c: *compiler): void {
 	}
 }
 
-hexdig(c: *compiler): int {
+func hexdig(c: *compiler): int {
 	if (c.nc >= '0' && c.nc <= '9') {
 		return c.nc - '0';
 	}
@@ -183,7 +183,7 @@ hexdig(c: *compiler): int {
 	die("invalid hex digit");
 }
 
-feed_escape(c: *compiler): void {
+func feed_escape(c: *compiler): void {
 	var hex: int;
 
 	feedc(c);
@@ -217,7 +217,7 @@ feed_escape(c: *compiler): void {
 	}
 }
 
-feed_literal(c: *compiler): void {
+func feed_literal(c: *compiler): void {
 	var a: *nfa;
 
 	c.tt = T_LITERAL;
@@ -246,7 +246,7 @@ feed_literal(c: *compiler): void {
 	}
 }
 
-feed_charset(c: *compiler): void {
+func feed_charset(c: *compiler): void {
 	var left: int;
 	var right: int;
 	var mode: int;
@@ -385,7 +385,7 @@ feed_charset(c: *compiler): void {
 	}
 }
 
-parse_ident(c: *compiler): *tag {
+func parse_ident(c: *compiler): *tag {
 	var t: *tag;
 	if (c.tt != T_IDENT) {
 		return 0 as *tag;
@@ -401,7 +401,7 @@ struct tag {
 	id: int;
 }
 
-intern(c: *compiler): *byte {
+func intern(c: *compiler): *byte {
 	var s: *byte;
 	var i: int;
 	s = alloc(&c.a, c.tlen + 1);
@@ -417,7 +417,7 @@ intern(c: *compiler): *byte {
 	return s;
 }
 
-find_tag(c: *compiler, s: *byte): *tag {
+func find_tag(c: *compiler, s: *byte): *tag {
 	var t: *tag;
 	var link: **tag;
 	link = &c.tags;
@@ -451,7 +451,7 @@ struct nfa {
 	end: *nfa;
 }
 
-nfa_empty(c: *compiler): *nfa {
+func nfa_empty(c: *compiler): *nfa {
 	var n: *nfa;
 	n = alloc(&c.a, sizeof(*n)) as *nfa;
 	n.id = c.nnfa;
@@ -465,7 +465,7 @@ nfa_empty(c: *compiler): *nfa {
 	return n;
 }
 
-nfa_literal(c: *compiler, a: byte): *nfa {
+func nfa_literal(c: *compiler, a: byte): *nfa {
 	var n: *nfa;
 	n = nfa_empty(c);
 	n.left = a as int;
@@ -473,7 +473,7 @@ nfa_literal(c: *compiler, a: byte): *nfa {
 	return n;
 }
 
-nfa_alt(c: *compiler, a: *nfa, b: *nfa): *nfa {
+func nfa_alt(c: *compiler, a: *nfa, b: *nfa): *nfa {
 	var i: *nfa;
 	var o: *nfa;
 	i = nfa_empty(c);
@@ -486,13 +486,13 @@ nfa_alt(c: *compiler, a: *nfa, b: *nfa): *nfa {
 	return i;
 }
 
-nfa_concat(c: *compiler, a: *nfa, b: *nfa): *nfa {
+func nfa_concat(c: *compiler, a: *nfa, b: *nfa): *nfa {
 	a.end.a = b;
 	a.end = b.end;
 	return a;
 }
 
-nfa_plus(c: *compiler, a: *nfa): *nfa {
+func nfa_plus(c: *compiler, a: *nfa): *nfa {
 	var o: *nfa;
 	o = nfa_empty(c);
 	o.b = a;
@@ -501,20 +501,20 @@ nfa_plus(c: *compiler, a: *nfa): *nfa {
 	return a;
 }
 
-nfa_qmark(c: *compiler, a: *nfa): *nfa {
+func nfa_qmark(c: *compiler, a: *nfa): *nfa {
 	var b: *nfa;
 	b = nfa_empty(c);
 	a = nfa_alt(c, a, b);
 	return a;
 }
 
-nfa_star(c: *compiler, a: *nfa): *nfa {
+func nfa_star(c: *compiler, a: *nfa): *nfa {
 	a = nfa_plus(c, a);
 	a = nfa_qmark(c, a);
 	return a;
 }
 
-parse_literal(c: *compiler): *nfa {
+func parse_literal(c: *compiler): *nfa {
 	var n: *nfa;
 	if (c.tt != T_LITERAL) {
 		return 0 as *nfa;
@@ -524,7 +524,7 @@ parse_literal(c: *compiler): *nfa {
 	return n;
 }
 
-parse_charset(c: *compiler): *nfa {
+func parse_charset(c: *compiler): *nfa {
 	var n: *nfa;
 	if (c.tt != T_CHARSET) {
 		return 0 as *nfa;
@@ -534,7 +534,7 @@ parse_charset(c: *compiler): *nfa {
 	return n;
 }
 
-parse_dot(c: *compiler): *nfa {
+func parse_dot(c: *compiler): *nfa {
 	var n: *nfa;
 	if (c.tt != T_DOT) {
 		return 0 as *nfa;
@@ -550,7 +550,7 @@ parse_dot(c: *compiler): *nfa {
 //          | charset
 //          | dot
 //          | '(' regex ')'
-parse_primary(c: *compiler): *nfa {
+func parse_primary(c: *compiler): *nfa {
 	var n: *nfa;
 
 	n = parse_literal(c);
@@ -588,7 +588,7 @@ parse_primary(c: *compiler): *nfa {
 //      | post '*'
 //      | post '+'
 //      | post '?'
-parse_post(c: *compiler): *nfa {
+func parse_post(c: *compiler): *nfa {
 	var n: *nfa;
 
 	n = parse_primary(c);
@@ -614,7 +614,7 @@ parse_post(c: *compiler): *nfa {
 
 // concat := post
 //         | post concat
-parse_concat(c: *compiler): *nfa {
+func parse_concat(c: *compiler): *nfa {
 	var n: *nfa;
 	var b: *nfa;
 
@@ -636,7 +636,7 @@ parse_concat(c: *compiler): *nfa {
 // regex := concat
 //        | '|' regex
 //        | concat '|' regex
-parse_regex(c: *compiler): *nfa {
+func parse_regex(c: *compiler): *nfa {
 	var n: *nfa;
 	var b: *nfa;
 
@@ -661,7 +661,7 @@ parse_regex(c: *compiler): *nfa {
 }
 
 // decl := ident '=' regex ';'
-parse_decl(c: *compiler): *nfa {
+func parse_decl(c: *compiler): *nfa {
 	var regex: *nfa;
 	var t: *tag;
 	var n: *nfa;
@@ -691,7 +691,7 @@ parse_decl(c: *compiler): *nfa {
 
 // progam := decl
 //         | decl program
-parse_program(c: *compiler): *nfa {
+func parse_program(c: *compiler): *nfa {
 	var n: *nfa;
 	var p: *nfa;
 
@@ -729,14 +729,14 @@ struct nlist {
 	tag: *tag;
 }
 
-alloc_nlist(c: *compiler, l: *nlist, cap: int): void {
+func alloc_nlist(c: *compiler, l: *nlist, cap: int): void {
 	l.cap = cap;
 	l.live = alloc(&c.a, sizeof(*l.live) * cap) as **nfa;
 	l.fill = 0;
 	l.tag = 0 as *tag;
 }
 
-activate(l: *nlist, n: *nfa): void {
+func activate(l: *nlist, n: *nfa): void {
 	if (n.live) {
 		return;
 	}
@@ -761,7 +761,7 @@ activate(l: *nlist, n: *nfa): void {
 	}
 }
 
-nlist_cmp(a: *nlist, b: *nlist): int {
+func nlist_cmp(a: *nlist, b: *nlist): int {
 	var i: int;
 
 	i = 0;
@@ -812,7 +812,7 @@ nlist_cmp(a: *nlist, b: *nlist): int {
 	return 0;
 }
 
-nlist_sort(l: *nlist): void {
+func nlist_sort(l: *nlist): void {
 	var i: int;
 	var j: int;
 	var k: int;
@@ -873,7 +873,7 @@ nlist_sort(l: *nlist): void {
 	}
 }
 
-alloc_link(c: *compiler): **dfa {
+func alloc_link(c: *compiler): **dfa {
 	var link: **dfa;
 	var i: int;
 	link = alloc(&c.a, sizeof(*link) * 256) as **dfa;
@@ -888,7 +888,7 @@ alloc_link(c: *compiler): **dfa {
 	return link;
 }
 
-nlist_copy(c: *compiler, dest: *nlist, src: *nlist): void {
+func nlist_copy(c: *compiler, dest: *nlist, src: *nlist): void {
 	var i: int;
 	alloc_nlist(c, dest, src.fill);
 	dest.fill = src.fill;
@@ -903,7 +903,7 @@ nlist_copy(c: *compiler, dest: *nlist, src: *nlist): void {
 	}
 }
 
-nlist2dfa(c: *compiler, l: *nlist): *dfa {
+func nlist2dfa(c: *compiler, l: *nlist): *dfa {
 	var link: **dfa;
 	var d: *dfa;
 	var n: *nfa;
@@ -980,7 +980,7 @@ nlist2dfa(c: *compiler, l: *nlist): *dfa {
 	return d;
 }
 
-deactivate(l: *nlist): void {
+func deactivate(l: *nlist): void {
 	var i: int;
 	i = 0;
 	loop {
@@ -994,14 +994,14 @@ deactivate(l: *nlist): void {
 	}
 }
 
-powerset(c: *compiler, n: *nfa): *dfa {
+func powerset(c: *compiler, n: *nfa): *dfa {
 	var live: nlist;
 	alloc_nlist(c, &live, c.nnfa);
 	activate(&live, n);
 	return nlist2dfa(c, &live);
 }
 
-codegen(c: *compiler, a: *dfa): void {
+func codegen(c: *compiler, a: *dfa): void {
 	var i: int;
 	var b: *dfa;
 	var lo: int;
@@ -1080,7 +1080,7 @@ codegen(c: *compiler, a: *dfa): void {
 	}
 }
 
-gen(c: *compiler, a: *dfa): void {
+func gen(c: *compiler, a: *dfa): void {
 	var t: *tag;
 	t = c.tags;
 	fdputs(1, "enum {\n");
@@ -1104,7 +1104,7 @@ gen(c: *compiler, a: *dfa): void {
 	fdputs(1, "}\n");
 }
 
-main(argc: int, argv: **byte, envp: **byte): void {
+func main(argc: int, argv: **byte, envp: **byte): void {
 	var c: compiler;
 	var n: *nfa;
 	var a: *dfa;

@@ -1,10 +1,10 @@
-die(msg: *byte) {
+func die(msg: *byte) {
 	fdputs(2, msg);
 	fdputs(2, "\n");
 	exit(1);
 }
 
-strlen(s: *byte): int {
+func strlen(s: *byte): int {
 	var ret: int;
 	ret = 0;
 	loop {
@@ -15,7 +15,7 @@ strlen(s: *byte): int {
 	}
 }
 
-memcmp(a: *byte, b: *byte, n: int): int {
+func memcmp(a: *byte, b: *byte, n: int): int {
 	var i: int;
 
 	i = 0;
@@ -37,7 +37,7 @@ memcmp(a: *byte, b: *byte, n: int): int {
 	}
 }
 
-strcmp(a: *byte, b: *byte): int {
+func strcmp(a: *byte, b: *byte): int {
 	var i: int;
 
 	i = 0;
@@ -59,7 +59,7 @@ strcmp(a: *byte, b: *byte): int {
 	}
 }
 
-fdgetc(fd: int): int {
+func fdgetc(fd: int): int {
 	var b: byte;
 	var ret: int;
 	ret = read(fd, &b, 1);
@@ -72,7 +72,7 @@ fdgetc(fd: int): int {
 	}
 }
 
-fdputc(fd: int, ch: int) {
+func fdputc(fd: int, ch: int) {
 	var b: byte;
 	var ret: int;
 	b = ch as byte;
@@ -82,7 +82,7 @@ fdputc(fd: int, ch: int) {
 	}
 }
 
-fdputs(fd: int, msg: *byte) {
+func fdputs(fd: int, msg: *byte) {
 	var len: int;
 	var ret: int;
 	var off: int;
@@ -100,7 +100,7 @@ fdputs(fd: int, msg: *byte) {
 	}
 }
 
-fdputh(fd: int, n: int) {
+func fdputh(fd: int, n: int) {
 	var d: int;
 
 	d = n & 15;
@@ -114,7 +114,7 @@ fdputh(fd: int, n: int) {
 	fdputc(fd, "0123456789abcdef"[d] as int);
 }
 
-fdputhn(fd: int, x: int, d: int) {
+func fdputhn(fd: int, x: int, d: int) {
 	loop {
 		if d == 0 {
 			break;
@@ -124,23 +124,23 @@ fdputhn(fd: int, x: int, d: int) {
 	}
 }
 
-fdputh8(fd: int, x: int) {
+func fdputh8(fd: int, x: int) {
 	fdputhn(fd, x, 8);
 }
 
-fdputh16(fd: int, x: int) {
+func fdputh16(fd: int, x: int) {
 	fdputhn(fd, x, 16);
 }
 
-fdputh32(fd: int, x: int) {
+func fdputh32(fd: int, x: int) {
 	fdputhn(fd, x, 32);
 }
 
-fdputh64(fd: int, x: int) {
+func fdputh64(fd: int, x: int) {
 	fdputhn(fd, x, 64);
 }
 
-fdputd(fd: int, n: int) {
+func fdputd(fd: int, n: int) {
 	var a: int;
 
 	if (n < 0) {
@@ -159,7 +159,7 @@ fdputd(fd: int, n: int) {
 	fdputc(fd, '0' + a);
 }
 
-xxd_line(line: *byte, offset: int, data: *byte, len: int) {
+func xxd_line(line: *byte, offset: int, data: *byte, len: int) {
 	var i: int;
 	var j: int;
 	var d: *byte;
@@ -233,7 +233,7 @@ xxd_line(line: *byte, offset: int, data: *byte, len: int) {
 	line[i] = 0 as byte;
 }
 
-fdxxd(fd: int, data: *byte, len: int) {
+func fdxxd(fd: int, data: *byte, len: int) {
 	var i: int;
 	var j: int;
 	loop {
@@ -295,7 +295,7 @@ fdxxd(fd: int, data: *byte, len: int) {
 	}
 }
 
-bzero(s: *byte, size: int) {
+func bzero(s: *byte, size: int) {
 	var i: int;
 	i = 0;
 	loop {
@@ -307,7 +307,7 @@ bzero(s: *byte, size: int) {
 	}
 }
 
-memset(dest: *byte, c: int, size: int) {
+func memset(dest: *byte, c: int, size: int) {
 	var i: int;
 
 	if size < 0 {
@@ -324,7 +324,7 @@ memset(dest: *byte, c: int, size: int) {
 	}
 }
 
-memcpy(dest: *byte, src: *byte, size: int) {
+func memcpy(dest: *byte, src: *byte, size: int) {
 	var i: int;
 
 	if size < 0 {
@@ -352,7 +352,7 @@ memcpy(dest: *byte, src: *byte, size: int) {
 	}
 }
 
-unhex(dest: *byte, src: *byte): int {
+func unhex(dest: *byte, src: *byte): int {
 	var i: int;
 	var dlen: int;
 	var x: int;
@@ -408,7 +408,7 @@ unhex(dest: *byte, src: *byte): int {
 	return dlen;
 }
 
-reverse(buf: *byte, len: int) {
+func reverse(buf: *byte, len: int) {
 	var i: int;
 	var x: byte;
 	i = 0;
@@ -427,13 +427,13 @@ reverse(buf: *byte, len: int) {
 	}
 }
 
-assert(x: int, msg: *byte) {
+func assert(x: int, msg: *byte) {
 	if !x {
 		die(msg);
 	}
 }
 
-readall(fd: int, len: *int, a: *alloc): *byte {
+func readall(fd: int, len: *int, a: *alloc): *byte {
 	var buf: *byte;
 	var tmp: *byte;
 	var cap: int;
@@ -477,7 +477,7 @@ readall(fd: int, len: *int, a: *alloc): *byte {
 	return buf;
 }
 
-hex2int(s: *byte, len: int, ok: *int): int {
+func hex2int(s: *byte, len: int, ok: *int): int {
 	var i: int;
 	var x: int;
 	var d: int;
@@ -525,7 +525,7 @@ hex2int(s: *byte, len: int, ok: *int): int {
 	return x;
 }
 
-dec2int(s: *byte, len: int, ok: *int): int {
+func dec2int(s: *byte, len: int, ok: *int): int {
 	var x: int;
 	var d: int;
 	var i: int;
@@ -568,7 +568,7 @@ dec2int(s: *byte, len: int, ok: *int): int {
 	return x;
 }
 
-hexdig(ch: int, ok: *int): int {
+func hexdig(ch: int, ok: *int): int {
 	if ch >= '0' && ch <= '9' {
 		*ok = 1;
 		return ch - '0';
@@ -585,7 +585,7 @@ hexdig(ch: int, ok: *int): int {
 }
 
 
-unescape(s: *byte, i: *int, len: int, ok: *int): int {
+func unescape(s: *byte, i: *int, len: int, ok: *int): int {
 	var ch: int;
 	var hex: int;
 

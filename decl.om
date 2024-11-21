@@ -38,7 +38,7 @@ struct decl {
 	goto_label: *label;
 }
 
-find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
+func find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
 	var p: *decl;
 	var d: *decl;
 	var link: **decl;
@@ -127,7 +127,7 @@ find(c: *compiler, name: *byte, member_name: *byte, make: int): *decl {
 }
 
 // Find the first declaration
-first_decl(c: *compiler): *decl {
+func first_decl(c: *compiler): *decl {
 	var d: *decl;
 
 	d = c.decls;
@@ -144,7 +144,7 @@ first_decl(c: *compiler): *decl {
 	}
 }
 
-next_decl(c: *compiler, d: *decl): *decl {
+func next_decl(c: *compiler, d: *decl): *decl {
 	if (!d) {
 		return 0 as *decl;
 	}

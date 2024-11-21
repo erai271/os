@@ -1,4 +1,4 @@
-syscall(n: int, a1: int, a2: int, a3: int, a4: int, a5: int, a6: int): int;
+func syscall(n: int, a1: int, a2: int, a3: int, a4: int, a5: int, a6: int): int;
 
 enum {
 	O_RDONLY = 0,
@@ -32,44 +32,44 @@ enum {
 	SIGWINCH = 28,
 }
 
-_start(argc: int, argv: **byte, envp: **byte) {
+func _start(argc: int, argv: **byte, envp: **byte) {
 	main(argc, argv, envp);
 	exit(0);
 }
 
-read(fd: int, buf: *byte, n: int): int {
+func read(fd: int, buf: *byte, n: int): int {
 	return syscall(0, fd, buf as int, n, 0, 0, 0);
 }
 
-write(fd: int, buf: *byte, n: int): int {
+func write(fd: int, buf: *byte, n: int): int {
 	return syscall(1, fd, buf as int, n, 0, 0, 0);
 }
 
-open(name: *byte, flags: int, mode: int): int {
+func open(name: *byte, flags: int, mode: int): int {
 	return syscall(2, name as int, flags, mode, 0, 0, 0);
 }
 
-close(fd: int): int {
+func close(fd: int): int {
 	return syscall(3, fd, 0, 0, 0, 0, 0);
 }
 
-fstat(fd: int, buf: *byte): int {
+func fstat(fd: int, buf: *byte): int {
 	return syscall(5, fd, buf as int, 0, 0, 0, 0);
 }
 
-poll(pfd: *int, nfd: int, timeout: int): int {
+func poll(pfd: *int, nfd: int, timeout: int): int {
 	return syscall(7, pfd as int, nfd, timeout, 0, 0, 0);
 }
 
-lseek(fd: int, off: int, whence: int): int {
+func lseek(fd: int, off: int, whence: int): int {
 	return syscall(8, fd, off, whence, 0, 0, 0);
 }
 
-mmap(addr: int, len: int, prot: int, flags: int, fd: int, off: int): int {
+func mmap(addr: int, len: int, prot: int, flags: int, fd: int, off: int): int {
 	return syscall(9, addr, len, prot, flags, fd, off);
 }
 
-munmap(addr: int, len: int): int {
+func munmap(addr: int, len: int): int {
 	return syscall(11, addr, len, 0, 0, 0, 0);
 }
 
@@ -80,11 +80,11 @@ struct sigaction {
 	mask: int;
 }
 
-sigaction(sig: int, act: *sigaction, oact: *sigaction): int {
+func sigaction(sig: int, act: *sigaction, oact: *sigaction): int {
 	return syscall(13, sig, act as int, oact as int, 8, 0, 0);
 }
 
-pipe(rfd: *int, wfd: *int): int {
+func pipe(rfd: *int, wfd: *int): int {
 	var buf: int;
 	var ret: int;
 	ret = syscall(22, (&buf) as int, 0, 0, 0, 0, 0);
@@ -95,39 +95,39 @@ pipe(rfd: *int, wfd: *int): int {
 	return ret;
 }
 
-dup2(old: int, new: int): int {
+func dup2(old: int, new: int): int {
 	return syscall(33, old, new, 0, 0, 0, 0);
 }
 
-socket(pf: int, ty: int, pc: int): int {
+func socket(pf: int, ty: int, pc: int): int {
 	return syscall(41, pf, ty, pc, 0, 0, 0);
 }
 
-accept(fd: int, addr: *byte, len: *int): int {
+func accept(fd: int, addr: *byte, len: *int): int {
 	return syscall(43, fd, addr as int, len as int, 0, 0, 0);
 }
 
-bind(fd: int, addr: *byte, len: int): int {
+func bind(fd: int, addr: *byte, len: int): int {
 	return syscall(49, fd, addr as int, len as int, 0, 0, 0);
 }
 
-listen(fd: int, backlog: int): int {
+func listen(fd: int, backlog: int): int {
 	return syscall(50, fd, backlog, 0, 0, 0, 0);
 }
 
-fork(): int {
+func fork(): int {
 	return syscall(57, 0, 0, 0, 0, 0, 0);
 }
 
-exec(cmd: *byte, argv: **byte, envp: **byte): int {
+func exec(cmd: *byte, argv: **byte, envp: **byte): int {
 	return syscall(59, cmd as int, argv as int, envp as int, 0, 0, 0);
 }
 
-exit(n: int) {
+func exit(n: int) {
 	syscall(60, n, 0, 0, 0, 0, 0);
 }
 
-wait(pid: int, status: *int, flags: int): int {
+func wait(pid: int, status: *int, flags: int): int {
 	var s: int;
 	var ret: int;
 	s = 0;
@@ -138,18 +138,18 @@ wait(pid: int, status: *int, flags: int): int {
 	return ret;
 }
 
-rename(oldname: *byte, newname: *byte): int {
+func rename(oldname: *byte, newname: *byte): int {
 	return syscall(82, oldname as int, newname as int, 0, 0, 0, 0);
 }
 
-mkdir(name: *byte): int {
+func mkdir(name: *byte): int {
 	return syscall(83, name as int, 0, 0, 0, 0, 0);
 }
 
-unlink(name: *byte): int {
+func unlink(name: *byte): int {
 	return syscall(87, name as int, 0, 0, 0, 0, 0);
 }
 
-getdirents(fd: int, buf: *byte, len: int): int {
+func getdirents(fd: int, buf: *byte, len: int): int {
 	return syscall(217, fd, buf as int, len, 0, 0, 0);
 }

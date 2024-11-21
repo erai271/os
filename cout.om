@@ -1,4 +1,4 @@
-ctranslate(c: *compiler) {
+func ctranslate(c: *compiler) {
 	var d: *decl;
 	var seen: int;
 	var has_enum: int;
@@ -109,7 +109,7 @@ ctranslate(c: *compiler) {
 // type <- ('void' / 'unsigned' ('long' / 'char')) declarator
 // declarator <- [*]* (ident / '(' declarator ')' '(' type (',' type)* ')')?
 
-ctranslate_type1(c: *compiler, ty: *type, name: *byte, decl: int) {
+func ctranslate_type1(c: *compiler, ty: *type, name: *byte, decl: int) {
 	if ty.kind == TY_VOID {
 		fputs(c.cout, "void");
 	} else if ty.kind == TY_INT {
@@ -136,7 +136,7 @@ ctranslate_type1(c: *compiler, ty: *type, name: *byte, decl: int) {
 	}
 }
 
-ctranslate_type2(c: *compiler, ty: *type, name: *byte, args: *node) {
+func ctranslate_type2(c: *compiler, ty: *type, name: *byte, args: *node) {
 	var arg: *type;
 	if ty.kind == TY_PTR {
 		ctranslate_type2(c, ty.val, name, args);
@@ -174,12 +174,12 @@ ctranslate_type2(c: *compiler, ty: *type, name: *byte, args: *node) {
 	}
 }
 
-ctranslate_type(c: *compiler, ty: *type, name: *byte, decl: int, args: *node) {
+func ctranslate_type(c: *compiler, ty: *type, name: *byte, decl: int, args: *node) {
 	ctranslate_type1(c, ty, name, decl);
 	ctranslate_type2(c, ty, name, args);
 }
 
-ctranslate_zero(c: *compiler, ty: *type) {
+func ctranslate_zero(c: *compiler, ty: *type) {
 	var n: *node;
 	var v: *decl;
 	var arg: *type;
@@ -222,7 +222,7 @@ ctranslate_zero(c: *compiler, ty: *type) {
 	}
 }
 
-ctranslate_struct(c: *compiler, d: *decl) {
+func ctranslate_struct(c: *compiler, d: *decl) {
 	var v: *decl;
 	var n: *node;
 	if d.struct_def.kind == N_UNION {
@@ -249,7 +249,7 @@ ctranslate_struct(c: *compiler, d: *decl) {
 	fputs(c.cout, "};\n");
 }
 
-ctranslate_vars(c: *compiler, n: *node) {
+func ctranslate_vars(c: *compiler, n: *node) {
 	var kind: int;
 	var child: *node;
 
@@ -285,7 +285,7 @@ ctranslate_vars(c: *compiler, n: *node) {
 	}
 }
 
-ctranslate_str(c: *compiler, s: *byte) {
+func ctranslate_str(c: *compiler, s: *byte) {
 	var i: int;
 	var ch: int;
 	i = 0;
@@ -311,7 +311,7 @@ ctranslate_str(c: *compiler, s: *byte) {
 	fputs(c.cout, "\"");
 }
 
-ctranslate_expr(c: *compiler, n: *node) {
+func ctranslate_expr(c: *compiler, n: *node) {
 	if n.kind == N_STR {
 		ctranslate_str(c, n.s);
 	} else if n.kind == N_NUM {
@@ -532,7 +532,7 @@ ctranslate_expr(c: *compiler, n: *node) {
 	}
 }
 
-ctranslate_stmt(c: *compiler, n: *node) {
+func ctranslate_stmt(c: *compiler, n: *node) {
 	var kind: int;
 	var child: *node;
 
@@ -611,7 +611,7 @@ ctranslate_stmt(c: *compiler, n: *node) {
 	}
 }
 
-ctranslate_func(c: *compiler, d: *decl) {
+func ctranslate_func(c: *compiler, d: *decl) {
 	var n: *node;
 	var ty: *type;
 	if d.func_def {

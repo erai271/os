@@ -19,7 +19,7 @@ struct stat {
 	pad2: int;
 }
 
-main(argc: int, argv: **byte, envp: **byte) {
+func main(argc: int, argv: **byte, envp: **byte) {
 	var opts: int;
 	var i: int;
 	var a: alloc;
@@ -178,7 +178,7 @@ main(argc: int, argv: **byte, envp: **byte) {
 	fflush(stdout);
 }
 
-fputh(f: *file, x: int) {
+func fputh(f: *file, x: int) {
 	var i: int;
 
 	if x > (-1 >> 32) {
@@ -198,7 +198,7 @@ fputh(f: *file, x: int) {
 	}
 }
 
-falign(f: *file, n: int) {
+func falign(f: *file, n: int) {
 	var len: int;
 	len = (4 - (n & 3)) & 3;
 	loop {

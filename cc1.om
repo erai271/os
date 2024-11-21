@@ -28,7 +28,7 @@ struct compiler {
 	used_top: *decl;
 }
 
-cshow_context(c: *compiler) {
+func cshow_context(c: *compiler) {
 	fdputs(2, "on ");
 	if (c.filename) {
 		fdputs(2, c.filename);
@@ -40,7 +40,7 @@ cshow_context(c: *compiler) {
 	fdputs(2, "\n");
 }
 
-cdie(c: *compiler, msg: *byte) {
+func cdie(c: *compiler, msg: *byte) {
 	cshow_context(c);
 	fdputs(2, "cdie: ");
 	fdputs(2, msg);
@@ -48,7 +48,7 @@ cdie(c: *compiler, msg: *byte) {
 	exit(1);
 }
 
-comp_setup(a: *alloc): *compiler {
+func comp_setup(a: *alloc): *compiler {
 	var c: *compiler;
 
 	c = alloc(a, sizeof(*c)) as *compiler;
@@ -76,7 +76,7 @@ comp_setup(a: *alloc): *compiler {
 	return c;
 }
 
-open_coutput(c: *compiler, filename: *byte) {
+func open_coutput(c: *compiler, filename: *byte) {
 	var fd: int;
 
 	if (c.cout) {
@@ -93,11 +93,11 @@ open_coutput(c: *compiler, filename: *byte) {
 	c.cout = fopen(fd, c.a);
 }
 
-flush_coutput(c: *compiler) {
+func flush_coutput(c: *compiler) {
 	fflush(c.cout);
 }
 
-compile(c: *compiler, p: *node) {
+func compile(c: *compiler, p: *node) {
 	var n: *node;
 	var d: *decl;
 	var kind: int;
@@ -198,7 +198,7 @@ compile(c: *compiler, p: *node) {
 	}
 }
 
-mark_func_used(c: *compiler, d: *decl) {
+func mark_func_used(c: *compiler, d: *decl) {
 	if d.func_used {
 		return;
 	}
@@ -208,7 +208,7 @@ mark_func_used(c: *compiler, d: *decl) {
 	c.used_top = d;
 }
 
-mark_expr_used(c: *compiler, d: *decl, n: *node) {
+func mark_expr_used(c: *compiler, d: *decl, n: *node) {
 	var v: *decl;
 	var kind: int;
 
@@ -273,7 +273,7 @@ mark_expr_used(c: *compiler, d: *decl, n: *node) {
 	}
 }
 
-mark_stmt_used(c: *compiler, d: *decl, n: *node) {
+func mark_stmt_used(c: *compiler, d: *decl, n: *node) {
 	var kind: int;
 
 	if !n {
@@ -323,7 +323,7 @@ mark_stmt_used(c: *compiler, d: *decl, n: *node) {
 	}
 }
 
-check_usage(c: *compiler) {
+func check_usage(c: *compiler) {
 	var d: *decl;
 
 	loop {
@@ -339,7 +339,7 @@ check_usage(c: *compiler) {
 	}
 }
 
-defextern(c: *compiler, n: *node): *decl {
+func defextern(c: *compiler, n: *node): *decl {
 	var d: *decl;
 	var name: *byte;
 	var t: *type;
@@ -365,7 +365,7 @@ defextern(c: *compiler, n: *node): *decl {
 	return d;
 }
 
-defun(c: *compiler, n: *node) {
+func defun(c: *compiler, n: *node) {
 	var d: *decl;
 	var name: *byte;
 	var v: *decl;
@@ -411,7 +411,7 @@ defun(c: *compiler, n: *node) {
 	d.func_preamble = offset;
 }
 
-defstruct(c: *compiler, n: *node) {
+func defstruct(c: *compiler, n: *node) {
 	var name: *byte;
 	var d: *decl;
 
@@ -435,7 +435,7 @@ defstruct(c: *compiler, n: *node) {
 	d.struct_def = n;
 }
 
-defunion(c: *compiler, n: *node) {
+func defunion(c: *compiler, n: *node) {
 	var name: *byte;
 	var d: *decl;
 
@@ -459,7 +459,7 @@ defunion(c: *compiler, n: *node) {
 	d.struct_def = n;
 }
 
-defenum(c: *compiler, n: *node) {
+func defenum(c: *compiler, n: *node) {
 	var d: *decl;
 	var i: int;
 	var name: *byte;
@@ -495,7 +495,7 @@ defenum(c: *compiler, n: *node) {
 	}
 }
 
-layout_struct(c: *compiler, d: *decl) {
+func layout_struct(c: *compiler, d: *decl) {
 	var m: *node;
 	var offset: int;
 	var name: *byte;
@@ -547,7 +547,7 @@ layout_struct(c: *compiler, d: *decl) {
 	d.struct_layout_done = 1;
 }
 
-layout_union(c: *compiler, d: *decl) {
+func layout_union(c: *compiler, d: *decl) {
 	var m: *node;
 	var size: int;
 	var member_size: int;
@@ -603,7 +603,7 @@ layout_union(c: *compiler, d: *decl) {
 	d.struct_layout_done = 1;
 }
 
-compile_func(c: *compiler, d: *decl) {
+func compile_func(c: *compiler, d: *decl) {
 	var pragma: int;
 
 	if (!d.func_def) {
@@ -632,7 +632,7 @@ compile_func(c: *compiler, d: *decl) {
 	emit_ret(c.s);
 }
 
-typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
+func typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 	var v: *decl;
 	var kind: int;
 
@@ -1149,7 +1149,7 @@ typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 	}
 }
 
-typecheck_stmt(c: *compiler, d: *decl, n: *node) {
+func typecheck_stmt(c: *compiler, d: *decl, n: *node) {
 	var v: *decl;
 	var kind: int;
 
@@ -1214,7 +1214,7 @@ typecheck_stmt(c: *compiler, d: *decl, n: *node) {
 	}
 }
 
-typecheck_func(c: *compiler, d: *decl) {
+func typecheck_func(c: *compiler, d: *decl) {
 	if (!d.func_def) {
 		return;
 	}
@@ -1222,7 +1222,7 @@ typecheck_func(c: *compiler, d: *decl) {
 	typecheck_stmt(c, d, d.func_def.b);
 }
 
-hoist_locals(c: *compiler, d: *decl, n: *node, offset: int): int {
+func hoist_locals(c: *compiler, d: *decl, n: *node, offset: int): int {
 	var kind: int;
 	var name: *byte;
 	var t: *type;
@@ -1290,7 +1290,7 @@ hoist_locals(c: *compiler, d: *decl, n: *node, offset: int): int {
 	return offset;
 }
 
-compile_include(c: *compiler, n: *node) {
+func compile_include(c: *compiler, n: *node) {
 	var filename: *byte;
 	var fd: int;
 	var blob: *byte;
@@ -1321,7 +1321,7 @@ compile_include(c: *compiler, n: *node) {
 }
 
 // Translate an expression
-compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
+func compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 	var no: *label;
 	var out: *label;
 	var v: *decl;
@@ -1586,7 +1586,7 @@ compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 	}
 }
 
-call_check(c: *compiler, n: *node): int {
+func call_check(c: *compiler, n: *node): int {
 	var result: int;
 	var ret: int;
 
@@ -1646,7 +1646,7 @@ call_check(c: *compiler, n: *node): int {
 }
 
 // Compile a statement
-compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
+func compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 	var no: *label;
 	var ifout: *label;
 	var v: *decl;
@@ -1739,7 +1739,7 @@ compile_stmt(c: *compiler, d: *decl, n: *node, top: *label, out: *label) {
 	}
 }
 
-emit_ssr(c: *compiler) {
+func emit_ssr(c: *compiler) {
 	var d: *decl;
 	var v: *decl;
 
@@ -1843,7 +1843,7 @@ emit_ssr(c: *compiler) {
 	as_op(c.s, OP_SYSRET);
 }
 
-emit_isr(c: *compiler) {
+func emit_isr(c: *compiler) {
 	var d: *decl;
 	var out: *label;
 	var i: int;
@@ -1972,7 +1972,7 @@ emit_isr(c: *compiler) {
 	as_op(c.s, OP_IRETQ);
 }
 
-emit_builtin(c: *compiler) {
+func emit_builtin(c: *compiler) {
 	var d: *decl;
 
 	d = find(c, "syscall", 0 as *byte, 1);
@@ -2575,7 +2575,7 @@ struct name_node {
 	name: *byte;
 }
 
-main(argc: int, argv: **byte, envp: **byte) {
+func main(argc: int, argv: **byte, envp: **byte) {
 	var a: alloc;
 	var c: *compiler;
 	var p: *node;

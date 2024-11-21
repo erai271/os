@@ -36,7 +36,7 @@ struct _sha512_digest {
 	c: sha512_ctx;
 }
 
-sha512_init(ctx: *sha512_ctx) {
+func sha512_init(ctx: *sha512_ctx) {
 	ctx.a = (0x6a09e667 << 32) | 0xf3bcc908;
 	ctx.b = (0xbb67ae85 << 32) | 0x84caa73b;
 	ctx.c = (0x3c6ef372 << 32) | 0xfe94f82b;
@@ -48,11 +48,11 @@ sha512_init(ctx: *sha512_ctx) {
 	ctx.len = 0;
 }
 
-ror64(x: int, n: int): int {
+func ror64(x: int, n: int): int {
 	return (x >> n) | (x << (64 - n));
 }
 
-sha512_round(r: *sha512_ctx, w: *int, k: int) {
+func sha512_round(r: *sha512_ctx, w: *int, k: int) {
 	var s0: int;
 	var s1: int;
 	var t1: int;
@@ -96,7 +96,7 @@ sha512_round(r: *sha512_ctx, w: *int, k: int) {
 	w[15] = w16;
 }
 
-sha512_rounds(ctx: *sha512_ctx, block: *byte) {
+func sha512_rounds(ctx: *sha512_ctx, block: *byte) {
 	var r: sha512_ctx;
 	var _w: _sha512_block;
 	var w: *int;
@@ -222,7 +222,7 @@ sha512_rounds(ctx: *sha512_ctx, block: *byte) {
 	ctx.h = ctx.h + r.h;
 }
 
-sha512_finish(ctx: *sha512_ctx, nblocks: int, data: *byte, len: int) {
+func sha512_finish(ctx: *sha512_ctx, nblocks: int, data: *byte, len: int) {
 	var _final: _sha512_block;
 	var final: *byte;
 	var pad: int;
@@ -263,7 +263,7 @@ sha512_finish(ctx: *sha512_ctx, nblocks: int, data: *byte, len: int) {
 	sha512_rounds(ctx, final);
 }
 
-sha512_digest(digest: *byte, ctx: *sha512_ctx) {
+func sha512_digest(digest: *byte, ctx: *sha512_ctx) {
 	var r: *int;
 	var i: int;
 	r = &ctx.a;
@@ -284,14 +284,14 @@ sha512_digest(digest: *byte, ctx: *sha512_ctx) {
 	}
 }
 
-sha512(digest: *byte, data: *byte, dlen: int) {
+func sha512(digest: *byte, data: *byte, dlen: int) {
 	var ctx: sha512_ctx;
 	sha512_init(&ctx);
 	sha512_finish(&ctx, 0, data, dlen);
 	sha512_digest(digest, &ctx);
 }
 
-sha512_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
+func sha512_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	var _digest: _sha512_block;
 	var digest: *byte;
 	var _ipad: _sha512_block;
@@ -335,7 +335,7 @@ sha512_hmac(mac: *byte, key: *byte, klen: int, data: *byte, dlen: int) {
 	sha512_digest(mac, &ctx);
 }
 
-sha512_update(ctx: *sha512_ctx, msg: *byte, len: int) {
+func sha512_update(ctx: *sha512_ctx, msg: *byte, len: int) {
 	var o: int;
 	var r: int;
 
@@ -370,7 +370,7 @@ sha512_update(ctx: *sha512_ctx, msg: *byte, len: int) {
 	}
 }
 
-sha512_final(digest: *byte, ctx: *sha512_ctx) {
+func sha512_final(digest: *byte, ctx: *sha512_ctx) {
 	sha512_finish(ctx, ctx.len >> 7, (&ctx.block) as *byte, ctx.len & 127);
 	sha512_digest(digest, ctx);
 }
