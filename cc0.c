@@ -6732,13 +6732,7 @@ unsigned long( my_peg_P_func)(struct my_peg* my_c){
 unsigned long( my_peg_P_func_decl)(struct my_peg* my_c){
 	unsigned long my_ok = 0;
 	(my_enter)((my_c),(my_P_func_decl));
-	(my_choice)((my_c));
 	(my_ok)=((my_literal)((my_c),((unsigned char *)"func")));
-	if (my_ok) {
-	(my_commit)((my_c));
-	} else {
-	(my_ok)=(1UL);
-	}
 	if (my_ok) {
 	(my_ok)=((my_peg_P_sp)((my_c)));
 	}

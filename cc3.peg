@@ -7,7 +7,7 @@ member_decl <- ident sp ':' sp type ';' sp
 struct_decl <- struct sp ident sp '{' sp member_decl* '}' sp
 union_decl <- union sp ident sp '{' sp member_decl* '}' sp
 
-func_decl <- 'func'? sp ident sp func_type (';' sp / compound_stmt)
+func_decl <- 'func' sp ident sp func_type (';' sp / compound_stmt)
 
 type <- ident sp / byte sp / int sp / void sp
       / func sp func_type / ptr_type / '(' sp type ')' sp
