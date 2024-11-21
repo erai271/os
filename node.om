@@ -15,6 +15,7 @@ enum {
 	N_NUM,
 	N_CHAR,
 	N_STR,
+	N_NIL,
 	N_STMTLIST,
 	N_EXPRLIST,
 	N_CALL,
@@ -126,6 +127,7 @@ func node_to_str(kind: int): *byte {
 	if kind == N_NUM { return "N_NUM"; }
 	if kind == N_CHAR { return "N_CHAR"; }
 	if kind == N_STR { return "N_STR"; }
+	if kind == N_NIL { return "N_NIL"; }
 	if kind == N_STMTLIST { return "N_STMTLIST"; }
 	if kind == N_EXPRLIST { return "N_EXPRLIST"; }
 	if kind == N_CALL { return "N_CALL"; }

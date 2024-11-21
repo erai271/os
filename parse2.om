@@ -610,6 +610,8 @@ func reconstruct_primary(c: *parser, pn: *peg_node): *node {
 		return reconstruct_char(c, pn);
 	} else if pn.tag == P_sizeof_expr {
 		return reconstruct_sizeof(c, pn);
+	} else if pn.tag == P_nil {
+		return reconstruct_nil(c, pn);
 	} else if pn.tag == P_expr {
 		return reconstruct_expr(c, pn);
 	} else {
@@ -694,6 +696,15 @@ func reconstruct_char(c: *parser, pn: *peg_node): *node {
 	n.n = x;
 	return n;
 }
+
+func reconstruct_nil(c: *parser, pn: *peg_node): *node {
+	var n: *node;
+	assert(pn.tag == P_nil, "nil");
+	n = mknode0(c, N_NIL);
+	copypos(n, pn);
+	return n;
+}
+
 func reconstruct_sizeof(c: *parser, pn: *peg_node): *node {
 	var n: *node;
 	var a: *node;

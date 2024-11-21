@@ -93,7 +93,7 @@ cast_expr <- 'as' sp type
 post_expr <- primary (index_expr / call_expr / member_expr / cast_expr)*
 
 primary <- ident sp / hex sp / dec sp / str sp / char sp
-         / sizeof_expr / '(' sp expr ')' sp
+         / sizeof_expr / nil sp / '(' sp expr ')' sp
 
 sizeof_expr <- sizeof sp '(' sp expr ')' sp
 
@@ -103,7 +103,7 @@ str <- ["] ([\\] . / !["] .)* ["]
 char <- ['] ([\\] . / !['] .)+ [']
 
 reserved <- return / break / sizeof / if / else / loop / continue / goto
-          / var / enum / struct / union / byte / int / void / func / as
+          / var / enum / struct / union / byte / int / void / func / as / nil
 
 return <- 'return' ![a-zA-Z0-9_]
 break <- 'break' ![a-zA-Z0-9_]

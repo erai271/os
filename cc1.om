@@ -266,7 +266,7 @@ func mark_expr_used(c: *compiler, d: *decl, n: *node) {
 		mark_expr_used(c, d, n.a);
 		return;
 	} else if kind == N_SIZEOF || kind == N_STR || kind == N_NUM
-		|| kind == N_CHAR {
+		|| kind == N_CHAR || kind == N_NIL {
 		return;
 	} else {
 		cdie(c, "not an expression");
@@ -647,6 +647,12 @@ func typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		}
 
 		n.t = mktype1(c, TY_PTR, mktype0(c, TY_BYTE));
+	} else if (kind == N_NIL) {
+		if (!rhs) {
+			cdie(c, "nil is not an lexpr");
+		}
+
+		n.t = mktype0(c, TY_NIL);
 	} else if (kind == N_NUM) {
 		if (!rhs) {
 			cdie(c, "num is not an lexpr");
@@ -1334,6 +1340,8 @@ func compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 	kind = n.kind;
 	if (kind == N_STR) {
 		emit_str(c.s, n.s);
+	} else if (kind == N_NIL) {
+		emit_num(c.s, 0);
 	} else if (kind == N_NUM) {
 		emit_num(c.s, n.n);
 	} else if (kind == N_CHAR) {
@@ -1635,7 +1643,7 @@ func call_check(c: *compiler, n: *node): int {
 		// Possible side effect in the first position
 		result = call_check(c, n.a);
 	} else if n.kind == N_STR || n.kind == N_NUM || n.kind == N_CHAR
-		|| n.kind == N_IDENT || n.kind == N_SIZEOF {
+		|| n.kind == N_IDENT || n.kind == N_SIZEOF || n.kind == N_NIL {
 		// No side effects
 	} else {
 		fdputd(2, n.kind);

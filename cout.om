@@ -317,6 +317,8 @@ func ctranslate_expr(c: *compiler, n: *node) {
 	} else if n.kind == N_NUM {
 		fputd(c.cout, n.n);
 		fputs(c.cout, "UL");
+	} else if n.kind == N_NIL {
+		fputs(c.cout, "(void *)0");
 	} else if n.kind == N_CHAR {
 		fputd(c.cout, n.n);
 	} else if n.kind == N_CALL {

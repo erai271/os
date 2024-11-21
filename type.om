@@ -6,6 +6,7 @@ struct type {
 }
 
 enum {
+	TY_NIL,
 	TY_VOID,
 	TY_INT,
 	TY_BYTE,
@@ -44,6 +45,10 @@ func unify(c: *compiler, a: *type, b: *type) {
 	var kind: int;
 
 	if (a == b) {
+		return;
+	}
+
+	if a && b && ((a.kind == TY_NIL && b.kind == TY_PTR) || (a.kind == TY_PTR && b.kind == TY_NIL)) {
 		return;
 	}
 
