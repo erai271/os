@@ -14,8 +14,10 @@ type <- ident sp / byte sp / int sp / void sp
 
 ptr_type <- '*' sp type
 
+gen_decl <- ident sp ':' sp 'type' sp
 arg_decl <- ident sp ':' sp type
-func_type <- '(' sp ( arg_decl (',' sp arg_decl)* )?  ( ',' sp )?  ')' sp
+func_type <- ('@' sp '(' sp gen_decl ( ',' sp gen_decl )* ')' sp)?
+             '(' sp ( arg_decl (',' sp arg_decl)* )?  ( ',' sp )?  ')' sp
              (':' sp type)?
 
 stmt <- if_stmt / loop_stmt / break_stmt / continue_stmt
@@ -90,7 +92,8 @@ index_expr <- '[' sp expr ']' sp
 call_expr <- '(' sp ( expr (',' sp expr)* )? (',' sp)? ')' sp
 member_expr <-  '.' sp ident sp
 cast_expr <- 'as' sp type
-post_expr <- primary (index_expr / call_expr / member_expr / cast_expr)*
+type_expr <- '@' sp '(' sp type (',' sp type)* ')' sp
+post_expr <- primary (index_expr / call_expr / member_expr / cast_expr / type_expr)*
 
 primary <- ident sp / hex sp / dec sp / str sp / char sp
          / sizeof_expr / nil sp / '(' sp expr ')' sp

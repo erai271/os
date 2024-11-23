@@ -22,6 +22,7 @@ syn keyword oInt int
 syn keyword oVoid void
 syn keyword oFunc func
 syn keyword oAs as
+syn keyword oType type
 syn keyword oNil nil
 
 syn keyword oTodo contained TODO FIXME XXX BUG
@@ -71,5 +72,6 @@ hi def link oByte Type
 hi def link oInt Type
 hi def link oVoid Type
 hi def link oFunc Type
+hi def link oType Type
 
 let b:current_syntax = "omiltem"

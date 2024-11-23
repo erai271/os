@@ -340,6 +340,8 @@ func ctranslate_expr(c: *compiler, n: *node) {
 			}
 		}
 		fputs(c.cout, ")");
+	} else if n.kind == N_TYPECALL {
+		ctranslate_expr(c, n.a);
 	} else if n.kind == N_DOT {
 		fputs(c.cout, "(");
 		ctranslate_expr(c, n.a);

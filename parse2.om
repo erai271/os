@@ -191,7 +191,8 @@ func reconstruct_func_type(c: *parser, pn: *peg_node): *node {
 			break;
 		}
 
-		if pn.tag == P_arg_decl {
+		if pn.tag == P_gen_decl {
+		} else if pn.tag == P_arg_decl {
 			a = mknode1(c, N_ARGLIST, reconstruct_arg_decl(c, pn));
 			copypos(a, pn);
 			*link = a;
@@ -552,6 +553,31 @@ func reconstruct_args(c: *parser, pn: *peg_node): *node {
 
 	return ret;
 }
+func reconstruct_typeargs(c: *parser, pn: *peg_node): *node {
+	var ret: *node;
+	var link: **node;
+	var a: *node;
+	var n: *node;
+
+	ret = nil;
+	link = &ret;
+	loop {
+		if !pn {
+			break;
+		}
+
+		a = reconstruct_type(c, pn);
+		n = mknode1(c, N_TYPELIST, a);
+		copypos(n, pn);
+
+		*link = n;
+		link = &n.b;
+
+		pn = pn.next;
+	}
+
+	return ret;
+}
 
 func reconstruct_post(c: *parser, pn: *peg_node): *node {
 	var ret: *node;
@@ -584,6 +610,10 @@ func reconstruct_post(c: *parser, pn: *peg_node): *node {
 		} else if tag == P_cast_expr {
 			n = reconstruct_type(c, pn.child);
 			ret = mknode(c, N_CAST, ret, n);
+			copypos(ret, pn);
+		} else if tag == P_type_expr {
+			n = reconstruct_typeargs(c, pn.child);
+			ret = mknode(c, N_TYPECALL, ret, n);
 			copypos(ret, pn);
 		} else {
 			die("invalid post_expr");

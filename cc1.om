@@ -262,7 +262,7 @@ func mark_expr_used(c: *compiler, d: *decl, n: *node) {
 		return;
 	} else if kind == N_REF || kind == N_DEREF || kind == N_BNOT
 		|| kind == N_POS || kind == N_NEG || kind == N_NOT
-		|| kind == N_CAST || kind == N_DOT {
+		|| kind == N_CAST || kind == N_DOT || kind == N_TYPECALL {
 		mark_expr_used(c, d, n.a);
 		return;
 	} else if kind == N_SIZEOF || kind == N_STR || kind == N_NUM
@@ -727,6 +727,9 @@ func typecheck_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		}
 
 		n.t = n.a.t.val;
+	} else if (kind == N_TYPECALL) {
+		typecheck_expr(c, d, n.a, 0);
+		n.t = n.a.t;
 	} else if (kind == N_DOT) {
 		typecheck_expr(c, d, n.a, 0);
 
@@ -1385,6 +1388,8 @@ func compile_expr(c: *compiler, d: *decl, n: *node, rhs: int) {
 		} else {
 			unify(c, n.a.t.arg, nil);
 		}
+	} else if (kind == N_TYPECALL) {
+		compile_expr(c, d, n.a, 0);
 	} else if (kind == N_DOT) {
 		compile_expr(c, d, n.a, 0);
 
@@ -1619,6 +1624,8 @@ func call_check(c: *compiler, n: *node): int {
 			n = n.b;
 		}
 		result = 1;
+	} else if n.kind == N_TYPECALL {
+		result = call_check(c, n.a);
 	} else if n.kind == N_BOR || n.kind == N_BAND {
 		// Side effects okay in both positions
 		result = call_check(c, n.a);
